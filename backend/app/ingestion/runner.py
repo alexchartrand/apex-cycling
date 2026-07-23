@@ -3,6 +3,7 @@ import logging
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
+import app.db.models  # noqa: F401 -- registers all models on Base.metadata before mapper configuration
 from app.core.config import get_settings
 from app.ingestion.jobs import poll_active_connections
 
