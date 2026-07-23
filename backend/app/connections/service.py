@@ -29,14 +29,18 @@ def _ranges_overlap(
 
 
 async def get_or_create_sqorz_connection(db: AsyncSession, transponder_code: str) -> DataSourceConnection:
+    # Sqorz's API is case-insensitive on transponder code, so normalize here
+    # to avoid creating a second `DataSourceConnection` for the same physical
+    # transponder just because someone typed a different case.
+    normalized_code = transponder_code.strip().upper()
     connection = await db.scalar(
         select(DataSourceConnection).where(
             DataSourceConnection.provider == DataSourceProvider.SQORZ,
-            DataSourceConnection.external_id == transponder_code,
+            DataSourceConnection.external_id == normalized_code,
         )
     )
     if connection is None:
-        connection = DataSourceConnection(provider=DataSourceProvider.SQORZ, external_id=transponder_code)
+        connection = DataSourceConnection(provider=DataSourceProvider.SQORZ, external_id=normalized_code)
         db.add(connection)
         await db.flush()
     return connection
