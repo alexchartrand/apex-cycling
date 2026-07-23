@@ -8,12 +8,22 @@ from app.athletes.models import Athlete
 from app.auth.deps import get_current_user, require_athlete_access
 from app.auth.models import User
 from app.connections.models import DataSourceConnection, TransponderAssignment
-from app.connections.schemas import IngestionRunRead, TransponderAssignmentCreate, TransponderAssignmentRead
-from app.connections.service import OverlappingAssignmentError, create_transponder_assignment
+from app.connections.schemas import (
+    IngestionRunRead,
+    IngestionRunWithSourceRead,
+    TransponderAssignmentCreate,
+    TransponderAssignmentRead,
+)
+from app.connections.service import (
+    OverlappingAssignmentError,
+    create_transponder_assignment,
+    list_ingestion_runs_for_athlete,
+)
 from app.db.session import get_db
 from app.ingestion.sqorz.service import ingest_sqorz_connection
 
 router = APIRouter(prefix="/athletes/{athlete_id}/transponder-assignments", tags=["connections"])
+ingestion_runs_router = APIRouter(prefix="/athletes/{athlete_id}/ingestion-runs", tags=["connections"])
 
 
 async def _to_read_model(db: AsyncSession, assignment: TransponderAssignment) -> TransponderAssignmentRead:
@@ -87,3 +97,24 @@ async def import_transponder_assignment_now(
     connection = await db.get(DataSourceConnection, assignment.data_source_connection_id)
     run = await ingest_sqorz_connection(db, connection)
     return IngestionRunRead.model_validate(run)
+
+
+@ingestion_runs_router.get("", response_model=list[IngestionRunWithSourceRead])
+async def list_ingestion_runs(
+    athlete_id: uuid.UUID,
+    athlete: Athlete = Depends(require_athlete_access),
+    db: AsyncSession = Depends(get_db),
+) -> list[IngestionRunWithSourceRead]:
+    rows = await list_ingestion_runs_for_athlete(db, athlete_id=athlete.id)
+    return [
+        IngestionRunWithSourceRead(
+            id=run.id,
+            status=run.status,
+            requested_at=run.requested_at,
+            completed_at=run.completed_at,
+            http_status=run.http_status,
+            error_message=run.error_message,
+            transponder_code=transponder_code,
+        )
+        for run, transponder_code in rows
+    ]

@@ -53,6 +53,12 @@ export function ProgressionPage() {
       </p>
       <h1>Progression</h1>
 
+      {tracks.isLoading && <p>Loading tracks…</p>}
+      {tracks.isError && <p role="alert">Could not load tracks. Try reloading the page.</p>}
+      {tracks.data && tracks.data.length === 0 && (
+        <p>No tracks yet. Report a transponder on the dashboard to start syncing your training data.</p>
+      )}
+
       <form onSubmit={(e) => e.preventDefault()}>
         <label>
           Track
@@ -110,7 +116,8 @@ export function ProgressionPage() {
         </label>
       </form>
 
-      {progression.isLoading && <p>Loading…</p>}
+      {params && progression.isLoading && <p>Loading…</p>}
+      {params && progression.isError && <p role="alert">Could not load progression data. Try again.</p>}
       {params && progression.data && progression.data.length === 0 && <p>No data for this selection yet.</p>}
       {chartData.length > 0 && (
         <ResponsiveContainer width="100%" height={320}>

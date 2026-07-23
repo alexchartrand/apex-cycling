@@ -4,7 +4,12 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.connections.models import DataSourceConnection, DataSourceProvider, TransponderAssignment
+from app.connections.models import (
+    DataSourceConnection,
+    DataSourceProvider,
+    IngestionRun,
+    TransponderAssignment,
+)
 
 
 class OverlappingAssignmentError(Exception):
@@ -71,3 +76,30 @@ async def create_transponder_assignment(
     db.add(assignment)
     await db.flush()
     return assignment
+
+
+async def list_ingestion_runs_for_athlete(
+    db: AsyncSession, *, athlete_id: uuid.UUID, limit: int = 20
+) -> list[tuple[IngestionRun, str]]:
+    """Recent ingestion runs across every connection this athlete has ever
+    reported usage of, newest first, paired with the connection's
+    transponder code — so a failed background sync is visible to the
+    athlete, not just buried in `ingestion_runs`.
+    """
+    connection_ids = await db.scalars(
+        select(TransponderAssignment.data_source_connection_id)
+        .where(TransponderAssignment.athlete_id == athlete_id)
+        .distinct()
+    )
+    connection_ids = list(connection_ids)
+    if not connection_ids:
+        return []
+
+    rows = await db.execute(
+        select(IngestionRun, DataSourceConnection.external_id)
+        .join(DataSourceConnection, IngestionRun.data_source_connection_id == DataSourceConnection.id)
+        .where(IngestionRun.data_source_connection_id.in_(connection_ids))
+        .order_by(IngestionRun.requested_at.desc())
+        .limit(limit)
+    )
+    return list(rows.all())

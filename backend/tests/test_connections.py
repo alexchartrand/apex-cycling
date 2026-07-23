@@ -187,6 +187,43 @@ async def test_import_records_failed_run_on_sqorz_error(client, db_session, monk
         assert snapshot is None
 
 
+async def test_ingestion_runs_lists_recent_runs_including_failures(client, db_session, monkeypatch):
+    user = await _signup(client, "athlete7@example.com")
+    athlete_id = await _self_athlete_id(db_session, user["id"])
+
+    _patch_fetch(monkeypatch)
+    ok_resp = await client.post(
+        f"/athletes/{athlete_id}/transponder-assignments",
+        json={"transponder_code": "LS-66666", "start_date": "2026-06-01", "end_date": "2026-06-10"},
+    )
+    assert ok_resp.status_code == 201
+
+    _patch_fetch(monkeypatch, error=SqorzClientError("boom", http_status=503))
+    fail_resp = await client.post(
+        f"/athletes/{athlete_id}/transponder-assignments",
+        json={"transponder_code": "LS-77777", "start_date": "2026-06-11", "end_date": None},
+    )
+    assert fail_resp.status_code == 201
+
+    runs_resp = await client.get(f"/athletes/{athlete_id}/ingestion-runs")
+    assert runs_resp.status_code == 200
+    runs = runs_resp.json()
+    assert len(runs) == 2
+    by_code = {run["transponder_code"]: run for run in runs}
+    assert by_code["LS-66666"]["status"] == "success"
+    assert by_code["LS-77777"]["status"] == "failed"
+    assert "boom" in by_code["LS-77777"]["error_message"]
+
+
+async def test_ingestion_runs_empty_for_athlete_with_no_transponders(client, db_session, monkeypatch):
+    user = await _signup(client, "athlete8@example.com")
+    athlete_id = await _self_athlete_id(db_session, user["id"])
+
+    runs_resp = await client.get(f"/athletes/{athlete_id}/ingestion-runs")
+    assert runs_resp.status_code == 200
+    assert runs_resp.json() == []
+
+
 async def test_unrelated_user_cannot_report_usage_for_other_athlete(client, db_session, monkeypatch):
     _patch_fetch(monkeypatch)
     owner = await _signup(client, "owner-conn@example.com")

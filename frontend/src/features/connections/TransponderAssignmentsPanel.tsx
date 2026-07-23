@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { ApiError } from "../../api/client";
-import { useImportTransponderAssignmentNow, useReportTransponderUsage, useTransponderAssignments } from "./useConnections";
+import {
+  useImportTransponderAssignmentNow,
+  useIngestionRuns,
+  useReportTransponderUsage,
+  useTransponderAssignments,
+} from "./useConnections";
 
 export function TransponderAssignmentsPanel({ athleteId }: { athleteId: string }) {
   const assignments = useTransponderAssignments(athleteId);
+  const ingestionRuns = useIngestionRuns(athleteId);
   const reportUsage = useReportTransponderUsage(athleteId);
   const importNow = useImportTransponderAssignmentNow(athleteId);
 
@@ -73,6 +79,7 @@ export function TransponderAssignmentsPanel({ athleteId }: { athleteId: string }
 
       <h2>Your assignments</h2>
       {assignments.isLoading && <p>Loading…</p>}
+      {assignments.isError && <p role="alert">Could not load your transponder assignments.</p>}
       {assignments.data && assignments.data.length === 0 && <p>No transponder usage reported yet.</p>}
       {assignments.data && assignments.data.length > 0 && (
         <ul>
@@ -86,6 +93,27 @@ export function TransponderAssignmentsPanel({ athleteId }: { athleteId: string }
               >
                 Import now
               </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h2>Recent sync activity</h2>
+      {ingestionRuns.isLoading && <p>Loading…</p>}
+      {ingestionRuns.isError && <p role="alert">Could not load sync history.</p>}
+      {ingestionRuns.data && ingestionRuns.data.length === 0 && (
+        <p>No syncs yet — report a transponder above to trigger one.</p>
+      )}
+      {ingestionRuns.data && ingestionRuns.data.length > 0 && (
+        <ul>
+          {ingestionRuns.data.map((run) => (
+            <li key={run.id}>
+              {run.transponder_code} — {new Date(run.requested_at).toLocaleString()} —{" "}
+              {run.status === "success" && "succeeded"}
+              {run.status === "pending" && "in progress"}
+              {run.status === "failed" && (
+                <span role="alert">failed: {run.error_message ?? "unknown error"}</span>
+              )}
             </li>
           ))}
         </ul>

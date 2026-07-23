@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.athletes.router import router as athletes_router
 from app.auth.router import router as auth_router
+from app.connections.router import ingestion_runs_router
 from app.connections.router import router as connections_router
 from app.core.config import get_settings
 from app.training.router import router as training_router
@@ -22,6 +23,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(athletes_router)
 app.include_router(connections_router)
+app.include_router(ingestion_runs_router)
 app.include_router(training_router)
 
 

@@ -35,3 +35,7 @@ class IngestionRunRead(BaseModel):
     error_message: str | None
 
     model_config = {"from_attributes": True}
+
+
+class IngestionRunWithSourceRead(IngestionRunRead):
+    transponder_code: str

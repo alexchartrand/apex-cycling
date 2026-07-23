@@ -13,7 +13,10 @@ export function SessionsPage() {
       </p>
       <h1>Sessions</h1>
       {sessions.isLoading && <p>Loading…</p>}
-      {sessions.data && sessions.data.length === 0 && <p>No sessions yet.</p>}
+      {sessions.isError && <p role="alert">Could not load your sessions. Try reloading the page.</p>}
+      {sessions.data && sessions.data.length === 0 && (
+        <p>No sessions yet. Report a transponder on the dashboard to start syncing your training data.</p>
+      )}
       {sessions.data && sessions.data.length > 0 && (
         <ul>
           {sessions.data.map((session) => (

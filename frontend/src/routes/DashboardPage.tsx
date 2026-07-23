@@ -18,6 +18,8 @@ export function DashboardPage() {
       <nav>
         <Link to="/sessions">Sessions</Link> · <Link to="/progression">Progression</Link>
       </nav>
+      {athlete.isLoading && <p>Loading…</p>}
+      {athlete.isError && <p role="alert">Could not load your athlete profile. Try reloading the page.</p>}
       {athlete.data && <TransponderAssignmentsPanel athleteId={athlete.data.id} />}
     </div>
   );

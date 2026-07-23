@@ -1,0 +1,72 @@
+name: track-trainer-prod
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-track_trainer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set a real Postgres password in .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:-track_trainer}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-track_trainer}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.prod.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-track_trainer}:${POSTGRES_PASSWORD:?set a real Postgres password in .env.prod}@db:5432/${POSTGRES_DB:-track_trainer}
+      JWT_SECRET: ${JWT_SECRET:?set a long random JWT_SECRET in .env.prod}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["https://${DOMAIN:-localhost}"]}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.prod.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-track_trainer}:${POSTGRES_PASSWORD:?set a real Postgres password in .env.prod}@db:5432/${POSTGRES_DB:-track_trainer}
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    # backend runs migrations on start; restart if the worker's first poll
+    # races ahead of them and hits missing tables.
+    restart: on-failure
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.prod.Dockerfile
+      args:
+        # Same-origin build (see docker/Caddyfile): Caddy proxies /auth,
+        # /athletes, /health to backend and serves this bundle for
+        # everything else on one origin, so leave this blank.
+        VITE_API_URL: ""
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  caddy_data:
+  caddy_config:

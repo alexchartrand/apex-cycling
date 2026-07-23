@@ -26,3 +26,7 @@ export interface IngestionRun {
   http_status: number | null;
   error_message: string | null;
 }
+
+export interface IngestionRunWithSource extends IngestionRun {
+  transponder_code: string;
+}

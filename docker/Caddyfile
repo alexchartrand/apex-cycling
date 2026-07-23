@@ -1,0 +1,21 @@
+{$DOMAIN:localhost} {
+	encode gzip
+
+	# Backend route prefixes today (see backend/app/main.py). No top-level
+	# /api prefix exists yet, so this list must stay in sync with new
+	# routers mounted there.
+	@backend {
+		path /auth*
+		path /athletes*
+		path /health
+	}
+	handle @backend {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
