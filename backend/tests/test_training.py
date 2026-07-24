@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.athletes.models import Athlete
 from app.connections.service import create_transponder_assignment
 from app.ingestion.sqorz.normalizer import normalize_snapshot
-from app.training.models import LapSegmentTime, Track, TrackLoop, TrainingLap
+from app.training.models import LapSegmentTime, Track, TrackLoop, TrainingEvent, TrainingLap
 from app.training.service import DistancedSegment, find_best_distance_window
 
 
@@ -203,7 +203,7 @@ async def test_normalize_snapshot_attributes_laps_to_correct_athlete_by_date_ran
         assert [s.time_ms for s in segments] == [5000, 6000, 4000]
 
 
-async def test_normalize_snapshot_leaves_lap_unattributed_without_matching_assignment(client, db_session):
+async def test_normalize_snapshot_drops_events_for_transponder_without_assignment(client, db_session):
     user = await _signup(client, "trainE@example.com")
     await _self_athlete_id(db_session, user["id"])  # ensures athlete row exists, unused here
 
@@ -213,9 +213,117 @@ async def test_normalize_snapshot_leaves_lap_unattributed_without_matching_assig
 
     async with db_session() as session:
         lap = await session.scalar(select(TrainingLap).where(TrainingLap.external_lap_id == "lap1-1"))
-        assert lap is not None
-        assert lap.athlete_id is None
-        assert lap.transponder_code == "TP-UNASSIGNED"
+        assert lap is None
+        event = await session.scalar(select(TrainingEvent).where(TrainingEvent.external_event_id == "evt1"))
+        assert event is None
+
+
+async def test_normalize_snapshot_drops_event_dates_outside_assignment_window(client, db_session):
+    user = await _signup(client, "trainH@example.com")
+    athlete_id = await _self_athlete_id(db_session, user["id"])
+
+    async with db_session() as session:
+        await create_transponder_assignment(
+            session,
+            athlete_id=athlete_id,
+            transponder_code="TP-WINDOW",
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 10),
+            created_by_user_id=uuid.UUID(user["id"]),
+            notes=None,
+        )
+        await session.commit()
+
+    async with db_session() as session:
+        await normalize_snapshot(session, _make_payload(transponder_code="TP-WINDOW"))
+        await session.commit()
+
+    async with db_session() as session:
+        # evt1 (2026-06-05) is inside the assignment window; evt2 (2026-06-20) is not.
+        in_window = await session.scalar(select(TrainingEvent).where(TrainingEvent.external_event_id == "evt1"))
+        out_of_window = await session.scalar(select(TrainingEvent).where(TrainingEvent.external_event_id == "evt2"))
+        assert in_window is not None
+        assert out_of_window is None
+
+
+async def test_normalize_snapshot_gives_each_athlete_their_own_event_copy(client, db_session):
+    user_a = await _signup(client, "trainI@example.com")
+    athlete_a_id = await _self_athlete_id(db_session, user_a["id"])
+
+    from httpx import ASGITransport, AsyncClient
+
+    from app.main import app as real_app
+
+    async with AsyncClient(transport=ASGITransport(app=real_app), base_url="http://test") as other_client:
+        user_b = await _signup(other_client, "trainJ@example.com")
+        athlete_b_id = await _self_athlete_id(db_session, user_b["id"])
+
+    async with db_session() as session:
+        await create_transponder_assignment(
+            session,
+            athlete_id=athlete_a_id,
+            transponder_code="TP-SHARED-A",
+            start_date=date(2026, 6, 1),
+            end_date=None,
+            created_by_user_id=uuid.UUID(user_a["id"]),
+            notes=None,
+        )
+        await create_transponder_assignment(
+            session,
+            athlete_id=athlete_b_id,
+            transponder_code="TP-SHARED-B",
+            start_date=date(2026, 6, 1),
+            end_date=None,
+            created_by_user_id=uuid.UUID(user_b["id"]),
+            notes=None,
+        )
+        await session.commit()
+
+    shared_event_id = "evt-shared"
+    payload_a = {
+        "transponderCode": "TP-SHARED-A",
+        "eventTrainingDetails": [
+            _event_payload(
+                shared_event_id,
+                "2026-06-05",
+                "lap-shared-a",
+                datetime(2026, 6, 5, 10, 0, 0, tzinfo=timezone.utc),
+                [5000, 6000, 4000],
+                "TP-SHARED-A",
+            )
+        ],
+    }
+    payload_b = {
+        "transponderCode": "TP-SHARED-B",
+        "eventTrainingDetails": [
+            _event_payload(
+                shared_event_id,
+                "2026-06-05",
+                "lap-shared-b",
+                datetime(2026, 6, 5, 10, 0, 5, tzinfo=timezone.utc),
+                [5100, 6100, 4100],
+                "TP-SHARED-B",
+            )
+        ],
+    }
+
+    async with db_session() as session:
+        await normalize_snapshot(session, payload_a)
+        await normalize_snapshot(session, payload_b)
+        await session.commit()
+
+    async with db_session() as session:
+        events = (
+            await session.scalars(select(TrainingEvent).where(TrainingEvent.external_event_id == shared_event_id))
+        ).all()
+        assert len(events) == 2
+        events_by_athlete = {e.athlete_id: e for e in events}
+        assert set(events_by_athlete) == {athlete_a_id, athlete_b_id}
+
+        lap_a = await session.scalar(select(TrainingLap).where(TrainingLap.external_lap_id == "lap-shared-a"))
+        lap_b = await session.scalar(select(TrainingLap).where(TrainingLap.external_lap_id == "lap-shared-b"))
+        assert lap_a.athlete_id == athlete_a_id
+        assert lap_b.athlete_id == athlete_b_id
 
 
 async def test_session_detail_and_progression_endpoints(client, db_session):

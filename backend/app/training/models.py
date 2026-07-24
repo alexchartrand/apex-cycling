@@ -85,11 +85,25 @@ class TrackViewLoop(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class TrainingEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    """One sqorz training session/day, upserted by external id."""
+    """One athlete's private copy of a sqorz training session/day, upserted
+    by external id. Owned by `athlete_id` — two athletes who both appear in
+    the same physical sqorz event (e.g. two transponders at the same
+    session) each get their own independent `TrainingEvent` row (and
+    everything under it: `EventClass`, `EventTrack`, `TrainingLap`,
+    `LapSegmentTime`), since this data is meant to be manually editable per
+    athlete without affecting anyone else's copy. Contrast with `Track` /
+    `TrackLoop` / `TrackView`, which stay a shared dimension since they just
+    describe the physical facility, not recorded results.
+    """
 
     __tablename__ = "training_events"
-    __table_args__ = (UniqueConstraint("sqorz_account_id", "external_event_id", name="uq_event_account_external_id"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "athlete_id", "sqorz_account_id", "external_event_id", name="uq_event_athlete_account_external_id"
+        ),
+    )
 
+    athlete_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("athletes.id"), index=True)
     sqorz_account_id: Mapped[str] = mapped_column(String(255), index=True)
     external_event_id: Mapped[str] = mapped_column(String(255), index=True)
     name: Mapped[str] = mapped_column(String(255))
@@ -135,19 +149,19 @@ class EventTrack(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class TrainingLap(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    """One recorded lap for one transponder. `athlete_id` is resolved at
-    normalization time by matching `start_time` against
-    `TransponderAssignment` date ranges for the transponder (see
-    normalizer.py) — laps outside any known assignment window stay
-    unattributed (nullable) rather than dropped, and can be backfilled by
-    re-running ingestion once a matching assignment exists.
+    """One recorded lap for one transponder, owned by the same `athlete_id`
+    as its parent `TrainingEvent` (see normalizer.py: the owning athlete is
+    resolved once per `trainingDetail` from the `TransponderAssignment`
+    window covering `eventDate`, and trainingDetail entries with no covering
+    assignment are dropped entirely at ingestion — so every lap that reaches
+    this table always has a resolved owner).
     """
 
     __tablename__ = "training_laps"
     __table_args__ = (UniqueConstraint("event_track_id", "external_lap_id", name="uq_training_lap_external_id"),)
 
     event_track_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("event_tracks.id"), index=True)
-    athlete_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("athletes.id"), nullable=True, index=True)
+    athlete_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("athletes.id"), index=True)
     transponder_code: Mapped[str] = mapped_column(String(255), index=True)
     class_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     external_lap_id: Mapped[str] = mapped_column(String(255), index=True)

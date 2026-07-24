@@ -35,16 +35,23 @@ def _resolve_athlete(assignments: list[TransponderAssignment], lap_date: date) -
     return None
 
 
-async def _upsert_training_event(db: AsyncSession, account_id: str, detail: dict) -> TrainingEvent:
+async def _upsert_training_event(db: AsyncSession, athlete_id: uuid.UUID, account_id: str, detail: dict) -> TrainingEvent:
     external_event_id = detail["eventId"]
     event = await db.scalar(
         select(TrainingEvent).where(
+            TrainingEvent.athlete_id == athlete_id,
             TrainingEvent.sqorz_account_id == account_id,
             TrainingEvent.external_event_id == external_event_id,
         )
     )
     if event is None:
-        event = TrainingEvent(sqorz_account_id=account_id, external_event_id=external_event_id, name="", event_date=date.today())
+        event = TrainingEvent(
+            athlete_id=athlete_id,
+            sqorz_account_id=account_id,
+            external_event_id=external_event_id,
+            name="",
+            event_date=date.today(),
+        )
         db.add(event)
 
     event.name = detail.get("eventName", external_event_id)
@@ -208,13 +215,12 @@ async def _upsert_training_lap(
     db: AsyncSession,
     event_track: EventTrack,
     loops_in_order: list[TrackLoop],
+    athlete_id: uuid.UUID,
     transponder_code: str,
     lap_payload: dict,
-    assignments: list[TransponderAssignment],
 ) -> None:
     external_lap_id = lap_payload["lapId"]
     start_time = _epoch_ms_to_datetime(lap_payload["startTime"])
-    athlete_id = _resolve_athlete(assignments, start_time.date())
 
     lap = await db.scalar(
         select(TrainingLap).where(
@@ -254,26 +260,37 @@ async def _upsert_training_lap(
 
 async def normalize_snapshot(db: AsyncSession, payload: dict) -> None:
     """Upsert a raw sqorz payload (one transponder's full `eventTrainingDetails`
-    history) into the normalized training tables, resolving transponder ->
-    athlete attribution against `TransponderAssignment` date ranges.
+    history) into the normalized training tables.
 
-    Idempotent by external id, so it's safe (and necessary) to re-run this
-    against the same payload on every ingestion — including after a new
-    `TransponderAssignment` is added, to backfill attribution for laps that
-    were previously unattributed.
+    Each `trainingDetail` is owned by exactly one athlete, resolved from
+    `TransponderAssignment` windows for this payload's transponder against
+    `trainingDetail.eventDate` — entries with no covering assignment are
+    dropped entirely (not stored unattributed), so a transponder with no
+    assignment yet contributes nothing until one is created. Session/lap
+    data (`TrainingEvent` and everything under it) is a private per-athlete
+    copy, upserted by `(athlete_id, external_id)`, so re-running this against
+    the same payload is idempotent and never duplicates rows.
     """
     track_cache: dict[tuple[str, str], Track] = {}
     loop_cache: dict[tuple[uuid.UUID, str], TrackLoop] = {}
     view_cache: dict[tuple[uuid.UUID, str], TrackView] = {}
-    assignments_cache: dict[str, list[TransponderAssignment]] = {}
+
+    transponder_code = payload.get("transponderCode")
+    assignments = await _load_assignments_for_transponder(db, transponder_code) if transponder_code else []
 
     for event_entry in payload.get("eventTrainingDetails") or []:
         account_id = event_entry.get("accountId")
         detail = event_entry.get("trainingDetail") or {}
-        if account_id is None or not detail.get("eventId"):
+        event_date_str = detail.get("eventDate")
+        if account_id is None or not detail.get("eventId") or not event_date_str:
             continue
 
-        training_event = await _upsert_training_event(db, account_id, detail)
+        event_date = date.fromisoformat(event_date_str)
+        athlete_id = _resolve_athlete(assignments, event_date)
+        if athlete_id is None:
+            continue
+
+        training_event = await _upsert_training_event(db, athlete_id, account_id, detail)
         await _upsert_event_classes(db, training_event, detail.get("classes") or [])
 
         tracks_by_external_id: dict[str, tuple[EventTrack, list[TrackLoop]]] = {}
@@ -285,16 +302,12 @@ async def normalize_snapshot(db: AsyncSession, payload: dict) -> None:
             tracks_by_external_id[track.external_track_id] = (event_track, loops_in_order)
 
         for member in detail.get("members") or []:
-            transponder_code = member.get("transponder")
-            if transponder_code is None:
-                continue
-            if transponder_code not in assignments_cache:
-                assignments_cache[transponder_code] = await _load_assignments_for_transponder(db, transponder_code)
-            assignments = assignments_cache[transponder_code]
+            if member.get("transponder") != transponder_code:
+                continue  # this ingestion run only owns `transponder_code`'s data
 
             for lap_payload in member.get("trainingLaps") or []:
                 entry = tracks_by_external_id.get(lap_payload.get("trackId"))
                 if entry is None:
                     continue
                 event_track, loops_in_order = entry
-                await _upsert_training_lap(db, event_track, loops_in_order, transponder_code, lap_payload, assignments)
+                await _upsert_training_lap(db, event_track, loops_in_order, athlete_id, transponder_code, lap_payload)

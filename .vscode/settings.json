@@ -5,5 +5,28 @@
             "envManager": "ms-python.python:venv",
             "packageManager": "ms-python.python:pip"
         }
+    ],
+    "pgsql.connections": [
+        {
+            "id": "7C18C013-E103-414D-BBB1-78D83F4AB57B",
+            "groupId": "9EFDC16D-69AE-4A5D-8DE0-6E2573CEF231",
+            "authenticationType": "SqlLogin",
+            "connectTimeout": 15,
+            "applicationName": "vscode-pgsql",
+            "clientEncoding": "utf8",
+            "sslmode": "prefer",
+            "sshSavePassword": true,
+            "savePassword": true,
+            "sslRootCertMode": "none",
+            "server": "localhost",
+            "connectionString": "postgresql+asyncpg://track_trainer@db:5432/track_trainer",
+            "password": "",
+            "user": "track_trainer",
+            "database": "track_trainer",
+            "profileName": "localhost:5432, track_trainer (track_trainer)",
+            "port": "5432",
+            "expiresOn": 0,
+            "sshPassword": ""
+        }
     ]
 }

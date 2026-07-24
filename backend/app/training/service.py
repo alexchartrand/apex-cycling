@@ -110,7 +110,11 @@ def find_best_distance_window(
 
 
 async def get_session_detail(db: AsyncSession, athlete_id: uuid.UUID, external_event_id: str) -> SessionDetail | None:
-    event = await db.scalar(select(TrainingEvent).where(TrainingEvent.external_event_id == external_event_id))
+    event = await db.scalar(
+        select(TrainingEvent).where(
+            TrainingEvent.external_event_id == external_event_id, TrainingEvent.athlete_id == athlete_id
+        )
+    )
     if event is None:
         return None
 
