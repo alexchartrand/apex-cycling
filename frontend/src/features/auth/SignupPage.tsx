@@ -21,7 +21,7 @@ export function SignupPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form className="auth-page" onSubmit={handleSubmit}>
       <h1>Create your account</h1>
       <p>No club or invite needed — you'll be able to self-report transponder usage right away.</p>
       <label>

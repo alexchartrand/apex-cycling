@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { Brush, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useMyAthlete } from "../features/athletes/useAthlete";
 import { formatMs } from "../features/training/format";
@@ -48,15 +47,12 @@ export function ProgressionPage() {
 
   return (
     <div>
-      <p>
-        <Link to="/">← Dashboard</Link>
-      </p>
       <h1>Progression</h1>
 
       {tracks.isLoading && <p>Loading tracks…</p>}
       {tracks.isError && <p role="alert">Could not load tracks. Try reloading the page.</p>}
       {tracks.data && tracks.data.length === 0 && (
-        <p>No tracks yet. Report a transponder on the dashboard to start syncing your training data.</p>
+        <p>No tracks yet. Report a transponder on the Import page to start syncing your training data.</p>
       )}
 
       <form onSubmit={(e) => e.preventDefault()}>

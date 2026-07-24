@@ -20,7 +20,7 @@ export function LoginPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form className="auth-page" onSubmit={handleSubmit}>
       <h1>Log in</h1>
       <label>
         Email

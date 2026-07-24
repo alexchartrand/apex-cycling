@@ -51,6 +51,10 @@
 }
 
 #root {
+  min-height: 100svh;
+}
+
+.auth-page {
   max-width: 1100px;
   margin: 0 auto;
   min-height: 100svh;
