@@ -14,6 +14,7 @@ from app.training.schemas import (
     SegmentDetail,
     SessionDetail,
     SessionSummary,
+    TrackLoopSummary,
     TrackSessionDetail,
     TrackSummary,
     TrackViewSummary,
@@ -269,7 +270,7 @@ async def list_athlete_tracks(db: AsyncSession, athlete_id: uuid.UUID) -> list[T
             .join(EventTrack, EventTrack.track_id == Track.id)
             .join(TrainingLap, TrainingLap.event_track_id == EventTrack.id)
             .where(TrainingLap.athlete_id == athlete_id)
-            .options(selectinload(Track.views))
+            .options(selectinload(Track.views), selectinload(Track.loops))
             .distinct()
             .order_by(Track.name)
         )
@@ -279,6 +280,11 @@ async def list_athlete_tracks(db: AsyncSession, athlete_id: uuid.UUID) -> list[T
             id=t.id,
             name=t.name,
             views=[TrackViewSummary(id=v.id, name=v.name) for v in t.views],
+            length_m=t.length_m,
+            loops=sorted(
+                (TrackLoopSummary(id=loop.id, name=loop.name, distance_m=loop.distance_m) for loop in t.loops),
+                key=lambda loop: (loop.distance_m is None, loop.distance_m if loop.distance_m is not None else 0.0),
+            ),
         )
         for t in tracks
     ]

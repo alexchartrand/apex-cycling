@@ -55,10 +55,18 @@ class TrackViewSummary(BaseModel):
     name: str
 
 
+class TrackLoopSummary(BaseModel):
+    id: uuid.UUID
+    name: str
+    distance_m: float | None
+
+
 class TrackSummary(BaseModel):
     id: uuid.UUID
     name: str
     views: list[TrackViewSummary]
+    loops: list[TrackLoopSummary]
+    length_m: float | None
 
 
 class ProgressionMetric(str, enum.Enum):

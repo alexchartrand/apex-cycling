@@ -1,0 +1,110 @@
+.track-schema {
+  margin: 8px 0 24px;
+  --track-wood-1: #f1dfb0;
+  --track-wood-2: #d9bd7c;
+  --track-surface: #3e7fc4;
+  --track-surface-line: rgba(255, 255, 255, 0.35);
+  --track-infield: #f7f8fa;
+  --track-infield-line: #d7dde5;
+  --flag-distance: #7c3aed;
+  --flag-pursuit: #e0552c;
+  --flag-finish: #1f2430;
+  --flag-text: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .track-schema {
+    --track-wood-1: #6b5a34;
+    --track-wood-2: #4d3f22;
+    --track-surface: #2f5f94;
+    --track-surface-line: rgba(255, 255, 255, 0.2);
+    --track-infield: #20222a;
+    --track-infield-line: #34384a;
+    --flag-distance: #a875fa;
+    --flag-pursuit: #f0703f;
+    --flag-finish: #e8e9ee;
+    --flag-text: #14151a;
+  }
+}
+
+.track-schema__band--surface {
+  fill: var(--track-surface);
+  stroke: var(--track-wood-2);
+}
+
+.track-schema__lane {
+  fill: none;
+  stroke: var(--track-surface-line);
+  stroke-width: 1;
+}
+
+.track-schema__band--infield {
+  fill: var(--track-infield);
+  stroke: var(--track-infield-line);
+}
+
+.track-schema__flag {
+  cursor: pointer;
+  outline: none;
+}
+
+.track-schema__gate {
+  stroke-width: 3;
+  transition: stroke-width 0.15s ease;
+}
+
+.track-schema__leader {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.track-schema__flag--distance .track-schema__gate,
+.track-schema__flag--distance .track-schema__label-bg {
+  stroke: var(--flag-distance);
+  fill: var(--flag-distance);
+}
+
+.track-schema__flag--pursuit .track-schema__gate,
+.track-schema__flag--pursuit .track-schema__label-bg {
+  stroke: var(--flag-pursuit);
+  fill: var(--flag-pursuit);
+}
+
+.track-schema__flag--finish .track-schema__gate,
+.track-schema__flag--finish .track-schema__label-bg {
+  stroke: var(--flag-finish);
+  fill: var(--flag-finish);
+}
+
+.track-schema__label {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  fill: var(--flag-text);
+}
+
+.track-schema__flag:hover .track-schema__gate,
+.track-schema__flag:focus-visible .track-schema__gate,
+.track-schema__flag--selected .track-schema__gate {
+  stroke-width: 5;
+}
+
+.track-schema__flag:hover .track-schema__leader,
+.track-schema__flag:focus-visible .track-schema__leader,
+.track-schema__flag--selected .track-schema__leader {
+  stroke-width: 2;
+  stroke: var(--text-h);
+}
+
+.track-schema__flag:hover .track-schema__label-bg,
+.track-schema__flag:focus-visible .track-schema__label-bg,
+.track-schema__flag--selected .track-schema__label-bg {
+  stroke-width: 2;
+  stroke: var(--flag-text);
+}
+
+.track-schema__flag:hover .track-schema__label,
+.track-schema__flag:focus-visible .track-schema__label,
+.track-schema__flag--selected .track-schema__label {
+  font-weight: 700;
+}

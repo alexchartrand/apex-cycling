@@ -44,10 +44,18 @@ export interface TrackViewSummary {
   name: string;
 }
 
+export interface TrackLoopSummary {
+  id: string;
+  name: string;
+  distance_m: number | null;
+}
+
 export interface TrackSummary {
   id: string;
   name: string;
   views: TrackViewSummary[];
+  loops: TrackLoopSummary[];
+  length_m: number | null;
 }
 
 export type ProgressionMetric = "view" | "lap_time" | "custom_distance";

@@ -22,6 +22,11 @@ class Track(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(255))
     track_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     validation_method: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Sqorz never reports a track's total circuit length (only sparse
+    # per-checkpoint cumulative distance — see TrackLoop), so this has no
+    # ingestion path; it's a manually-set fact about the physical facility,
+    # used to place sensors proportionally on the track schema diagram.
+    length_m: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     loops: Mapped[list["TrackLoop"]] = relationship(back_populates="track")
     views: Mapped[list["TrackView"]] = relationship(back_populates="track")

@@ -2,8 +2,9 @@ import { Link, useParams } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useMyAthlete } from "../features/athletes/useAthlete";
 import { formatMs } from "../features/training/format";
+import { TrackSchema } from "../features/training/TrackSchema";
 import type { LapDetail } from "../features/training/types";
-import { useSessionDetail } from "../features/training/useTraining";
+import { useSessionDetail, useTracks } from "../features/training/useTraining";
 
 // Named views to surface for now — add more here as they're needed.
 const DISPLAYED_VIEW_NAMES = ["200m"];
@@ -35,6 +36,7 @@ export function SessionDetailPage() {
   const { eventId = "" } = useParams();
   const athlete = useMyAthlete();
   const detail = useSessionDetail(athlete.data?.id ?? "", eventId);
+  const tracks = useTracks(athlete.data?.id ?? "");
 
   return (
     <div>
@@ -50,6 +52,10 @@ export function SessionDetailPage() {
           {detail.data.tracks.map((track) => (
             <section key={track.track_id}>
               <h2>{track.track_name}</h2>
+              <TrackSchema
+                loops={tracks.data?.find((t) => t.id === track.track_id)?.loops ?? []}
+                lengthM={tracks.data?.find((t) => t.id === track.track_id)?.length_m}
+              />
               <LapChart laps={track.laps} />
               <table>
                 <thead>

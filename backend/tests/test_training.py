@@ -491,6 +491,11 @@ async def test_list_sessions_and_tracks_endpoints(client, db_session):
         await normalize_snapshot(session, _make_payload(transponder_code="TP-3"))
         await session.commit()
 
+    async with db_session() as session:
+        track = await session.scalar(select(Track).where(Track.external_track_id == "trk1"))
+        session.add(TrackLoop(track_id=track.id, external_loop_id="trk1/4", name="50m", distance_m=None))
+        await session.commit()
+
     sessions_resp = await client.get(f"/athletes/{athlete_id}/sessions")
     assert sessions_resp.status_code == 200
     sessions_body = sessions_resp.json()
@@ -502,6 +507,15 @@ async def test_list_sessions_and_tracks_endpoints(client, db_session):
     assert len(tracks_body) == 1
     assert tracks_body[0]["name"] == "Test Track"
     assert [v["name"] for v in tracks_body[0]["views"]] == ["Flying A"]
+    # A loop with no reported distance (sqorz sporadically omits it) still comes through,
+    # sorted after every loop with a known distance rather than being dropped.
+    assert [(loop["name"], loop["distance_m"]) for loop in tracks_body[0]["loops"]] == [
+        ("Loop A", 80),
+        ("Loop B", 150),
+        ("Finish", 200),
+        ("50m", None),
+    ]
+    assert tracks_body[0]["length_m"] is None
 
 
 async def test_session_detail_404_for_unknown_event(client, db_session):
