@@ -7,7 +7,13 @@ from app.athletes.models import Athlete
 from app.connections.service import create_transponder_assignment
 from app.ingestion.sqorz.normalizer import normalize_snapshot
 from app.training.models import LapSegmentTime, Track, TrackLoop, TrainingEvent, TrainingLap
-from app.training.service import DistancedSegment, find_best_distance_window
+from app.training.service import (
+    DistancedSegment,
+    _segment_deltas,
+    _view_time_ms,
+    _whole_lap_time_ms,
+    find_best_distance_window,
+)
 
 
 def _epoch_ms(dt: datetime) -> int:
@@ -82,7 +88,7 @@ def _make_payload(transponder_code: str = "TP-1") -> dict:
                 "2026-06-05",
                 "lap1-1",
                 datetime(2026, 6, 5, 10, 0, 0, tzinfo=timezone.utc),
-                [5000, 6000, 4000],
+                [5000, 9000, 14500],
                 transponder_code,
             ),
             _event_payload(
@@ -90,7 +96,7 @@ def _make_payload(transponder_code: str = "TP-1") -> dict:
                 "2026-06-20",
                 "lap2-1",
                 datetime(2026, 6, 20, 10, 0, 0, tzinfo=timezone.utc),
-                [4800, 5800, 3900],
+                [4800, 8800, 13600],
                 transponder_code,
             ),
         ],
@@ -134,6 +140,84 @@ def test_find_best_distance_window_cannot_cross_unknown_distance_segment():
     assert (result.start_index, result.end_index) == (1, 1)
     assert result.distance_m == 100
     assert result.time_ms == 2000
+
+
+# Real sqorz lapTimes are cumulative-since-lap-start per checkpoint, not
+# independent per-segment durations — this is a worked real-world example
+# (index 5's capture was missed).
+_CUMULATIVE_TIME_MS = [5207, 5488, 12191, 16650, 19222, None, 26324, 28041]
+
+
+def _make_segments(times_ms: list[int | None], distances_m: list[float | None] | None = None) -> list[LapSegmentTime]:
+    loop_ids = [uuid.uuid4() for _ in times_ms]
+    segments = []
+    for i, time_ms in enumerate(times_ms):
+        segment = LapSegmentTime(sequence_index=i, time_ms=time_ms, track_loop_id=loop_ids[i])
+        if distances_m is not None:
+            segment.track_loop = TrackLoop(distance_m=distances_m[i])
+        segments.append(segment)
+    return segments
+
+
+def test_whole_lap_time_is_last_checkpoints_cumulative_value():
+    segments = _make_segments(_CUMULATIVE_TIME_MS)
+    assert _whole_lap_time_ms(segments) == 28041
+
+
+def test_whole_lap_time_none_when_finish_capture_missing():
+    segments = _make_segments([5207, 5488, None])
+    assert _whole_lap_time_ms(segments) is None
+
+
+def test_whole_lap_time_none_for_empty_segments():
+    assert _whole_lap_time_ms([]) is None
+
+
+def test_view_time_is_gate_to_gate_subtraction_not_sum():
+    segments = _make_segments(_CUMULATIVE_TIME_MS)
+    loop_ids = [s.track_loop_id for s in segments]
+
+    # positions 2-4: 19222 - 12191 (both ends are gates with their own reading)
+    assert _view_time_ms(segments, [loop_ids[2], loop_ids[3], loop_ids[4]]) == 7031
+
+    # positions 4-6: interior null at position 5 isn't touched by either gate
+    assert _view_time_ms(segments, [loop_ids[4], loop_ids[5], loop_ids[6]]) == 7102
+
+    # view's own end gate (position 5) is missing
+    assert _view_time_ms(segments, [loop_ids[4], loop_ids[5]]) is None
+
+    # view's own start gate (position 5) is missing
+    assert _view_time_ms(segments, [loop_ids[5], loop_ids[7]]) is None
+
+    # adjacent positions 0-1: matches _segment_deltas's delta for position 1
+    assert _view_time_ms(segments, [loop_ids[0], loop_ids[1]]) == 281
+
+    # single-loop view: elapsed since lap start to that one checkpoint
+    assert _view_time_ms(segments, [loop_ids[0]]) == 5207
+
+    # loop not present in this lap at all
+    assert _view_time_ms(segments, [uuid.uuid4()]) is None
+
+
+def test_view_time_matches_real_flying_200_example():
+    # Real sqorz track (LS-03407): loops in order
+    # [Courbe 1, 200m, Poursuite 2, 100m, Courbe 2, 50m, Poursuite 1, Finish],
+    # and a sqorz-provided "200m" view spanning [200m, 100m, Finish].
+    segments = _make_segments(_CUMULATIVE_TIME_MS)
+    loop_ids = [s.track_loop_id for s in segments]
+    two_hundred_m, hundred_m, finish = loop_ids[1], loop_ids[3], loop_ids[7]
+
+    assert _view_time_ms(segments, [two_hundred_m, hundred_m, finish]) == 22553
+
+
+def test_segment_deltas_converts_cumulative_time_independently_from_distance():
+    distances_m = [50, 100, 150, 200, 250, 300, 350, 400]
+    segments = _make_segments(_CUMULATIVE_TIME_MS, distances_m=distances_m)
+
+    deltas = _segment_deltas(segments)
+
+    assert [d.time_ms for d in deltas] == [5207, 281, 6703, 4459, 2572, None, None, 1717]
+    assert [d.distance_m for d in deltas] == [50, 50, 50, 50, 50, 50, 50, 50]
 
 
 async def test_normalize_snapshot_attributes_laps_to_correct_athlete_by_date_range(client, db_session):
@@ -200,7 +284,7 @@ async def test_normalize_snapshot_attributes_laps_to_correct_athlete_by_date_ran
                 .order_by(LapSegmentTime.sequence_index)
             )
         ).all()
-        assert [s.time_ms for s in segments] == [5000, 6000, 4000]
+        assert [s.time_ms for s in segments] == [5000, 9000, 14500]
 
 
 async def test_normalize_snapshot_drops_events_for_transponder_without_assignment(client, db_session):
@@ -355,8 +439,8 @@ async def test_session_detail_and_progression_endpoints(client, db_session):
     assert track_detail["track_name"] == "Test Track"
     assert len(track_detail["laps"]) == 1
     lap = track_detail["laps"][0]
-    assert lap["whole_lap_time_ms"] == 15000
-    assert [s["time_ms"] for s in lap["segments"]] == [5000, 6000, 4000]
+    assert lap["whole_lap_time_ms"] == 14500
+    assert [s["time_ms"] for s in lap["segments"]] == [5000, 4000, 5500]
     view = next(v for v in lap["views"] if v["name"] == "Flying A")
     assert view["time_ms"] == 5000
 
@@ -368,7 +452,7 @@ async def test_session_detail_and_progression_endpoints(client, db_session):
     )
     assert lap_time_resp.status_code == 200
     points = lap_time_resp.json()
-    assert [p["time_ms"] for p in points] == [15000, 14500]
+    assert [p["time_ms"] for p in points] == [14500, 13600]
 
     view_resp = await client.get(
         f"/athletes/{athlete_id}/progression", params={"metric": "view", "track_view_id": view_id}
@@ -382,9 +466,9 @@ async def test_session_detail_and_progression_endpoints(client, db_session):
     )
     assert custom_resp.status_code == 200
     custom_points = custom_resp.json()
-    assert custom_points[0]["time_ms"] == 11000
+    assert custom_points[0]["time_ms"] == 9000
     assert custom_points[0]["achieved_distance_m"] == 150
-    assert custom_points[1]["time_ms"] == 10600
+    assert custom_points[1]["time_ms"] == 8800
 
 
 async def test_list_sessions_and_tracks_endpoints(client, db_session):

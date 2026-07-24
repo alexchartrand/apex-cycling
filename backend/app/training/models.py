@@ -176,9 +176,16 @@ class TrainingLap(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class LapSegmentTime(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    """The fact table progression charts read. `time_ms` null means the
-    checkpoint was missed — excluded (not zero-filled) from whole-lap and
-    view sums so an incomplete lap isn't silently under-reported.
+    """The fact table progression charts read. `time_ms` is the raw
+    cumulative elapsed time since lap start at this checkpoint — it matches
+    sqorz's `lapTimes` 1:1 and is NOT a per-segment duration, so it must
+    never be summed directly. Whole-lap time is simply the last segment's
+    value; view times and per-segment durations are derived by boundary
+    subtraction / delta conversion at read time (see `training/service.py`:
+    `_whole_lap_time_ms`, `_view_time_ms`, `_segment_deltas`). `time_ms`
+    null means that checkpoint's capture was missed — whether that blocks a
+    given computation depends on which segment(s) it is (see those
+    functions' docstrings).
     """
 
     __tablename__ = "lap_segment_times"

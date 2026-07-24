@@ -22,23 +22,74 @@ from app.training.schemas import (
 
 
 def _whole_lap_time_ms(segments: list[LapSegmentTime]) -> int | None:
-    times = [segment.time_ms for segment in segments]
-    if not times or any(t is None for t in times):
+    """`time_ms` is cumulative elapsed time since lap start at that
+    checkpoint (matches sqorz's `lapTimes` 1:1 — see `LapSegmentTime`), so
+    the total is just the last checkpoint's (the finish line's) own value,
+    not a sum. An earlier missed capture doesn't block this — only the
+    last segment's own `time_ms` being null does.
+    """
+    if not segments:
         return None
-    return sum(times)
+    ordered = sorted(segments, key=lambda s: s.sequence_index)
+    return ordered[-1].time_ms
 
 
 def _view_time_ms(segments: list[LapSegmentTime], loop_ids: list[uuid.UUID]) -> int | None:
+    """A view's elapsed time is a gate-to-gate subtraction, not a sum: the
+    cumulative time at the view's last loop minus the cumulative time at
+    the view's own first loop — both are checkpoints with their own
+    directly-known cumulative-since-lap-start reading, the same way a
+    stopwatch split works off two gate crossings. Uses list position
+    rather than `sequence_index` arithmetic since `sequence_index` can be
+    sparse.
+
+    A single-loop view (first loop == last loop) has no second gate to
+    subtract against, so it's treated as "elapsed since lap start to this
+    one checkpoint" — its own raw cumulative value — rather than the
+    otherwise-meaningless zero a literal gate-to-gate subtraction would give.
+
+    If the view's first/last loop repeats within this lap (a circuit lap
+    passing the same physical checkpoint twice), first-occurrence /
+    last-occurrence is a deterministic but not fully disambiguated choice —
+    a pre-existing ambiguity (the old loop_id-keyed dict had it too), not
+    something this fixes.
+    """
     if not loop_ids:
         return None
-    times_by_loop = {segment.track_loop_id: segment.time_ms for segment in segments}
-    total = 0
-    for loop_id in loop_ids:
-        time_ms = times_by_loop.get(loop_id)
-        if time_ms is None:
+    ordered = sorted(segments, key=lambda s: s.sequence_index)
+
+    first_loop_id, last_loop_id = loop_ids[0], loop_ids[-1]
+    if first_loop_id == last_loop_id:
+        pos = _last_index_of(ordered, first_loop_id)
+        if pos is None:
             return None
-        total += time_ms
-    return total
+        return ordered[pos].time_ms
+
+    first_pos = _first_index_of(ordered, first_loop_id)
+    last_pos = _last_index_of(ordered, last_loop_id)
+    if first_pos is None or last_pos is None:
+        return None
+
+    start_segment = ordered[first_pos]
+    end_segment = ordered[last_pos]
+    if start_segment.time_ms is None or end_segment.time_ms is None:
+        return None
+
+    return end_segment.time_ms - start_segment.time_ms
+
+
+def _first_index_of(ordered: list[LapSegmentTime], loop_id: uuid.UUID) -> int | None:
+    for i, segment in enumerate(ordered):
+        if segment.track_loop_id == loop_id:
+            return i
+    return None
+
+
+def _last_index_of(ordered: list[LapSegmentTime], loop_id: uuid.UUID) -> int | None:
+    for i in range(len(ordered) - 1, -1, -1):
+        if ordered[i].track_loop_id == loop_id:
+            return i
+    return None
 
 
 @dataclass
@@ -61,17 +112,35 @@ class DistanceWindowResult:
 
 
 def _segment_deltas(segments: list[LapSegmentTime]) -> list[DistancedSegment]:
+    """Converts each segment's raw cumulative `distance_m`/`time_ms` into a
+    per-segment delta (this segment's own physical length / duration), via
+    two independent running cumulative trackers. Each tracker resets to
+    None the instant its underlying cumulative value is unknown for a
+    segment, and recovers as soon as a later segment's value is known
+    again — so one missing capture blanks exactly the deltas that needed
+    it as an endpoint, without corrupting anything further down the lap.
+    """
+    ordered = sorted(segments, key=lambda s: s.sequence_index)
     result = []
-    prev_cumulative: float | None = 0.0
-    for segment in segments:
+    prev_distance: float | None = 0.0
+    prev_time: float | None = 0.0
+    for segment in ordered:
         loop_distance = segment.track_loop.distance_m
-        delta = (
-            loop_distance - prev_cumulative
-            if (prev_cumulative is not None and loop_distance is not None)
+        cumulative_time = segment.time_ms
+
+        distance_delta = (
+            loop_distance - prev_distance
+            if (prev_distance is not None and loop_distance is not None)
             else None
         )
-        result.append(DistancedSegment(distance_m=delta, time_ms=segment.time_ms))
-        prev_cumulative = loop_distance
+        time_delta = (
+            cumulative_time - prev_time
+            if (prev_time is not None and cumulative_time is not None)
+            else None
+        )
+        result.append(DistancedSegment(distance_m=distance_delta, time_ms=time_delta))
+        prev_distance = loop_distance
+        prev_time = cumulative_time
     return result
 
 
@@ -143,6 +212,8 @@ async def get_session_detail(db: AsyncSession, athlete_id: uuid.UUID, external_e
             laps_by_track[track.id] = track_detail
 
         segments = lap.segment_times
+        ordered_segments = sorted(segments, key=lambda s: s.sequence_index)
+        deltas = _segment_deltas(ordered_segments)
         views = [
             ViewTime(
                 track_view_id=view.id,
@@ -159,8 +230,8 @@ async def get_session_detail(db: AsyncSession, athlete_id: uuid.UUID, external_e
                 start_number=lap.start_number,
                 whole_lap_time_ms=_whole_lap_time_ms(segments),
                 segments=[
-                    SegmentDetail(sequence_index=s.sequence_index, loop_name=s.track_loop.name, time_ms=s.time_ms)
-                    for s in segments
+                    SegmentDetail(sequence_index=s.sequence_index, loop_name=s.track_loop.name, time_ms=d.time_ms)
+                    for s, d in zip(ordered_segments, deltas)
                 ],
                 views=views,
             )

@@ -6,6 +6,10 @@ from pydantic import BaseModel
 
 
 class SegmentDetail(BaseModel):
+    """`time_ms` is this segment's own duration (a delta), not a cumulative
+    or absolute time — see `training/service.py::_segment_deltas`.
+    """
+
     sequence_index: int
     loop_name: str
     time_ms: int | None
