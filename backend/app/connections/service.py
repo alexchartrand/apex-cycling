@@ -14,8 +14,10 @@ from app.connections.models import (
 
 class OverlappingAssignmentError(Exception):
     """Raised when a new transponder assignment's date range overlaps an
-    existing assignment for the same connection — one transponder maps to
-    at most one athlete at any given time.
+    existing assignment belonging to a DIFFERENT athlete for the same
+    connection — one transponder maps to at most one athlete at any given
+    time. Overlaps against the same athlete's own assignments are merged
+    instead (see `create_transponder_assignment`).
     """
 
 
@@ -58,28 +60,61 @@ async def create_transponder_assignment(
 ) -> TransponderAssignment:
     connection = await get_or_create_sqorz_connection(db, transponder_code)
 
-    existing = await db.scalars(
-        select(TransponderAssignment).where(
-            TransponderAssignment.data_source_connection_id == connection.id
+    existing = list(
+        await db.scalars(
+            select(TransponderAssignment).where(
+                TransponderAssignment.data_source_connection_id == connection.id
+            )
         )
     )
+
+    same_athlete_overlaps: list[TransponderAssignment] = []
     for other in existing:
-        if _ranges_overlap(start_date, end_date, other.start_date, other.end_date):
+        if not _ranges_overlap(start_date, end_date, other.start_date, other.end_date):
+            continue
+        if other.athlete_id != athlete_id:
             raise OverlappingAssignmentError(
                 f"Transponder {transponder_code} is already assigned for an overlapping date range"
             )
+        same_athlete_overlaps.append(other)
 
-    assignment = TransponderAssignment(
-        athlete_id=athlete_id,
-        data_source_connection_id=connection.id,
-        start_date=start_date,
-        end_date=end_date,
-        created_by_user_id=created_by_user_id,
-        notes=notes,
-    )
-    db.add(assignment)
+    if not same_athlete_overlaps:
+        assignment = TransponderAssignment(
+            athlete_id=athlete_id,
+            data_source_connection_id=connection.id,
+            start_date=start_date,
+            end_date=end_date,
+            created_by_user_id=created_by_user_id,
+            notes=notes,
+        )
+        db.add(assignment)
+        await db.flush()
+        return assignment
+
+    # Same athlete reporting usage over a range that touches one or more of
+    # their own existing assignments — merge into a single row spanning the
+    # union instead of rejecting. A single wide new range can bridge more
+    # than one previously-disjoint same-athlete assignment (e.g. existing
+    # Jan-Feb and Apr-May rows, new Jan15-Apr15 request), so this merges
+    # however many same-athlete rows the new range overlaps.
+    same_athlete_overlaps.sort(key=lambda a: a.start_date)
+    target = same_athlete_overlaps[0]
+    redundant = same_athlete_overlaps[1:]
+
+    all_starts = [start_date, *(a.start_date for a in same_athlete_overlaps)]
+    all_ends = [end_date, *(a.end_date for a in same_athlete_overlaps)]
+    merged_end = None if any(e is None for e in all_ends) else max(all_ends)
+
+    target.start_date = min(all_starts)
+    target.end_date = merged_end
+    if notes is not None:
+        target.notes = notes
+
+    for stale in redundant:
+        await db.delete(stale)
+
     await db.flush()
-    return assignment
+    return target
 
 
 async def list_ingestion_runs_for_athlete(

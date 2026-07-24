@@ -61,8 +61,10 @@ class DataSourceConnection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 class TransponderAssignment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """Self-reported "I used transponder X from date A to date B" record.
     Overlapping ranges for the same connection are rejected at the
-    application layer (see connections/service.py) since one transponder
-    maps to at most one athlete at any given time.
+    application layer (see connections/service.py) only when they belong to
+    DIFFERENT athletes, since one transponder maps to at most one athlete at
+    any given time. Overlapping ranges reported by the SAME athlete are
+    merged into a single row spanning the union instead.
     """
 
     __tablename__ = "transponder_assignments"

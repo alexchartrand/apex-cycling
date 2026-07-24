@@ -5,6 +5,7 @@ from sqlalchemy import select
 from app.athletes.models import Athlete
 from app.connections.models import DataSourceConnection, IngestionRun, RawSnapshot
 from app.ingestion.sqorz.client import SqorzClientError
+from app.training.models import TrainingEvent
 
 SAMPLE_PAYLOAD = {
     "transponderCode": "LS-03407",
@@ -99,7 +100,7 @@ async def test_report_usage_without_import_now_skips_ingestion(client, db_sessio
         assert run is None
 
 
-async def test_overlapping_assignment_rejected(client, db_session, monkeypatch):
+async def test_overlapping_same_athlete_assignment_merges(client, db_session, monkeypatch):
     _patch_fetch(monkeypatch)
     user = await _signup(client, "athlete3@example.com")
     athlete_id = await _self_athlete_id(db_session, user["id"])
@@ -114,7 +115,99 @@ async def test_overlapping_assignment_rejected(client, db_session, monkeypatch):
         f"/athletes/{athlete_id}/transponder-assignments",
         json={"transponder_code": "LS-11111", "start_date": "2026-06-10", "end_date": "2026-06-20"},
     )
-    assert overlapping.status_code == 409
+    assert overlapping.status_code == 201
+
+    list_resp = await client.get(f"/athletes/{athlete_id}/transponder-assignments")
+    assert list_resp.status_code == 200
+    matching = [a for a in list_resp.json() if a["transponder_code"] == "LS-11111"]
+    assert len(matching) == 1
+    assert matching[0]["start_date"] == "2026-06-01"
+    assert matching[0]["end_date"] == "2026-06-20"
+
+
+async def test_overlapping_assignment_for_different_athlete_still_rejected(client, db_session, monkeypatch):
+    _patch_fetch(monkeypatch)
+    user_a = await _signup(client, "athlete9a@example.com")
+    athlete_a_id = await _self_athlete_id(db_session, user_a["id"])
+
+    first = await client.post(
+        f"/athletes/{athlete_a_id}/transponder-assignments",
+        json={"transponder_code": "LS-88888", "start_date": "2026-06-01", "end_date": "2026-06-15"},
+    )
+    assert first.status_code == 201
+
+    from httpx import ASGITransport, AsyncClient
+
+    from app.main import app as real_app
+
+    async with AsyncClient(transport=ASGITransport(app=real_app), base_url="http://test") as other_client:
+        user_b = await _signup(other_client, "athlete9b@example.com")
+        athlete_b_id = await _self_athlete_id(db_session, user_b["id"])
+
+        conflicting = await other_client.post(
+            f"/athletes/{athlete_b_id}/transponder-assignments",
+            json={"transponder_code": "LS-88888", "start_date": "2026-06-10", "end_date": "2026-06-20"},
+        )
+        assert conflicting.status_code == 409
+
+
+def _two_event_payload(transponder_code: str) -> dict:
+    def _detail(event_id: str, event_date: str) -> dict:
+        return {
+            "accountId": "acc-1",
+            "accountName": "CNCB",
+            "cacheSeconds": 60,
+            "trainingDetail": {
+                "eventId": event_id,
+                "eventName": f"Session {event_date}",
+                "eventDate": event_date,
+            },
+        }
+
+    return {
+        "transponderCode": transponder_code,
+        "eventTrainingDetails": [
+            _detail("evt-early", "2026-06-05"),
+            _detail("evt-late", "2026-06-25"),
+        ],
+    }
+
+
+async def test_widening_same_athlete_assignment_backfills_previously_dropped_events(client, db_session, monkeypatch):
+    payload = _two_event_payload("LS-03407-WIDE")
+    _patch_fetch(monkeypatch, result=payload)
+    user = await _signup(client, "athlete10@example.com")
+    athlete_id = await _self_athlete_id(db_session, user["id"])
+
+    narrow = await client.post(
+        f"/athletes/{athlete_id}/transponder-assignments",
+        json={"transponder_code": "LS-03407-WIDE", "start_date": "2026-06-01", "end_date": "2026-06-10"},
+    )
+    assert narrow.status_code == 201
+
+    async with db_session() as session:
+        early = await session.scalar(select(TrainingEvent).where(TrainingEvent.external_event_id == "evt-early"))
+        late = await session.scalar(select(TrainingEvent).where(TrainingEvent.external_event_id == "evt-late"))
+        assert early is not None
+        assert late is None  # outside the narrow window — dropped, reproducing the reported bug's precondition
+
+    wide = await client.post(
+        f"/athletes/{athlete_id}/transponder-assignments",
+        json={"transponder_code": "LS-03407-WIDE", "start_date": "2026-06-01", "end_date": "2026-06-30"},
+    )
+    assert wide.status_code == 201  # previously: 409
+
+    async with db_session() as session:
+        early = await session.scalar(select(TrainingEvent).where(TrainingEvent.external_event_id == "evt-early"))
+        late = await session.scalar(select(TrainingEvent).where(TrainingEvent.external_event_id == "evt-late"))
+        assert early is not None
+        assert late is not None  # backfilled by widening + auto re-import, no manual action needed
+
+    list_resp = await client.get(f"/athletes/{athlete_id}/transponder-assignments")
+    matching = [a for a in list_resp.json() if a["transponder_code"] == "LS-03407-WIDE"]
+    assert len(matching) == 1
+    assert matching[0]["start_date"] == "2026-06-01"
+    assert matching[0]["end_date"] == "2026-06-30"
 
 
 async def test_non_overlapping_assignments_for_different_athletes_allowed(client, db_session, monkeypatch):
