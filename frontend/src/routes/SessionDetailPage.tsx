@@ -5,6 +5,9 @@ import { formatMs } from "../features/training/format";
 import type { LapDetail } from "../features/training/types";
 import { useSessionDetail } from "../features/training/useTraining";
 
+// Named views to surface for now — add more here as they're needed.
+const DISPLAYED_VIEW_NAMES = ["200m"];
+
 function LapChart({ laps }: { laps: LapDetail[] }) {
   const data = laps
     .filter((lap) => lap.whole_lap_time_ms != null)
@@ -53,7 +56,7 @@ export function SessionDetailPage() {
                   <tr>
                     <th>Lap</th>
                     <th>Whole lap</th>
-                    {track.laps[0]?.views.map((view) => <th key={view.track_view_id}>{view.name}</th>)}
+                    {DISPLAYED_VIEW_NAMES.map((name) => <th key={name}>{name}</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -61,7 +64,9 @@ export function SessionDetailPage() {
                     <tr key={lap.lap_id}>
                       <td>{lap.start_number != null ? `#${lap.start_number}` : "—"}</td>
                       <td>{formatMs(lap.whole_lap_time_ms)}</td>
-                      {lap.views.map((view) => <td key={view.track_view_id}>{formatMs(view.time_ms)}</td>)}
+                      {DISPLAYED_VIEW_NAMES.map((name) => (
+                        <td key={name}>{formatMs(lap.views.find((view) => view.name === name)?.time_ms)}</td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
