@@ -10,7 +10,7 @@ from app.training.router import router as training_router
 
 settings = get_settings()
 
-app = FastAPI(title="Track Trainer API", version="0.1.0")
+app = FastAPI(title="ApexCycling API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,

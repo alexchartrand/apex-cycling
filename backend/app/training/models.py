@@ -9,9 +9,9 @@ from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 class Track(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """A stable track/circuit dimension, upserted by external id. Scoped by
-    sqorz's own `account_id` (facility), not by any track-trainer `club_id`
+    sqorz's own `account_id` (facility), not by any apex-cycling `club_id`
     — see plan Data Model: a session can include athletes from many
-    different (or no) track-trainer clubs.
+    different (or no) apex-cycling clubs.
     """
 
     __tablename__ = "tracks"

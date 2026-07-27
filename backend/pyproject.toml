@@ -1,5 +1,5 @@
 [project]
-name = "track-trainer-backend"
+name = "apex-cycling-backend"
 version = "0.1.0"
 description = "Track cycling training data visualization backend"
 requires-python = ">=3.12"

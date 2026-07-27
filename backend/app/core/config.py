@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    database_url: str = "postgresql+asyncpg://track_trainer:track_trainer@localhost:5432/track_trainer"
+    database_url: str = "postgresql+asyncpg://apex_cycling:apex_cycling@localhost:5432/apex_cycling"
 
     jwt_secret: str = "dev-only-secret-change-me-before-any-real-deployment"
     jwt_algorithm: str = "HS256"

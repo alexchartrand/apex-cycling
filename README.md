@@ -1,4 +1,4 @@
-# Track Trainer
+# ApexCycling
 
 Web app for track cycling training data: visualize progression from `my.sqorz.com`
 transponder data (Strava/Garmin and training recommendations planned for later).
@@ -22,7 +22,7 @@ docker compose up --build
 
 This starts four services:
 
-- `db` — Postgres 16, localhost:5432 (user/pass/db: `track_trainer`)
+- `db` — Postgres 16, localhost:5432 (user/pass/db: `apex_cycling`)
 - `backend` — FastAPI, http://localhost:8000 (docs at `/docs`). Runs
   migrations automatically on start.
 - `worker` — background APScheduler process that polls sqorz for any
@@ -104,7 +104,7 @@ fallback default — compose refuses to start until they're set. Run
 migrations happen automatically on backend startup, same as dev.
 
 This exact compose file has been built and run end-to-end in this
-repository (own project name `track-trainer-prod` so it never shares a
+repository (own project name `apex-cycling-prod` so it never shares a
 network or volume with the dev stack): db/backend/worker/frontend all come
 up healthy, `GET /health` and the SPA both serve correctly through Caddy's
 TLS (self-signed for `localhost`, real Let's Encrypt for a real domain), and
