@@ -1,5 +1,7 @@
+import json
 import uuid
 from datetime import date, datetime, timezone
+from pathlib import Path
 
 from sqlalchemy import select
 
@@ -142,10 +144,29 @@ def test_find_best_distance_window_cannot_cross_unknown_distance_segment():
     assert result.time_ms == 2000
 
 
-# Real sqorz lapTimes are cumulative-since-lap-start per checkpoint, not
-# independent per-segment durations — this is a worked real-world example
-# (index 5's capture was missed).
-_CUMULATIVE_TIME_MS = [5207, 5488, 12191, 16650, 19222, None, 26324, 28041]
+_LS03407_FIXTURE = Path(__file__).parent / "fixtures" / "LS-03407.json"
+
+
+def _load_ls03407_lap() -> tuple[list[int | None], list[int]]:
+    """Pull one real lap out of an actual sqorz export: its raw cumulative
+    `lapTimes`, and the segment positions the file's own "200m" view refers
+    to. Real sqorz lapTimes are cumulative-since-lap-start per checkpoint,
+    not independent per-segment durations (index 5's capture was missed)."""
+    payload = json.loads(_LS03407_FIXTURE.read_text())
+    detail = payload["eventTrainingDetails"][0]["trainingDetail"]
+    track = detail["tracks"][0]
+    loops = track["trackLoops"]
+    loop_id_to_index = {loop["loopId"]: idx for idx, loop in enumerate(loops)}
+
+    view_200m = next(v for v in track["trackViews"] if v["trackViewName"] == "200m")
+    view_indexes = [loop_id_to_index[ref["loopId"]] for ref in view_200m["trackViewLoops"]]
+
+    member = detail["members"][0]
+    lap = next(lap for lap in member["trainingLaps"] if lap["trackId"] == track["trackId"])
+    return lap["lapTimes"], view_indexes
+
+
+_CUMULATIVE_TIME_MS, _LS03407_200M_VIEW_INDEXES = _load_ls03407_lap()
 
 
 def _make_segments(times_ms: list[int | None], distances_m: list[float | None] | None = None) -> list[LapSegmentTime]:
@@ -200,14 +221,13 @@ def test_view_time_is_gate_to_gate_subtraction_not_sum():
 
 
 def test_view_time_matches_real_flying_200_example():
-    # Real sqorz track (LS-03407): loops in order
-    # [Courbe 1, 200m, Poursuite 2, 100m, Courbe 2, 50m, Poursuite 1, Finish],
-    # and a sqorz-provided "200m" view spanning [200m, 100m, Finish].
+    # Real sqorz track (LS-03407), using the file's own "200m" view
+    # (spanning [200m, 100m, Finish]) against that lap's real lapTimes.
     segments = _make_segments(_CUMULATIVE_TIME_MS)
     loop_ids = [s.track_loop_id for s in segments]
-    two_hundred_m, hundred_m, finish = loop_ids[1], loop_ids[3], loop_ids[7]
+    view_loop_ids = [loop_ids[i] for i in _LS03407_200M_VIEW_INDEXES]
 
-    assert _view_time_ms(segments, [two_hundred_m, hundred_m, finish]) == 22553
+    assert _view_time_ms(segments, view_loop_ids) == 22553
 
 
 def test_segment_deltas_converts_cumulative_time_independently_from_distance():
