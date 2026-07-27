@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useCurrentUser, useLogout } from "../features/auth/useAuth";
+import wordmark from "../brand/wordmark.svg";
 import "./AppShell.css";
 
 const NAV_ITEMS = [
@@ -17,7 +18,7 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <aside className="app-shell__sidebar">
-        <p className="app-shell__brand">Track Trainer</p>
+        <img src={wordmark} alt="ApexCycling" className="app-shell__brand" />
         <nav className="app-shell__nav">
           {NAV_ITEMS.map((item) => (
             <NavLink

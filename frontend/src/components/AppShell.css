@@ -14,10 +14,11 @@
 }
 
 .app-shell__brand {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-h);
-  margin: 0 8px 24px;
+  display: block;
+  width: 100%;
+  max-width: 150px;
+  height: auto;
+  margin: 4px 8px 28px;
 }
 
 .app-shell__nav {
