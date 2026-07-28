@@ -100,6 +100,34 @@ async def test_report_usage_without_import_now_skips_ingestion(client, db_sessio
         assert run is None
 
 
+async def test_stop_assignment_ends_the_open_ended_assignment(client, db_session, monkeypatch):
+    from datetime import date, timedelta
+
+    _patch_fetch(monkeypatch)
+    user = await _signup(client, "athlete-stop@example.com")
+    athlete_id = await _self_athlete_id(db_session, user["id"])
+
+    resp = await client.post(
+        f"/athletes/{athlete_id}/transponder-assignments",
+        json={"transponder_code": "LS-STOP", "start_date": "2026-06-01", "end_date": None},
+    )
+    assert resp.status_code == 201
+    assignment_id = resp.json()["id"]
+
+    list_before = await client.get(f"/athletes/{athlete_id}/transponder-assignments")
+    assert next(a for a in list_before.json() if a["id"] == assignment_id)["end_date"] is None
+
+    stop_resp = await client.post(f"/athletes/{athlete_id}/transponder-assignments/{assignment_id}/stop")
+    assert stop_resp.status_code == 200
+    assert stop_resp.json()["end_date"] == (date.today() - timedelta(days=1)).isoformat()
+
+    list_after = await client.get(f"/athletes/{athlete_id}/transponder-assignments")
+    assert next(a for a in list_after.json() if a["id"] == assignment_id)["end_date"] is not None
+
+    missing = await client.post(f"/athletes/{athlete_id}/transponder-assignments/{uuid.uuid4()}/stop")
+    assert missing.status_code == 404
+
+
 async def test_overlapping_same_athlete_assignment_merges(client, db_session, monkeypatch):
     _patch_fetch(monkeypatch)
     user = await _signup(client, "athlete3@example.com")

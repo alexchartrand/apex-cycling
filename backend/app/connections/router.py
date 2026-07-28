@@ -18,6 +18,7 @@ from app.connections.service import (
     OverlappingAssignmentError,
     create_transponder_assignment,
     list_ingestion_runs_for_athlete,
+    stop_transponder_assignment,
 )
 from app.db.session import get_db
 from app.ingestion.sqorz.service import ingest_sqorz_connection
@@ -97,6 +98,21 @@ async def import_transponder_assignment_now(
     connection = await db.get(DataSourceConnection, assignment.data_source_connection_id)
     run = await ingest_sqorz_connection(db, connection)
     return IngestionRunRead.model_validate(run)
+
+
+@router.post("/{assignment_id}/stop", response_model=TransponderAssignmentRead)
+async def stop_transponder_assignment_route(
+    athlete_id: uuid.UUID,
+    assignment_id: uuid.UUID,
+    athlete: Athlete = Depends(require_athlete_access),
+    db: AsyncSession = Depends(get_db),
+) -> TransponderAssignmentRead:
+    assignment = await stop_transponder_assignment(db, athlete_id=athlete.id, assignment_id=assignment_id)
+    if assignment is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Transponder assignment not found")
+
+    await db.commit()
+    return await _to_read_model(db, assignment)
 
 
 @ingestion_runs_router.get("", response_model=list[IngestionRunWithSourceRead])

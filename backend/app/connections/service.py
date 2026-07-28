@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -115,6 +115,22 @@ async def create_transponder_assignment(
 
     await db.flush()
     return target
+
+
+async def stop_transponder_assignment(
+    db: AsyncSession, *, athlete_id: uuid.UUID, assignment_id: uuid.UUID
+) -> TransponderAssignment | None:
+    """Ends an open-ended (autoimport) assignment as of yesterday, so it's
+    immediately excluded from the next scheduler poll
+    (`app/ingestion/jobs.py::get_active_sqorz_connection_ids`, which treats
+    `end_date >= today` as still active).
+    """
+    assignment = await db.get(TransponderAssignment, assignment_id)
+    if assignment is None or assignment.athlete_id != athlete_id:
+        return None
+    assignment.end_date = date.today() - timedelta(days=1)
+    await db.flush()
+    return assignment
 
 
 async def list_ingestion_runs_for_athlete(
