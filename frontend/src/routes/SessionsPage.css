@@ -1,0 +1,30 @@
+.sessions-page__selector {
+  max-width: 320px;
+}
+
+.session-track__chart {
+  background: var(--apex-paper);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 8px;
+}
+
+.session-track__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.session-track__stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.session-track__stat-label,
+.session-track__stat-value {
+  color: var(--text-h);
+  font-size: 1.25rem;
+  font-weight: 600;
+}

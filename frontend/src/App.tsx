@@ -7,7 +7,6 @@ import { ImportPage } from "./routes/ImportPage";
 import { ProfilePage } from "./routes/ProfilePage";
 import { ProgressionPage } from "./routes/ProgressionPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
-import { SessionDetailPage } from "./routes/SessionDetailPage";
 import { SessionsPage } from "./routes/SessionsPage";
 
 export function App() {
@@ -21,7 +20,7 @@ export function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/sessions" element={<SessionsPage />} />
-          <Route path="/sessions/:eventId" element={<SessionDetailPage />} />
+          <Route path="/sessions/:eventId" element={<SessionsPage />} />
           <Route path="/progression" element={<ProgressionPage />} />
         </Route>
       </Route>
