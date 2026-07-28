@@ -28,5 +28,6 @@
             "expiresOn": 0,
             "sshPassword": ""
         }
-    ]
+    ],
+    "postman.settings.dotenv-detection-notification-visibility": false
 }
