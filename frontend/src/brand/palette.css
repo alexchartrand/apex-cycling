@@ -1,10 +1,11 @@
 /*
-  ApexCycling brand palette. Not yet wired into the app theme (see
-  index.css for the current live colors) — these are the agreed tokens,
-  ready to adopt when the rebrand lands. Names match the wordmark note
-  in wordmark.svg: paper/ink are the ground and structure, blue/red/amber
-  are accents, amber-deep exists only because flat amber fails contrast
-  as text on paper (~2.4:1) and this variant fixes that (~5.7:1).
+  ApexCycling brand palette, imported by index.css and wired into the
+  live theme via the semantic vars there (--bg, --text, --accent, etc).
+  Names match the wordmark note in wordmark.svg: paper/ink are the
+  ground and structure, blue/red/amber are accents, amber-deep exists
+  only because flat amber fails contrast as text on paper (~2.4:1) and
+  this variant fixes that (~5.7:1). amber/amber-deep aren't consumed by
+  any component yet — reserved for a future warm-highlight use.
 */
 :root {
   --apex-paper: #EDE6D2; /* primary ground — pale board color, not stark white */

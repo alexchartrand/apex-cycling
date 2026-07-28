@@ -1,7 +1,7 @@
 .ui-card {
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--apex-paper-2);
   box-shadow: var(--shadow);
   padding: 24px;
   display: flex;
@@ -11,14 +11,9 @@
 
 .ui-card input,
 .ui-card select {
-  background-color: var(--apex-paper-2);
+  background-color: var(--apex-paper);
   border-color: var(--apex-paper-3);
   border-radius: 6px;
-}
-
-.ui-card input:focus,
-.ui-card select:focus {
-  background-color: #fff;
 }
 
 .ui-card input:disabled {

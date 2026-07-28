@@ -9,7 +9,8 @@
   width: 220px;
   flex-shrink: 0;
   padding: 24px 16px;
-  border-right: 1px solid var(--border);
+  background: var(--apex-paper-3);
+  border-right: 1px solid var(--apex-graphite);
   box-sizing: border-box;
 }
 
