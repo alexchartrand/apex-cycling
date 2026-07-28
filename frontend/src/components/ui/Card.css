@@ -1,0 +1,36 @@
+.ui-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ui-card input,
+.ui-card select {
+  background-color: var(--apex-paper-2);
+  border-color: var(--apex-paper-3);
+  border-radius: 6px;
+}
+
+.ui-card input:focus,
+.ui-card select:focus {
+  background-color: #fff;
+}
+
+.ui-card input:disabled {
+  background-color: var(--apex-paper-3);
+  opacity: 0.7;
+}
+
+.ui-card section + section {
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.ui-card__hint {
+  color: var(--apex-ink-60);
+}

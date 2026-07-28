@@ -1,0 +1,25 @@
+.import-page__source {
+  max-width: 320px;
+}
+
+.import-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.import-panel__checkbox-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.import-panel__checkbox-row input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  border: none;
+}
+
+.import-panel form {
+  max-width: 300px;
+}

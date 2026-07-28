@@ -27,3 +27,13 @@ export function importTransponderAssignmentNow(
 export function listIngestionRuns(athleteId: string): Promise<IngestionRunWithSource[]> {
   return apiFetch<IngestionRunWithSource[]>(`/athletes/${athleteId}/ingestion-runs`);
 }
+
+export function stopTransponderAssignment(
+  athleteId: string,
+  assignmentId: string,
+): Promise<TransponderAssignment> {
+  return apiFetch<TransponderAssignment>(
+    `/athletes/${athleteId}/transponder-assignments/${assignmentId}/stop`,
+    { method: "POST" },
+  );
+}

@@ -4,6 +4,7 @@ import {
   listIngestionRuns,
   listTransponderAssignments,
   reportTransponderUsage,
+  stopTransponderAssignment,
 } from "./api";
 import type { ReportUsagePayload } from "./types";
 
@@ -38,6 +39,14 @@ export function useImportTransponderAssignmentNow(athleteId: string) {
   return useMutation({
     mutationFn: (assignmentId: string) => importTransponderAssignmentNow(athleteId, assignmentId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ingestionRunsKey(athleteId) }),
+  });
+}
+
+export function useStopTransponderAssignment(athleteId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (assignmentId: string) => stopTransponderAssignment(athleteId, assignmentId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: assignmentsKey(athleteId) }),
   });
 }
 
