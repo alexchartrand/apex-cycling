@@ -14,19 +14,11 @@
   - Repro: `docker-compose.prod.yml` + Caddy has only been run with `localhost` (self-signed cert). A real public DNS record pointed at a host, confirming Caddy actually obtains a Let's Encrypt cert, hasn't been done.
   - Notes: see README.md "Not yet exercised for real"; low risk until an actual prod domain is in play.
 
-- [ ] 🟡 Dev Postgres volume orphaned by the Track Trainer → ApexCycling rename — *added 7/27*
-  - Repro: dev `docker-compose.yml` has no explicit `name:`, so its Compose project name (and volume name) derives from the directory basename. After renaming `track-trainer` → `apex-cycling`, `docker compose up` now creates/looks for a new `apex-cycling_db_data` volume; the old `track-trainer_db_data` volume (holding real previously-ingested `LS-03407`/CNCB sqorz data) is orphaned and won't appear automatically.
-  - Notes: Docker can't rename a volume in place — would need a new volume + copy step via a temp container, or just re-run the sqorz import flow since the data is re-ingestable. See `roadmap_apex_cycling` memory for detail.
-
 ## ✨ Features
 
 - [ ] 🔴 M4b — Roster management + coach dashboard — *added 7/23*
   - Why: last remaining v1 milestone. `app/clubs/` currently has only `models.py` — no router/schemas/service exist yet.
   - Notes: needs club creation (who becomes `club_admin` of a brand-new club — unresolved by the original plan), an invite mechanism for club membership + coach-athlete linking (no email infra in this stack — likely a shareable link/token, not real email sending), club-admin roster screens, and a coach dashboard (roster + recent-session glance).
-
-- [ ] 🟡 Validate the sqorz response schema — *added 7/23*
-  - Why: `app/ingestion/sqorz/client.py`/`normalizer.py` currently trust raw dicts from `my.sqorz.com` via `.get()`/direct-key access with no schema validation. A malformed/changed upstream response fails with an obscure `KeyError`/`TypeError` deep in `normalize_snapshot` instead of a clear error.
-  - Notes: add a Pydantic model (or similar) for the sqorz payload shape.
 
 - [ ] 🟡 Refactoring of backend — *added 7/28*
   - Why: Backend business logic is tightly coupled to the database layer. Which make maintenance and testting difficult.
@@ -35,10 +27,6 @@
 - [ ] 🟡 Fuller `.env`-based config for dev compose — *added 7/23*
   - Why: `backend/app/core/config.py` already supports `.env` via pydantic-settings, but `docker-compose.yml` still hardcodes Postgres user/password/db name and `CORS_ORIGINS` inline instead of sourcing from `.env`.
   - Notes: dev-only risk today, but worth cleaning up before it's copy-pasted into a real deployment.
-
-- [ ] 🟢 "Keep me logged in" login option — *added 7/23*
-  - Why: auth always issues the same fixed-length cookie-JWT session (`access_token_expire_minutes`/`refresh_token_expire_days` in `config.py`), no user choice.
-  - Notes: add a login-time checkbox/toggle that extends session lifetime for users who opt in, vs. a shorter-lived default.
 
 - [ ] 🟢 Multi-lap custom-distance metric (e.g. pursuit "fastest 4km" spanning ~16 laps) — *added 7/24 (scoped out during M3)*
   - Why: `find_best_distance_window` in `app/training/service.py` is deliberately scoped to a single lap's segments — sqorz never reports a track's total circuit length, so there's no reliable way to carry cumulative distance across a lap boundary.
@@ -75,7 +63,9 @@
 - [x] Post-M3 schema change — per-athlete private training data copies — *done 7/24*
 - [x] Track sensor schema + SVG track diagram + dashboard sidebar shell — *done 7/24*
 - [x] Rename project from Track Trainer to ApexCycling — *done 7/27*
-
+- [x] Validate the sqorz response schema — *added 7/23, resolved 7/29*
+- [x] Dev Postgres volume orphaned by the Track Trainer → ApexCycling rename — *added 7/27, resolved 7/29*
+- [x] "Keep me logged in" login option — *added 7/23, resolved 7/29*
 ---
 
 ## Item template (copy when adding new)
