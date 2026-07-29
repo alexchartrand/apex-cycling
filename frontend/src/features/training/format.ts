@@ -6,3 +6,7 @@ export function formatMs(ms: number | null | undefined): string {
   const secondsStr = seconds.toFixed(3).padStart(6, "0");
   return `${minutes}:${secondsStr}`;
 }
+
+export function formatKm(km: number): string {
+  return `${km.toFixed(2)} km`;
+}
