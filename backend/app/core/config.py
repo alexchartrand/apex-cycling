@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
 
-    cookie_secure: bool = False
+    cookie_secure: bool = True
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     sqorz_base_url: str = "https://my.sqorz.com/json/training/transponder"
