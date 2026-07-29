@@ -4,7 +4,7 @@ from enum import Enum
 
 import jwt
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
+from argon2.exceptions import InvalidHashError, VerificationError
 
 from app.core.config import get_settings
 
@@ -14,6 +14,11 @@ _hasher = PasswordHasher()
 ACCESS_COOKIE_NAME = "tt_access"
 REFRESH_COOKIE_NAME = "tt_refresh"
 
+# Precomputed at import time so login() can pay the same argon2 cost for a
+# nonexistent email as for a wrong password, closing a timing side-channel
+# that would otherwise let an attacker infer whether an email is registered.
+DUMMY_PASSWORD_HASH = _hasher.hash("dummy-password-used-only-for-timing-safety")
+
 
 def hash_password(password: str) -> str:
     return _hasher.hash(password)
@@ -22,7 +27,7 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed: str) -> bool:
     try:
         return _hasher.verify(hashed, password)
-    except VerifyMismatchError:
+    except (VerificationError, InvalidHashError):
         return False
 
 

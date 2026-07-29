@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,8 +7,10 @@ from app.auth.deps import get_current_user
 from app.auth.models import User
 from app.auth.schemas import LoginRequest, SignupRequest, UserRead
 from app.core.config import get_settings
+from app.core.rate_limit import limiter
 from app.core.security import (
     ACCESS_COOKIE_NAME,
+    DUMMY_PASSWORD_HASH,
     REFRESH_COOKIE_NAME,
     InvalidTokenError,
     TokenType,
@@ -48,7 +50,10 @@ def _set_auth_cookies(response: Response, user_id) -> None:
 
 
 @router.post("/signup", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def signup(payload: SignupRequest, response: Response, db: AsyncSession = Depends(get_db)) -> User:
+@limiter.limit("5/minute")
+async def signup(
+    request: Request, payload: SignupRequest, response: Response, db: AsyncSession = Depends(get_db)
+) -> User:
     existing = await db.scalar(select(User).where(User.email == payload.email))
     if existing is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
@@ -71,9 +76,17 @@ async def signup(payload: SignupRequest, response: Response, db: AsyncSession = 
 
 
 @router.post("/login", response_model=UserRead)
-async def login(payload: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)) -> User:
+@limiter.limit("10/minute")
+async def login(
+    request: Request, payload: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)
+) -> User:
     user = await db.scalar(select(User).where(User.email == payload.email))
-    if user is None or not verify_password(payload.password, user.hashed_password):
+    if user is not None:
+        password_ok = verify_password(payload.password, user.hashed_password)
+    else:
+        verify_password(payload.password, DUMMY_PASSWORD_HASH)
+        password_ok = False
+    if not password_ok:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
     if not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Account is inactive")
