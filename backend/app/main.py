@@ -1,16 +1,22 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.athletes.router import router as athletes_router
 from app.auth.router import router as auth_router
 from app.connections.router import ingestion_runs_router
 from app.connections.router import router as connections_router
 from app.core.config import get_settings
+from app.core.rate_limit import limiter
 from app.training.router import router as training_router
 
 settings = get_settings()
 
 app = FastAPI(title="ApexCycling API", version="0.1.0")
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 app.add_middleware(
     CORSMiddleware,
