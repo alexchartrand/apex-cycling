@@ -1,6 +1,8 @@
 import httpx
+from pydantic import ValidationError
 
 from app.core.config import get_settings
+from app.ingestion.sqorz.schemas import SqorzHistoryPayload
 
 
 class SqorzClientError(Exception):
@@ -30,4 +32,16 @@ async def fetch_transponder_history(transponder_code: str) -> dict:
             f"sqorz returned HTTP {response.status_code}", http_status=response.status_code
         )
 
-    return response.json()
+    payload = response.json()
+
+    # Validate the response shape up front so a malformed/changed upstream
+    # payload fails here with a clear message, rather than as an obscure
+    # KeyError/TypeError deep inside normalize_snapshot. The validated model
+    # is discarded — normalize_snapshot still works off the original dict so
+    # the RawSnapshot we persist is a faithful, unmodified copy.
+    try:
+        SqorzHistoryPayload.model_validate(payload)
+    except ValidationError as exc:
+        raise SqorzClientError(f"sqorz response failed schema validation: {exc}") from exc
+
+    return payload
