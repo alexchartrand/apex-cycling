@@ -13,10 +13,22 @@ import app.db.models  # noqa: F401 -- registers all models on Base.metadata
 from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus
 from app.auth.models import User
 from app.clubs.models import Club, ClubMembership, ClubRole
+from app.core.config import get_settings
 from app.core.security import hash_password
 from app.db.session import AsyncSessionLocal
 
 DEV_PASSWORD = "devpassword123"
+
+
+def _ensure_not_production() -> None:
+    # cookie_secure is true only in a production-configured deployment (see
+    # docker-compose.prod.yml); refuse to plant well-known dev credentials
+    # into a database that's configured that way.
+    if get_settings().cookie_secure:
+        raise SystemExit(
+            "Refusing to run db seed: COOKIE_SECURE is true, which indicates a "
+            "production-configured deployment. Seed is dev-only."
+        )
 
 
 async def _get_or_create_user(session: AsyncSession, email: str) -> User:
@@ -30,6 +42,7 @@ async def _get_or_create_user(session: AsyncSession, email: str) -> User:
 
 
 async def seed() -> None:
+    _ensure_not_production()
     async with AsyncSessionLocal() as session:
         club = await session.scalar(select(Club).where(Club.slug == "cncb"))
         if club is None:
