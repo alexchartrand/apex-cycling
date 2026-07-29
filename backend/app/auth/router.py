@@ -13,10 +13,9 @@ from app.core.security import (
     DUMMY_PASSWORD_HASH,
     REFRESH_COOKIE_NAME,
     InvalidTokenError,
-    TokenType,
     create_access_token,
     create_refresh_token,
-    decode_token,
+    decode_refresh_token,
     hash_password,
     verify_password,
 )
@@ -26,9 +25,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
 
 
-def _set_auth_cookies(response: Response, user_id) -> None:
+def _set_auth_cookies(response: Response, user_id, remember_me: bool = True) -> None:
     access_token = create_access_token(user_id)
-    refresh_token = create_refresh_token(user_id)
+    refresh_token = create_refresh_token(user_id, remember_me=remember_me)
     response.set_cookie(
         ACCESS_COOKIE_NAME,
         access_token,
@@ -44,7 +43,9 @@ def _set_auth_cookies(response: Response, user_id) -> None:
         httponly=True,
         secure=settings.cookie_secure,
         samesite="lax",
-        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+        # Unchecked "remember me": a browser-session cookie (no max_age) that's
+        # gone once the browser closes, on top of the JWT's own shorter expiry.
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60 if remember_me else None,
         path="/auth",
     )
 
@@ -91,7 +92,7 @@ async def login(
     if not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Account is inactive")
 
-    _set_auth_cookies(response, user.id)
+    _set_auth_cookies(response, user.id, remember_me=payload.remember_me)
     return user
 
 
@@ -105,7 +106,7 @@ async def refresh(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing refresh token")
 
     try:
-        user_id = decode_token(tt_refresh, TokenType.REFRESH)
+        user_id, remember_me = decode_refresh_token(tt_refresh)
     except InvalidTokenError as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired refresh token") from exc
 
@@ -113,7 +114,7 @@ async def refresh(
     if user is None or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found or inactive")
 
-    _set_auth_cookies(response, user.id)
+    _set_auth_cookies(response, user.id, remember_me=remember_me)
     return user
 
 

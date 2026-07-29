@@ -90,3 +90,70 @@ def test_cookie_secure_defaults_to_true(monkeypatch):
 
 def test_verify_password_rejects_invalid_hash_without_500():
     assert verify_password("anything", "not-a-valid-argon2-hash") is False
+
+
+def _refresh_cookie_header(resp) -> str:
+    set_cookie_headers = resp.headers.get_list("set-cookie")
+    return next(h for h in set_cookie_headers if h.startswith("tt_refresh="))
+
+
+async def test_login_without_remember_me_sets_session_only_refresh_cookie(client):
+    await client.post(
+        "/auth/signup",
+        json={"email": "no-remember@example.com", "password": "Correcthorse123!", "display_name": "NR"},
+    )
+    resp = await client.post(
+        "/auth/login",
+        json={"email": "no-remember@example.com", "password": "Correcthorse123!", "remember_me": False},
+    )
+    assert resp.status_code == 200
+    refresh_header = _refresh_cookie_header(resp)
+    assert "max-age" not in refresh_header.lower()
+
+
+async def test_login_with_remember_me_sets_persistent_refresh_cookie(client):
+    await client.post(
+        "/auth/signup",
+        json={"email": "remember@example.com", "password": "Correcthorse123!", "display_name": "R"},
+    )
+    resp = await client.post(
+        "/auth/login",
+        json={"email": "remember@example.com", "password": "Correcthorse123!", "remember_me": True},
+    )
+    assert resp.status_code == 200
+    refresh_header = _refresh_cookie_header(resp)
+    assert "max-age" in refresh_header.lower()
+
+
+async def test_login_defaults_to_not_remembered(client):
+    await client.post(
+        "/auth/signup",
+        json={"email": "default-remember@example.com", "password": "Correcthorse123!", "display_name": "D"},
+    )
+    resp = await client.post(
+        "/auth/login",
+        json={"email": "default-remember@example.com", "password": "Correcthorse123!"},
+    )
+    assert resp.status_code == 200
+    refresh_header = _refresh_cookie_header(resp)
+    assert "max-age" not in refresh_header.lower()
+
+
+async def test_refresh_preserves_remember_me_choice_across_reissue(client):
+    await client.post(
+        "/auth/signup",
+        json={"email": "preserve-remember@example.com", "password": "Correcthorse123!", "display_name": "P"},
+    )
+    login_resp = await client.post(
+        "/auth/login",
+        json={
+            "email": "preserve-remember@example.com",
+            "password": "Correcthorse123!",
+            "remember_me": False,
+        },
+    )
+    assert "max-age" not in _refresh_cookie_header(login_resp).lower()
+
+    refresh_resp = await client.post("/auth/refresh")
+    assert refresh_resp.status_code == 200
+    assert "max-age" not in _refresh_cookie_header(refresh_resp).lower()

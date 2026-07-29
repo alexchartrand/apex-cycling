@@ -13,4 +13,5 @@ export interface SignupPayload {
 export interface LoginPayload {
   email: string;
   password: string;
+  remember_me: boolean;
 }
