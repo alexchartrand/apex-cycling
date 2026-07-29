@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError } from "../../api/client";
+import { Button, Input } from "../../components/ui";
+import { AuthLayout } from "./AuthLayout";
 import { useLogin } from "./useAuth";
 
 export function LoginPage() {
@@ -20,23 +22,32 @@ export function LoginPage() {
   }
 
   return (
-    <form className="auth-page" onSubmit={handleSubmit}>
-      <h1>Log in</h1>
-      <label>
-        Email
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      </label>
-      <label>
-        Password
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-      </label>
-      {login.error && <p role="alert">{login.error instanceof ApiError ? login.error.message : "Login failed"}</p>}
-      <button type="submit" disabled={login.isPending}>
-        {login.isPending ? "Logging in…" : "Log in"}
-      </button>
+    <AuthLayout title="Log in">
+      <form onSubmit={handleSubmit}>
+        <Input
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <Input
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        {login.error && (
+          <p role="alert">{login.error instanceof ApiError ? login.error.message : "Login failed"}</p>
+        )}
+        <Button type="submit" disabled={login.isPending}>
+          {login.isPending ? "Logging in…" : "Log in"}
+        </Button>
+      </form>
       <p>
         No account? <a href="/signup">Sign up</a>
       </p>
-    </form>
+    </AuthLayout>
   );
 }

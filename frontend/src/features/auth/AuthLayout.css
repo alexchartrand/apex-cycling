@@ -1,0 +1,12 @@
+.auth-page__logo {
+  align-self: center;
+  width: 100%;
+  max-width: 160px;
+  height: auto;
+  margin-bottom: 8px;
+}
+
+.auth-page .ui-card h1 {
+  font-size: 28px;
+  margin: 0;
+}

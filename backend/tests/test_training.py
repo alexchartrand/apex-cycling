@@ -107,7 +107,7 @@ def _make_payload(transponder_code: str = "TP-1") -> dict:
 
 async def _signup(client, email, display_name="Someone"):
     resp = await client.post(
-        "/auth/signup", json={"email": email, "password": "correcthorse", "display_name": display_name}
+        "/auth/signup", json={"email": email, "password": "Correcthorse123!", "display_name": display_name}
     )
     assert resp.status_code == 201
     return resp.json()
