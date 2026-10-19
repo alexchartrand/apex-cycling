@@ -1,7 +1,9 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
+import { ForgotPasswordPage } from "./features/auth/ForgotPasswordPage";
 import { LoginPage } from "./features/auth/LoginPage";
+import { ResetPasswordPage } from "./features/auth/ResetPasswordPage";
 import { SignupPage } from "./features/auth/SignupPage";
 import { ComingSoonPage } from "./routes/ComingSoonPage";
 import { HomePage } from "./routes/HomePage";
@@ -22,6 +24,8 @@ export function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       {StyleguidePage && (
         <Route
           path="/styleguide"
@@ -51,7 +55,7 @@ export function App() {
           {/* Pre-redesign URLs */}
           <Route path="/sessions" element={<Navigate to="/log" replace />} />
           <Route path="/progression" element={<Navigate to="/progress" replace />} />
-          <Route path="/profile" element={<Navigate to="/settings" replace />} />
+          <Route path="/profile" element={<Navigate to="/settings/profile" replace />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

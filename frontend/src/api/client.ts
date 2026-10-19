@@ -15,7 +15,14 @@ export class ApiError extends Error {
 // Access tokens are short-lived by design (15 min); auth endpoints themselves
 // are excluded from the retry-on-401 dance below so a wrong password doesn't
 // burn an extra round trip (and rate-limit budget) attempting a pointless refresh.
-const NO_REFRESH_RETRY_PATHS = new Set(["/auth/login", "/auth/signup", "/auth/refresh"]);
+const NO_REFRESH_RETRY_PATHS = new Set([
+  "/auth/login",
+  "/auth/signup",
+  "/auth/refresh",
+  "/auth/password-reset/request",
+  "/auth/password-reset/check",
+  "/auth/password-reset/confirm",
+]);
 
 // Shared across concurrent 401s so a burst of requests right after the access
 // token expires triggers exactly one /auth/refresh call, not one per request.
@@ -44,7 +51,17 @@ function doFetch(path: string, init?: RequestInit): Promise<Response> {
   });
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+function detailMessage(detail: unknown, fallback: string): string {
+  if (typeof detail === "string") return detail;
+  // FastAPI validation errors: [{ msg: "Value error, Password must…" }, …]
+  if (Array.isArray(detail) && typeof detail[0]?.msg === "string") {
+    return detail[0].msg.replace(/^Value error, /, "");
+  }
+  return fallback;
+}
+
+/** Like `apiFetch`, but hands back the raw successful Response (for downloads). */
+export async function apiRequest(path: string, init?: RequestInit): Promise<Response> {
   let response = await doFetch(path, init);
 
   if (response.status === 401 && !NO_REFRESH_RETRY_PATHS.has(path)) {
@@ -56,8 +73,13 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new ApiError(response.status, body.detail ?? response.statusText);
+    throw new ApiError(response.status, detailMessage(body.detail, response.statusText));
   }
+  return response;
+}
+
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await apiRequest(path, init);
 
   if (response.status === 204) {
     return undefined as T;

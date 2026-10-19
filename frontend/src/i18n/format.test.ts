@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFormatters, parseLocalDate } from "./format";
+import { createFormatters, localIsoDate, parseLocalDate } from "./format";
 
 const en = createFormatters("en");
 const fr = createFormatters("fr");
@@ -68,5 +68,17 @@ describe("dates", () => {
     expect(fr.relative(new Date("2026-10-19T19:48:00Z"), now)).toBe("il y a 12 minutes");
     expect(en.relative(new Date("2026-10-18T20:00:00Z"), now)).toBe("yesterday");
     expect(fr.relative(new Date("2026-10-18T20:00:00Z"), now)).toBe("hier");
+  });
+});
+
+describe("localIsoDate", () => {
+  it("uses the local calendar day, not the UTC one", () => {
+    // 23:30 local on Oct 17 is already Oct 18 in UTC anywhere west of Greenwich.
+    expect(localIsoDate(new Date(2026, 9, 17, 23, 30))).toBe("2026-10-17");
+    expect(localIsoDate(new Date(2026, 0, 5))).toBe("2026-01-05");
+  });
+
+  it("round-trips with parseLocalDate", () => {
+    expect(localIsoDate(parseLocalDate("2026-03-09"))).toBe("2026-03-09");
   });
 });

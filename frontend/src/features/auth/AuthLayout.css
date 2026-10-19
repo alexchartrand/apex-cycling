@@ -133,11 +133,9 @@
   gap: var(--space-4);
 }
 
-.auth__rules {
-  margin: 0;
-  padding-left: var(--space-5);
-  font-size: var(--text-xs);
-  color: var(--color-text-2);
+.auth__forgot {
+  align-self: flex-start;
+  font-size: var(--text-sm);
 }
 
 .auth__switch {

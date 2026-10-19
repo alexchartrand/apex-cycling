@@ -46,6 +46,9 @@ export function LoginPage() {
           required
         />
         <Checkbox label={t("login.rememberMe")} checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
+        <Link className="auth__forgot" to="/forgot-password">
+          {t("login.forgotPassword")}
+        </Link>
         {login.error && (
           <p role="alert">
             {errorMessage(login.error, {

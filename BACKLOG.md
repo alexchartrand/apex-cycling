@@ -34,8 +34,8 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 
 **Phase 2 — Athlete profile & account**
 - [x] T2.1 Profile fields, dated `athlete_metrics` (weight/FTP/HR), user locale/theme prefs
-- [ ] T2.2 Change password, password reset (SMTP optional / copy link), delete account, data export
-- [ ] T2.3 Settings pages
+- [x] T2.2 Change password, password reset (SMTP optional / copy link), delete account, data export
+- [x] T2.3 Settings pages (profile, physiology w/ weight chart, preferences, account) — ✋ Phase 2 checkpoint
 
 **Phase 3 — Track analytics on sqorz data**
 - [ ] T3.1 Effort detection (continuous lap blocks, standing/flying, half-lap pursuit splits)

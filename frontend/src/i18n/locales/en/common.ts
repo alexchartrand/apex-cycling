@@ -21,5 +21,15 @@ export default {
   languages: { fr: "Français", en: "English" },
   theme: "Theme",
   themes: { system: "System", light: "Paper", dark: "Night" },
-  units: { s: "s", kmh: "km/h", km: "km", m: "m", w: "W", kg: "kg", bpm: "bpm", rpm: "rpm", h: "h" },
+  units: { s: "s", kmh: "km/h", km: "km", m: "m", cm: "cm", w: "W", kg: "kg", wkg: "W/kg", bpm: "bpm", rpm: "rpm", h: "h" },
+  ageCategories: {
+    U11: "U11",
+    U13: "U13",
+    U15: "U15",
+    U17: "U17",
+    U19: "Junior (U19)",
+    U23: "U23",
+    ELITE: "Elite",
+    master: "Master {{from}}–{{to}}",
+  },
 };

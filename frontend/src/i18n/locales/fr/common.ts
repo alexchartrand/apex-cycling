@@ -24,5 +24,15 @@ export default {
   languages: { fr: "Français", en: "English" },
   theme: "Thème",
   themes: { system: "Système", light: "Papier", dark: "Nuit" },
-  units: { s: "s", kmh: "km/h", km: "km", m: "m", w: "W", kg: "kg", bpm: "bpm", rpm: "rpm", h: "h" },
+  units: { s: "s", kmh: "km/h", km: "km", m: "m", cm: "cm", w: "W", kg: "kg", wkg: "W/kg", bpm: "bpm", rpm: "rpm", h: "h" },
+  ageCategories: {
+    U11: "U11",
+    U13: "U13",
+    U15: "U15",
+    U17: "U17",
+    U19: "Junior (U19)",
+    U23: "U23",
+    ELITE: "Élite",
+    master: "Maître {{from}}–{{to}}",
+  },
 } satisfies LocaleNamespace<typeof en>;

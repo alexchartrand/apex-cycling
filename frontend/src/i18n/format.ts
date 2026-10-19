@@ -14,6 +14,12 @@ export function parseLocalDate(value: string | Date): Date {
   return new Date(value);
 }
 
+/** A Date → "YYYY-MM-DD" for its LOCAL calendar day (toISOString() would give the UTC day). */
+export function localIsoDate(value: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+}
+
 export type DateStyle = "short" | "medium" | "long" | "weekday" | "dayMonth";
 
 const DATE_OPTIONS: Record<DateStyle, Intl.DateTimeFormatOptions> = {

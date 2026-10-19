@@ -6,7 +6,8 @@ import { Button, Input } from "../../components/ui";
 import { useLanguage } from "../../i18n/useLanguage";
 import { useTheme } from "../../theme/useTheme";
 import { AuthLayout } from "./AuthLayout";
-import { failedPasswordRules, isPasswordStrong, PASSWORD_RULE_COUNTS } from "./passwordPolicy";
+import { NewPasswordFields } from "./NewPasswordFields";
+import { isNewPasswordReady } from "./passwordPolicy";
 import { useSignup } from "./useAuth";
 
 export function SignupPage() {
@@ -20,9 +21,7 @@ export function SignupPage() {
   const { mode } = useTheme();
   const navigate = useNavigate();
 
-  const failedRules = failedPasswordRules(password);
-  const mismatch = confirmPassword.length > 0 && confirmPassword !== password;
-  const canSubmit = displayName !== "" && email !== "" && isPasswordStrong(password) && password === confirmPassword;
+  const canSubmit = displayName !== "" && email !== "" && isNewPasswordReady(password, confirmPassword);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -34,18 +33,6 @@ export function SignupPage() {
       // surfaced via signup.error below
     }
   }
-
-  const passwordHint =
-    password.length > 0 && failedRules.length > 0 ? (
-      <>
-        {t("signup.passwordNeeds")}
-        <ul className="auth__rules">
-          {failedRules.map((rule) => (
-            <li key={rule}>{t(`passwordRules.${rule}`, { count: PASSWORD_RULE_COUNTS[rule] })}</li>
-          ))}
-        </ul>
-      </>
-    ) : undefined;
 
   return (
     <AuthLayout title={t("signup.title")} subtitle={t("signup.subtitle")}>
@@ -65,23 +52,13 @@ export function SignupPage() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
-        <Input
-          label={t("signup.password")}
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          hint={passwordHint}
-          required
-        />
-        <Input
-          label={t("signup.confirmPassword")}
-          type="password"
-          autoComplete="new-password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          error={mismatch ? t("signup.mismatch") : undefined}
-          required
+        <NewPasswordFields
+          password={password}
+          confirmation={confirmPassword}
+          onPasswordChange={setPassword}
+          onConfirmationChange={setConfirmPassword}
+          passwordLabel={t("signup.password")}
+          confirmationLabel={t("signup.confirmPassword")}
         />
         {signup.error && (
           <p role="alert">

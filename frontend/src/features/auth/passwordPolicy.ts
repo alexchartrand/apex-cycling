@@ -23,3 +23,8 @@ export const PASSWORD_RULE_COUNTS: Record<PasswordRule, number> = {
   length: MIN_PASSWORD_LENGTH,
   classes: MIN_CHARACTER_CLASSES,
 };
+
+/** A strong new password that the confirmation field repeats exactly. */
+export function isNewPasswordReady(password: string, confirmation: string): boolean {
+  return isPasswordStrong(password) && password === confirmation;
+}
