@@ -1,24 +1,34 @@
 /*
-  ApexCycling brand palette, imported by index.css and wired into the
-  live theme via the semantic vars there (--bg, --text, --accent, etc).
-  Names match the wordmark note in wordmark.svg: paper/ink are the
-  ground and structure, blue/red/amber are accents, amber-deep exists
-  only because flat amber fails contrast as text on paper (~2.4:1) and
-  this variant fixes that (~5.7:1). amber/amber-deep aren't consumed by
-  any component yet — reserved for a future warm-highlight use.
+  ApexCycling raw brand palette. Components never use these directly — they
+  go through the semantic tokens in theme/tokens.css, which pick from this
+  palette per theme. Names match the wordmark note in wordmark.svg:
+  paper/ink are the ground and structure, blue/red/amber are accents.
+  amber-deep exists because flat amber fails contrast as text on paper
+  (~2.4:1); this variant fixes that (~5.7:1).
 */
 :root {
   --apex-paper: #EDE6D2; /* primary ground — pale board color, not stark white */
-  --apex-paper-2: #E9E0C4; /* recessed surface (cards, chips) */
+  --apex-paper-2: #E9E0C4; /* recessed surface */
   --apex-paper-3: #E3D6B0; /* borders, hairlines */
+  --apex-paper-hi: #F7F3E7; /* raised surface (cards) on paper */
 
   --apex-ink: #0B1220; /* primary text and structure */
-  --apex-ink-60: rgba(11, 18, 32, 0.62); /* secondary text */
-  --apex-ink-30: rgba(11, 18, 32, 0.3); /* faint text, disabled */
+  --apex-ink-2: #121A2B; /* raised surface on ink */
+  --apex-ink-3: #1A2438; /* hover / inset on ink */
+  --apex-ink-line: #2A3650; /* hairlines on ink */
 
   --apex-blue: #364ea1; /* primary accent — matte, not electric */
+  --apex-blue-lifted: #8FA3F2; /* blue that holds contrast on ink */
   --apex-red: #e23e45; /* marker accent — used sparingly */
+  --apex-red-lifted: #FF7378;
   --apex-amber: #c98a2b; /* warm highlight — swatch/fill value only */
-  --apex-amber-deep: #765119; /* amber when used as text */
+  --apex-amber-deep: #765119; /* amber when used as text on paper */
+  --apex-amber-lifted: #E9B35E; /* amber as text on ink */
   --apex-graphite: #47526b; /* muted body text / secondary UI on paper */
+  --apex-green: #1E7A4C; /* "faster" deltas on paper */
+  --apex-green-lifted: #5BD08F;
+  --apex-teal: #1D7F86;
+  --apex-teal-lifted: #5CC7CE;
+  --apex-violet: #6A4FA3;
+  --apex-violet-lifted: #B39CF0;
 }

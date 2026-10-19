@@ -1,10 +1,8 @@
 .field--sm {
   padding: 6px 10px;
-  font-size: 15px;
+  font-size: var(--text-sm);
 }
 
-.btn--sm {
-  padding: 6px 14px;
-  font-size: 15px;
+form > .btn--sm {
   align-self: flex-start;
 }

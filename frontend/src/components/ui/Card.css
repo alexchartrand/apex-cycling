@@ -1,31 +1,63 @@
 .ui-card {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--apex-paper-2);
-  box-shadow: var(--shadow);
-  padding: 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
+  min-width: 0;
 }
 
-.ui-card input,
-.ui-card select {
-  background-color: var(--apex-paper);
-  border-color: var(--apex-paper-3);
-  border-radius: 6px;
+.ui-card--flush {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
 }
 
-.ui-card input:disabled {
-  background-color: var(--apex-paper-3);
-  opacity: 0.7;
+.ui-card--flush > .ui-card__header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ui-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.ui-card__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ui-card__title {
+  font-size: var(--text-xl);
+}
+
+.ui-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
 }
 
 .ui-card section + section {
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
 }
 
 .ui-card__hint {
-  color: var(--apex-ink-60);
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 640px) {
+  .ui-card {
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+  }
 }

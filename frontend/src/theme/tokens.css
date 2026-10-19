@@ -1,0 +1,202 @@
+/*
+  Semantic design tokens. Two themes: "paper" (light, the original brand
+  ground) and "night session" (dark, ink ground). The active theme is set
+  as data-theme on <html> by theme/ThemeProvider.tsx (and by the inline
+  script in index.html before first paint, to avoid a flash). Every
+  component styles itself from these tokens only — never raw --apex-* —
+  so both themes stay correct by construction.
+*/
+
+:root {
+  /* Typography */
+  --font-sans: "Inter Variable", "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+
+  --text-xs: 0.75rem; /* 12 */
+  --text-sm: 0.8125rem; /* 13 */
+  --text-md: 0.9375rem; /* 15 — body */
+  --text-lg: 1.0625rem; /* 17 */
+  --text-xl: 1.375rem; /* 22 */
+  --text-2xl: 1.75rem; /* 28 */
+  --text-3xl: 2.25rem; /* 36 */
+  --text-4xl: 3rem; /* 48 */
+  --text-5xl: 4rem; /* 64 — hero stat */
+
+  /* Spacing (4px grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Shape */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+
+  /* Layout */
+  --sidebar-width: 232px;
+  --content-max: 1180px;
+  --tabbar-height: 64px;
+  --topbar-height: 56px;
+}
+
+/* ---------- Paper (light) ---------- */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --color-bg: #EAE3CE;
+  --color-surface: var(--apex-paper-hi);
+  --color-surface-2: #F0EAD8; /* hover rows, table headers, inset wells */
+  --color-surface-sunken: var(--apex-paper-2);
+  --color-overlay: rgba(11, 18, 32, 0.45);
+  --color-border: #DDD1AF;
+  --color-border-strong: #C8B98F;
+
+  --color-text: var(--apex-ink);
+  --color-text-2: var(--apex-graphite);
+  --color-text-3: rgba(11, 18, 32, 0.5);
+  --color-text-inverse: var(--apex-paper-hi);
+
+  --color-accent: var(--apex-blue);
+  --color-accent-hover: #2B4089;
+  --color-accent-soft: rgba(54, 78, 161, 0.11);
+  --color-accent-border: rgba(54, 78, 161, 0.45);
+  --color-on-accent: #FFFFFF;
+
+  --color-marker: var(--apex-red); /* PRs, live markers, the "apex" red */
+  --color-marker-text: #B8262D;
+  --color-on-marker: #FFFFFF;
+  --color-marker-soft: rgba(226, 62, 69, 0.12);
+  --color-highlight: var(--apex-amber);
+  --color-highlight-text: var(--apex-amber-deep);
+  --color-highlight-soft: rgba(201, 138, 43, 0.16);
+
+  --color-positive: var(--apex-green); /* faster / improvement */
+  --color-positive-soft: rgba(30, 122, 76, 0.12);
+  --color-negative: #B8262D; /* slower / regression / errors */
+  --color-negative-soft: rgba(226, 62, 69, 0.11);
+  --color-focus: rgba(54, 78, 161, 0.35);
+
+  /* Chart series, in assignment order */
+  --chart-1: var(--apex-blue);
+  --chart-2: var(--apex-red);
+  --chart-3: var(--apex-amber);
+  --chart-4: var(--apex-teal);
+  --chart-5: var(--apex-violet);
+  --chart-6: var(--apex-graphite);
+  --chart-grid: rgba(11, 18, 32, 0.08);
+  --chart-axis: rgba(11, 18, 32, 0.55);
+
+  /* Velodrome diagram */
+  --track-infield: #D9E2C8;
+  --track-surface: #D8B98A; /* wood */
+  --track-surface-2: #C9A673;
+  --track-cote: #7FA7D9; /* côte d'azur band */
+  --track-line-measure: #111111;
+  --track-line-sprinter: #D2232A;
+  --track-line-stayer: #1F5FBF;
+
+  --shadow-1: 0 1px 2px rgba(11, 18, 32, 0.06), 0 1px 1px rgba(11, 18, 32, 0.04);
+  --shadow-2: 0 8px 24px -8px rgba(11, 18, 32, 0.18), 0 2px 6px rgba(11, 18, 32, 0.06);
+  --shadow-3: 0 24px 48px -12px rgba(11, 18, 32, 0.3);
+
+  --wordmark-ink: var(--apex-ink);
+  --wordmark-accent: var(--apex-amber-deep);
+}
+
+/* ---------- Night session (dark) ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-bg: #080D18;
+  --color-surface: var(--apex-ink-2);
+  --color-surface-2: var(--apex-ink-3);
+  --color-surface-sunken: #060A13;
+  --color-overlay: rgba(0, 0, 0, 0.6);
+  --color-border: #222D44;
+  --color-border-strong: #33415F;
+
+  --color-text: #EEE8D7;
+  --color-text-2: #A6AFC4;
+  --color-text-3: rgba(238, 232, 215, 0.48);
+  --color-text-inverse: var(--apex-ink);
+
+  --color-accent: var(--apex-blue-lifted);
+  --color-accent-hover: #AEBDF7;
+  --color-accent-soft: rgba(143, 163, 242, 0.14);
+  --color-accent-border: rgba(143, 163, 242, 0.45);
+  --color-on-accent: var(--apex-ink);
+
+  --color-marker: var(--apex-red-lifted);
+  --color-marker-text: var(--apex-red-lifted);
+  --color-on-marker: var(--apex-ink);
+  --color-marker-soft: rgba(255, 115, 120, 0.14);
+  --color-highlight: var(--apex-amber-lifted);
+  --color-highlight-text: var(--apex-amber-lifted);
+  --color-highlight-soft: rgba(233, 179, 94, 0.14);
+
+  --color-positive: var(--apex-green-lifted);
+  --color-positive-soft: rgba(91, 208, 143, 0.13);
+  --color-negative: var(--apex-red-lifted);
+  --color-negative-soft: rgba(255, 115, 120, 0.13);
+  --color-focus: rgba(143, 163, 242, 0.45);
+
+  --chart-1: var(--apex-blue-lifted);
+  --chart-2: var(--apex-red-lifted);
+  --chart-3: var(--apex-amber-lifted);
+  --chart-4: var(--apex-teal-lifted);
+  --chart-5: var(--apex-violet-lifted);
+  --chart-6: #A6AFC4;
+  --chart-grid: rgba(238, 232, 215, 0.08);
+  --chart-axis: rgba(238, 232, 215, 0.55);
+
+  --track-infield: #14213A;
+  --track-surface: #5A4632;
+  --track-surface-2: #4A3927;
+  --track-cote: #3D6BA8;
+  --track-line-measure: #EEE8D7;
+  --track-line-sprinter: #FF5A60;
+  --track-line-stayer: #6FA2FF;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 10px 28px -10px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-3: 0 24px 56px -12px rgba(0, 0, 0, 0.8);
+
+  --wordmark-ink: #EEE8D7;
+  --wordmark-accent: var(--apex-amber-lifted);
+}
+
+/*
+  Legacy aliases — screens not yet moved onto the semantic tokens (T1.6)
+  keep rendering correctly in both themes. Remove once nothing uses them.
+*/
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --text: var(--color-text-2);
+  --text-h: var(--color-text);
+  --bg: var(--color-bg);
+  --border: var(--color-border);
+  --code-bg: var(--color-surface-sunken);
+  --accent: var(--color-accent);
+  --accent-bg: var(--color-accent-soft);
+  --accent-border: var(--color-accent-border);
+  --shadow: var(--shadow-2);
+  --sans: var(--font-sans);
+  --heading: var(--font-display);
+  --mono: var(--font-mono);
+}

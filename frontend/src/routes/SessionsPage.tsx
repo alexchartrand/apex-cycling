@@ -22,7 +22,7 @@ const CHART_METRIC_OPTIONS: { value: ChartMetric; label: string }[] = [
 
 const CHART_METRIC_CONFIG: Record<Exclude<ChartMetric, "none">, { dataKey: "lapTimeMs" | "flying200Ms"; label: string; color: string }> = {
   lapTime: { dataKey: "lapTimeMs", label: "Lap time", color: "var(--accent)" },
-  flying200: { dataKey: "flying200Ms", label: "Flying 200", color: "var(--apex-amber-deep)" },
+  flying200: { dataKey: "flying200Ms", label: "Flying 200", color: "var(--chart-3)" },
 };
 
 function sessionLabel(session: SessionSummary, sessions: SessionSummary[]): string {
@@ -79,7 +79,7 @@ function HighlightDot({
       cy={cy}
       r={isSelected ? 6 : 3}
       fill={color}
-      stroke={isSelected ? "var(--apex-ink)" : "none"}
+      stroke={isSelected ? "var(--color-text)" : "none"}
       strokeWidth={isSelected ? 2 : 0}
     />
   );
