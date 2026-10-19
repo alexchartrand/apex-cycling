@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from app.ingestion.sqorz.client import SqorzClientError, fetch_transponder_history
+from app.ingestion.sqorz.client import SqorzClientError, SqorzHttpClient
 
 
 def _patch_transport(monkeypatch, handler):
@@ -36,7 +36,7 @@ def _valid_payload() -> dict:
 async def test_fetch_transponder_history_accepts_valid_payload(monkeypatch):
     _patch_transport(monkeypatch, lambda request: httpx.Response(200, json=_valid_payload()))
 
-    payload = await fetch_transponder_history("TP-1")
+    payload = await SqorzHttpClient().fetch_transponder_history("TP-1")
 
     assert payload == _valid_payload()
 
@@ -46,11 +46,11 @@ async def test_fetch_transponder_history_rejects_malformed_payload(monkeypatch):
     _patch_transport(monkeypatch, lambda request: httpx.Response(200, json=malformed))
 
     with pytest.raises(SqorzClientError, match="schema validation"):
-        await fetch_transponder_history("TP-1")
+        await SqorzHttpClient().fetch_transponder_history("TP-1")
 
 
 async def test_fetch_transponder_history_rejects_wrong_top_level_shape(monkeypatch):
     _patch_transport(monkeypatch, lambda request: httpx.Response(200, json={"eventTrainingDetails": "oops"}))
 
     with pytest.raises(SqorzClientError, match="schema validation"):
-        await fetch_transponder_history("TP-1")
+        await SqorzHttpClient().fetch_transponder_history("TP-1")

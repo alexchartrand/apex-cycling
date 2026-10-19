@@ -39,12 +39,13 @@ async def _self_athlete_id(db_session, user_id: str) -> uuid.UUID:
 
 
 def _patch_fetch(monkeypatch, result=None, error: Exception | None = None):
-    async def fake_fetch(transponder_code: str):
-        if error is not None:
-            raise error
-        return result if result is not None else SAMPLE_PAYLOAD
+    class FakeSqorzHttpClient:
+        async def fetch_transponder_history(self, transponder_code: str):
+            if error is not None:
+                raise error
+            return result if result is not None else SAMPLE_PAYLOAD
 
-    monkeypatch.setattr("app.ingestion.sqorz.service.fetch_transponder_history", fake_fetch)
+    monkeypatch.setattr("app.ingestion.sqorz.factory.SqorzHttpClient", FakeSqorzHttpClient)
 
 
 async def test_report_usage_creates_assignment_and_imports(client, db_session, monkeypatch):

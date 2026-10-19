@@ -1,0 +1,60 @@
+"""Protocols the sqorz ingestion business logic depends on. Concrete
+implementations are wired together in factory.py; nothing in service.py
+should import sqlalchemy directly, only these interfaces.
+"""
+import uuid
+from datetime import datetime
+from typing import Protocol
+
+from app.ingestion.sqorz.dtos import DataSourceConnectionRecord, IngestionRunRecord
+
+
+class SqorzClientPort(Protocol):
+    async def fetch_transponder_history(self, transponder_code: str) -> dict: ...
+
+
+class DataSourceConnectionRepositoryPort(Protocol):
+    async def get_by_id(self, connection_id: uuid.UUID) -> DataSourceConnectionRecord | None: ...
+
+    async def update_after_sync(
+        self,
+        connection_id: uuid.UUID,
+        *,
+        sqorz_account_id: str | None,
+        sqorz_account_name: str | None,
+        last_synced_at: datetime,
+    ) -> None: ...
+
+
+class IngestionRunRepositoryPort(Protocol):
+    async def create(self, connection_id: uuid.UUID, requested_at: datetime) -> IngestionRunRecord: ...
+
+    async def mark_failed(
+        self, run_id: uuid.UUID, *, http_status: int | None, error_message: str, completed_at: datetime
+    ) -> IngestionRunRecord: ...
+
+    async def mark_success(
+        self, run_id: uuid.UUID, *, http_status: int, completed_at: datetime
+    ) -> IngestionRunRecord: ...
+
+
+class RawSnapshotRepositoryPort(Protocol):
+    async def get_latest_hash(self, external_ref: str) -> str | None: ...
+
+    async def create(
+        self,
+        *,
+        ingestion_run_id: uuid.UUID,
+        external_ref: str,
+        payload: dict,
+        content_hash: str,
+        fetched_at: datetime,
+    ) -> None: ...
+
+
+class SnapshotNormalizerPort(Protocol):
+    async def normalize(self, payload: dict) -> None: ...
+
+
+class UnitOfWorkPort(Protocol):
+    async def commit(self) -> None: ...

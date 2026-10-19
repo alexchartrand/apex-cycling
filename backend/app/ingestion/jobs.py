@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from app.connections.models import DataSourceConnection, DataSourceProvider, TransponderAssignment
 from app.db.session import AsyncSessionLocal
-from app.ingestion.sqorz.service import ingest_sqorz_connection_by_id
+from app.ingestion.sqorz.factory import build_sqorz_ingestion_service
 
 logger = logging.getLogger("ingestion.jobs")
 
@@ -40,7 +40,7 @@ async def poll_active_connections() -> None:
     for connection_id in connection_ids:
         try:
             async with AsyncSessionLocal() as db:
-                run = await ingest_sqorz_connection_by_id(db, connection_id)
+                run = await build_sqorz_ingestion_service(db).ingest_by_id(connection_id)
             logger.info("Connection %s: run status=%s", connection_id, run.status if run else "missing")
         except Exception:
             logger.exception("Ingestion failed for connection %s", connection_id)
