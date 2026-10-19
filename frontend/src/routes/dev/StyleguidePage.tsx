@@ -1,6 +1,11 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Activity,
+  FileUp,
+  LogOut,
+  Settings,
+  Trash2,
+  User,
   BarChart3,
   Bike,
   CalendarDays,
@@ -21,10 +26,39 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from "recharts";
 import { BrandMark } from "../../brand/BrandMark";
 import { Wordmark } from "../../brand/Wordmark";
-import { Badge, Button, Card, IconButton, SegmentedControl, StatTile } from "../../components/ui";
+import { axisProps, ChartFrame, ChartTooltip, cursorProps, gridProps } from "../../components/charts";
+import {
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  ConfirmDialog,
+  DataTable,
+  Dialog,
+  EmptyState,
+  IconButton,
+  Input,
+  Menu,
+  MenuItem,
+  MenuLabel,
+  MenuRadioGroup,
+  MenuSeparator,
+  PageHeader,
+  ProgressBar,
+  SegmentedControl,
+  Select,
+  SkeletonGroup,
+  StatTile,
+  TabPanel,
+  Tabs,
+  Textarea,
+  Tooltip,
+  useToast,
+  type DataTableColumn,
+} from "../../components/ui";
 import { formatMs } from "../../features/training/format";
 import type { ThemeMode } from "../../theme/theme";
 import { useTheme } from "../../theme/useTheme";
@@ -151,6 +185,8 @@ export function StyleguidePage() {
           <Badge>Excluded</Badge>
         </div>
       </Section>
+
+      <ComponentsSection />
 
       <Section title="Stat tiles">
         <div className="sg__tiles">
@@ -328,7 +364,7 @@ function HomePreview() {
                     width={36}
                     tick={{ fill: "var(--chart-axis)", fontSize: 12 }}
                   />
-                  <Tooltip
+                  <RechartsTooltip
                     cursor={{ stroke: "var(--color-border-strong)" }}
                     contentStyle={{
                       background: "var(--color-surface)",
@@ -410,5 +446,204 @@ function HomePreview() {
         </div>
       </div>
     </div>
+  );
+}
+
+type MockLap = (typeof MOCK_LAPS)[number];
+
+const LAP_COLUMNS: DataTableColumn<MockLap>[] = [
+  { id: "lap", header: "Lap", cell: (l) => `Lap ${l.lap}`, sortValue: (l) => l.lap, primary: true },
+  { id: "time", header: "Time", cell: (l) => formatMs(l.ms), sortValue: (l) => l.ms, align: "right" },
+  {
+    id: "speed",
+    header: "km/h",
+    cell: (l) => ((250 / (l.ms / 1000)) * 3.6).toFixed(1),
+    sortValue: (l) => -l.ms,
+    align: "right",
+  },
+  { id: "p1p2", header: "P1→P2", cell: (l) => ((l.ms / 2 + 37) / 1000).toFixed(3), align: "right" },
+];
+
+function ComponentsSection() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [tab, setTab] = useState<"laps" | "efforts" | "notes">("laps");
+  const [selectedLap, setSelectedLap] = useState<string | null>("11");
+  const [units, setUnits] = useState<"metric" | "imperial">("metric");
+  const { toast } = useToast();
+
+  return (
+    <Section title="Components" note="Radix-based overlays, data table, forms, charts.">
+      <PageHeader
+        eyebrow="Sun Oct 17 · Bromont"
+        title="Session quotidienne"
+        description="Page header with back link, eyebrow, description and actions."
+        back={{ to: "/styleguide", label: "Sessions" }}
+        actions={
+          <>
+            <Button variant="secondary" icon={<FileUp aria-hidden />}>
+              Export CSV
+            </Button>
+            <Menu
+              trigger={
+                <Button variant="secondary" icon={<User aria-hidden />}>
+                  Menu
+                </Button>
+              }
+            >
+              <MenuLabel>Units</MenuLabel>
+              <MenuRadioGroup
+                value={units}
+                onValueChange={setUnits}
+                options={[
+                  { value: "metric", label: "Metric" },
+                  { value: "imperial", label: "Imperial" },
+                ]}
+              />
+              <MenuSeparator />
+              <MenuItem icon={<Settings aria-hidden />}>Settings</MenuItem>
+              <MenuItem icon={<LogOut aria-hidden />} tone="danger">
+                Log out
+              </MenuItem>
+            </Menu>
+          </>
+        }
+      />
+
+      <div className="sg__row">
+        <Button variant="secondary" onClick={() => setDialogOpen(true)}>
+          Open dialog
+        </Button>
+        <Button variant="secondary" onClick={() => setSheetOpen(true)}>
+          Open side sheet
+        </Button>
+        <Button variant="danger" icon={<Trash2 aria-hidden />} onClick={() => setConfirmOpen(true)}>
+          Confirm delete
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => toast({ title: "Sqorz synced", description: "12 new laps imported.", tone: "success" })}
+        >
+          Success toast
+        </Button>
+        <Button variant="secondary" onClick={() => toast({ title: "Sync failed", description: "sqorz returned HTTP 502", tone: "error" })}>
+          Error toast
+        </Button>
+        <Tooltip content="Excluded laps never count toward records.">
+          <Button variant="ghost">Hover for tooltip</Button>
+        </Tooltip>
+      </div>
+
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title="Add manual result"
+        description="For races or tracks without sqorz timing."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => setDialogOpen(false)}>Save result</Button>
+          </>
+        }
+      >
+        <Select label="Event" defaultValue="kilo">
+          <option value="f200">Flying 200 m</option>
+          <option value="kilo">Kilo</option>
+          <option value="ip4">4 km pursuit</option>
+        </Select>
+        <Input label="Time" placeholder="1:08.441" hint="m:ss.mmm" />
+        <Checkbox label="Competition result" defaultChecked />
+      </Dialog>
+      <Dialog open={sheetOpen} onOpenChange={setSheetOpen} title="Filters" variant="sheet-right">
+        <Select label="Track" defaultValue="t">
+          <option value="t">Tour complet</option>
+        </Select>
+        <Input label="From" type="date" />
+        <Input label="To" type="date" />
+      </Dialog>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete this session?"
+        description="Its laps and notes are removed from your log. Sqorz data can be re-imported."
+        confirmLabel="Delete session"
+        tone="danger"
+        onConfirm={() => new Promise((resolve) => setTimeout(resolve, 600))}
+      />
+
+      <div className="sg__forms">
+        <Input label="Weight" type="number" defaultValue={72.5} suffix="kg" hint="Used for W/kg and physics tools." />
+        <Input label="FTP" type="number" defaultValue={-5} suffix="W" error="Must be a positive number." />
+        <Select label="Track" defaultValue="b">
+          <option value="b">Bromont — 250 m</option>
+          <option value="m">Milton — 250 m</option>
+        </Select>
+        <Textarea label="Session notes" placeholder="How did it feel? Gear, warm-up, wind…" />
+      </div>
+
+      <Tabs
+        aria-label="Session sections"
+        value={tab}
+        onValueChange={setTab}
+        items={[
+          { value: "laps", label: "Laps", count: MOCK_LAPS.length },
+          { value: "efforts", label: "Efforts", count: 4 },
+          { value: "notes", label: "Notes" },
+        ]}
+      >
+        <TabPanel value="laps">
+          <div style={{ ["--data-table-max-height" as string]: "320px" }}>
+            <DataTable
+              caption="Laps"
+              columns={LAP_COLUMNS}
+              rows={MOCK_LAPS}
+              getRowId={(l) => String(l.lap)}
+              onRowClick={(l) => setSelectedLap(String(l.lap))}
+              selectedRowId={selectedLap}
+              rowTone={(l) => (l.ms === 17_900 ? "marker" : l.ms > 21_000 ? "muted" : undefined)}
+              highlightedColumnId="p1p2"
+            />
+          </div>
+        </TabPanel>
+        <TabPanel value="efforts">
+          <EmptyState
+            icon={<Flag aria-hidden />}
+            title="No efforts detected yet"
+            description="Efforts appear once consecutive laps are grouped into continuous blocks."
+            action={<Button size="sm">Re-analyse session</Button>}
+          />
+        </TabPanel>
+        <TabPanel value="notes">
+          <SkeletonGroup lines={4} />
+        </TabPanel>
+      </Tabs>
+
+      <Card title="Lap times" eyebrow="ChartFrame + ChartTooltip">
+        <ChartFrame
+          height={200}
+          legend={[
+            { label: "Lap", color: "var(--chart-1)" },
+            { label: "Target 18.0 s", color: "var(--chart-3)", dashed: true },
+          ]}
+          caption="Faster is up"
+        >
+          <LineChart data={MOCK_LAPS} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid {...gridProps} />
+            <XAxis dataKey="lap" {...axisProps} />
+            <YAxis reversed domain={["dataMin - 400", "dataMax + 400"]} tickFormatter={(ms: number) => (ms / 1000).toFixed(1)} width={36} {...axisProps} />
+            <RechartsTooltip cursor={cursorProps} content={<ChartTooltip formatValue={(v) => formatMs(v)} formatLabel={(l) => `Lap ${l}`} />} />
+            <Line type="monotone" dataKey="ms" name="Lap" stroke="var(--chart-1)" strokeWidth={2} dot={false} />
+          </LineChart>
+        </ChartFrame>
+        <ChartFrame isEmpty height={120} emptyMessage="Link a power file to see watts per lap.">
+          <LineChart data={[]} />
+        </ChartFrame>
+      </Card>
+
+      <ProgressBar value={0.72} label="Goal progress" tone="goal" />
+    </Section>
   );
 }

@@ -96,6 +96,13 @@
   align-items: center;
 }
 
+.sg__forms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
 .sg__tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

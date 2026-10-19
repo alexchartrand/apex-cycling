@@ -24,8 +24,8 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 - [x] T0.4 `.env`-driven dev `docker-compose.yml`
 
 **Phase 1 — Design system & app shell**
-- [ ] T1.1 Semantic design tokens, light + dark ("night session") themes, fonts, dark wordmark, `/styleguide` — ✋ user checkpoint
-- [ ] T1.2 Component library (Radix primitives, StatTile, DataTable, Sheet, Toast, ChartFrame…)
+- [x] T1.1 Semantic design tokens, light + dark ("night session") themes, fonts, dark wordmark, `/styleguide` — ✋ user checkpoint
+- [x] T1.2 Component library (Radix primitives, StatTile, DataTable, Sheet, Toast, ChartFrame…)
 - [ ] T1.3 i18n FR/EN (i18next, Intl formatting, all strings extracted)
 - [ ] T1.4 Responsive AppShell (desktop sidebar, mobile bottom tabs, user menu, new route skeleton)
 - [ ] T1.5 PWA (manifest, icons, offline shell, install prompt)

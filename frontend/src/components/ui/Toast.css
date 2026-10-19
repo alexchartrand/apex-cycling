@@ -1,0 +1,124 @@
+.toast-viewport {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(400px, 100vw);
+  margin: 0;
+  padding: var(--space-4);
+  list-style: none;
+  outline: none;
+}
+
+/* Clear the mobile tab bar. */
+@media (max-width: 899px) {
+  .toast-viewport {
+    bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+  }
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+}
+
+.toast[data-state="open"] {
+  animation: toast-in var(--duration-base) var(--ease-out);
+}
+
+.toast[data-state="closed"] {
+  animation: toast-out var(--duration-fast) ease-in forwards;
+}
+
+.toast[data-swipe="move"] {
+  transform: translateX(var(--radix-toast-swipe-move-x));
+}
+
+.toast[data-swipe="end"] {
+  animation: toast-out var(--duration-fast) ease-in forwards;
+}
+
+.toast--success {
+  border-left-color: var(--color-positive);
+}
+
+.toast--error {
+  border-left-color: var(--color-negative);
+}
+
+.toast__icon {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+.toast--success .toast__icon {
+  color: var(--color-positive);
+}
+
+.toast--error .toast__icon {
+  color: var(--color-negative);
+}
+
+.toast__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast__title {
+  font-weight: 600;
+  font-size: var(--text-md);
+}
+
+.toast__description {
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}
+
+.toast__close {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-3);
+}
+
+.toast__close:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.toast__close svg {
+  width: 15px;
+  height: 15px;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}

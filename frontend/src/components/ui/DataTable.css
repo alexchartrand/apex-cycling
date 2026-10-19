@@ -1,0 +1,194 @@
+.data-table {
+  overflow: auto;
+  max-height: var(--data-table-max-height, none);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.data-table table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table__caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.data-table th,
+.data-table td {
+  padding: 10px var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.data-table--dense th,
+.data-table--dense td {
+  padding: 6px var(--space-3);
+}
+
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-3);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table__cell--right {
+  text-align: right;
+}
+
+.data-table__cell--center {
+  text-align: center;
+}
+
+.data-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+
+.data-table__cell--right .data-table__sort {
+  flex-direction: row-reverse;
+}
+
+.data-table__sort:hover {
+  color: var(--color-text);
+}
+
+.data-table__sort svg {
+  width: 13px;
+  height: 13px;
+}
+
+.data-table__sort-idle {
+  opacity: 0.4;
+}
+
+.data-table__row--clickable {
+  cursor: pointer;
+}
+
+.data-table tbody .data-table__row:hover td {
+  background: var(--color-surface-2);
+}
+
+.data-table__row:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.data-table__row--selected td,
+.data-table tbody .data-table__row--selected:hover td {
+  background: var(--color-accent-soft);
+}
+
+.data-table__row--selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.data-table__row--muted td {
+  color: var(--color-text-3);
+}
+
+.data-table__row--marker td:first-child {
+  box-shadow: inset 3px 0 0 var(--color-marker);
+}
+
+.data-table__row--highlight td {
+  background: var(--color-highlight-soft);
+}
+
+.data-table__col--highlight {
+  background: var(--color-accent-soft);
+}
+
+.data-table thead .data-table__col--highlight {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent-soft), var(--color-surface-2));
+}
+
+/* ---------- Phone card layout ---------- */
+
+.data-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.data-cards .data-table__row {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.data-cards .data-table__row--selected {
+  border-color: var(--color-accent);
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.data-cards .data-table__row--marker {
+  box-shadow: inset 3px 0 0 var(--color-marker);
+}
+
+.data-cards .data-table__row--muted {
+  opacity: 0.6;
+}
+
+.data-cards__primary {
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.data-cards__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.data-cards__field dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-3);
+}
+
+.data-cards__field dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-cards__field--highlight dd {
+  color: var(--color-accent);
+  font-weight: 600;
+}

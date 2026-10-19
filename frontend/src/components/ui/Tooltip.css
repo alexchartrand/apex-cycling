@@ -1,0 +1,24 @@
+.tooltip {
+  z-index: 300;
+  max-width: 260px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1.4;
+  box-shadow: var(--shadow-2);
+  animation: tooltip-in var(--duration-fast) var(--ease-out);
+}
+
+.tooltip__arrow {
+  fill: var(--color-text);
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}

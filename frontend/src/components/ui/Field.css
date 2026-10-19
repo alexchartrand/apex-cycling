@@ -1,0 +1,81 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field__label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.field__control {
+  width: 100%;
+  min-height: 40px;
+}
+
+.field__control--sm {
+  min-height: 32px;
+  padding: 5px 10px;
+  font-size: var(--text-sm);
+}
+
+select.field__control--sm {
+  padding-right: 30px;
+}
+
+textarea.field__control {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.field--invalid .field__control {
+  border-color: var(--color-negative);
+}
+
+.field--invalid .field__control:focus {
+  box-shadow: 0 0 0 3px var(--color-negative-soft);
+}
+
+.field__hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-3);
+}
+
+.field__error {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-negative);
+}
+
+.field__affix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field__affix .field__control {
+  padding-right: 52px;
+}
+
+.field__suffix {
+  position: absolute;
+  right: 12px;
+  font-size: var(--text-sm);
+  color: var(--color-text-3);
+  pointer-events: none;
+}
+
+.field-check {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+}

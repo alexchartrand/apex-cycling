@@ -74,6 +74,8 @@ Tests for the refactored layer (`backend/tests/test_sqorz_ingestion_service.py`)
 
 ## Frontend architecture
 
+**Design system**: all styling goes through semantic tokens in `src/theme/tokens.css` (`--color-*`, `--chart-*`, `--space-*`, `--radius-*`, `--text-*`), defined for both `data-theme="light"` (paper) and `"dark"` (night session) — never use raw `--apex-*` palette values in components, or dark mode breaks. Reusable components live in `src/components/ui/` (Radix-based Dialog/Menu/Tabs/Tooltip/Toast, DataTable, StatTile, form fields…) and chart helpers in `src/components/charts/` (`axisProps`/`gridProps`/`ChartTooltip`/`ChartFrame`). `var()` works in Recharts stroke/fill props but **not** in gradient `<stop>` colors — use flat `fill` + `fillOpacity`. The dev-only `/styleguide` route shows every component in both themes. The dev frontend container reinstalls npm deps on start (anonymous `node_modules` volume), so a new dependency just needs `docker compose restart frontend`.
+
 Vite + React 19 + TypeScript, feature-folder structure under `src/features/<domain>/` (`api.ts`, `types.ts`, `use<Domain>.ts` hooks using TanStack Query), with route components in `src/routes/`. `src/api/client.ts::apiFetch` is the sole fetch wrapper — it handles the cookie-based auth refresh dance described above; new API calls should go through it rather than raw `fetch`. Routing (`src/App.tsx`) gates everything except `/login` and `/signup` behind `ProtectedRoute`, wrapped in the `AppShell` layout.
 
 ## Conventions

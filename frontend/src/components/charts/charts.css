@@ -1,0 +1,102 @@
+.chart-frame {
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Recharts focus ring on the SVG surface is noise for mouse users. */
+.chart-frame .recharts-surface:focus,
+.chart-frame .recharts-wrapper:focus {
+  outline: none;
+}
+
+.chart-frame__empty {
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text-3);
+  font-size: var(--text-sm);
+  text-align: center;
+  padding: var(--space-4);
+}
+
+.chart-frame__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.chart-frame__caption {
+  font-size: var(--text-xs);
+  color: var(--color-text-3);
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-2);
+}
+
+.chart-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend__swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--swatch);
+}
+
+.chart-legend__swatch--dashed {
+  background: repeating-linear-gradient(90deg, var(--swatch) 0 4px, transparent 4px 7px);
+}
+
+.chart-tooltip {
+  min-width: 140px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.chart-tooltip__label {
+  margin-bottom: 4px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-3);
+}
+
+.chart-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chart-tooltip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.chart-tooltip__name {
+  flex: 1;
+  color: var(--color-text-2);
+}
+
+.chart-tooltip__value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
