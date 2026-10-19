@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { errorMessage } from "../../api/errors";
 import { Button, Input } from "../../components/ui";
+import { useLanguage } from "../../i18n/useLanguage";
+import { useTheme } from "../../theme/useTheme";
 import { AuthLayout } from "./AuthLayout";
 import { failedPasswordRules, isPasswordStrong, PASSWORD_RULE_COUNTS } from "./passwordPolicy";
 import { useSignup } from "./useAuth";
@@ -14,6 +16,8 @@ export function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const signup = useSignup();
+  const { language } = useLanguage();
+  const { mode } = useTheme();
   const navigate = useNavigate();
 
   const failedRules = failedPasswordRules(password);
@@ -24,7 +28,7 @@ export function SignupPage() {
     e.preventDefault();
     if (!canSubmit) return;
     try {
-      await signup.mutateAsync({ email, password, display_name: displayName });
+      await signup.mutateAsync({ email, password, display_name: displayName, locale: language, theme: mode });
       navigate("/", { replace: true });
     } catch {
       // surfaced via signup.error below

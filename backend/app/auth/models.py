@@ -16,6 +16,10 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    # UI preferences, synced across devices. Null means "never chosen": the
+    # device keeps its own choice (browser language / system theme).
+    locale: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    theme: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
     athlete: Mapped["Athlete | None"] = relationship(
         back_populates="user", uselist=False, foreign_keys="Athlete.user_id"

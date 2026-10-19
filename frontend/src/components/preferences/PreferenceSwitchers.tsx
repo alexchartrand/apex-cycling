@@ -3,12 +3,14 @@ import { useTranslation } from "react-i18next";
 import { SegmentedControl } from "../ui";
 import { SUPPORTED_LANGUAGES, type Language } from "../../i18n/language";
 import { useLanguage } from "../../i18n/useLanguage";
+import { usePreferenceSetters } from "../../features/auth/usePreferences";
 import type { ThemeMode } from "../../theme/theme";
 import { useTheme } from "../../theme/useTheme";
 
 export function LanguageSwitcher({ size = "sm" }: { size?: "sm" | "md" }) {
   const { t } = useTranslation();
-  const { language, setLanguage } = useLanguage();
+  const { language } = useLanguage();
+  const { setLanguage } = usePreferenceSetters();
   return (
     <SegmentedControl<Language>
       size={size}
@@ -22,7 +24,8 @@ export function LanguageSwitcher({ size = "sm" }: { size?: "sm" | "md" }) {
 
 export function ThemeSwitcher({ size = "sm", showLabels = false }: { size?: "sm" | "md"; showLabels?: boolean }) {
   const { t } = useTranslation();
-  const { mode, setMode } = useTheme();
+  const { mode } = useTheme();
+  const { setTheme } = usePreferenceSetters();
   const options: { value: ThemeMode; icon: React.ReactNode }[] = [
     { value: "system", icon: <Monitor aria-hidden /> },
     { value: "light", icon: <Sun aria-hidden /> },
@@ -33,7 +36,7 @@ export function ThemeSwitcher({ size = "sm", showLabels = false }: { size?: "sm"
       size={size}
       aria-label={t("theme")}
       value={mode}
-      onChange={setMode}
+      onChange={setTheme}
       options={options.map((o) => ({
         value: o.value,
         icon: o.icon,

@@ -1,5 +1,5 @@
 import { apiFetch } from "../../api/client";
-import type { LoginPayload, SignupPayload, User } from "./types";
+import type { LoginPayload, Preferences, SignupPayload, User } from "./types";
 
 export function fetchCurrentUser(): Promise<User> {
   return apiFetch<User>("/auth/me");
@@ -15,4 +15,8 @@ export function login(payload: LoginPayload): Promise<User> {
 
 export function logout(): Promise<void> {
   return apiFetch<void>("/auth/logout", { method: "POST" });
+}
+
+export function updatePreferences(payload: Preferences): Promise<User> {
+  return apiFetch<User>("/auth/me/preferences", { method: "PATCH", body: JSON.stringify(payload) });
 }

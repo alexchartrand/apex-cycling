@@ -33,7 +33,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 - [x] T1.7 Redesign the velodrome diagram (real outline, lane markings, clean labels, `velodromeGeometry.ts` tests) — ✋ user checkpoint
 
 **Phase 2 — Athlete profile & account**
-- [ ] T2.1 Profile fields, dated `athlete_metrics` (weight/FTP/HR), user locale/theme prefs
+- [x] T2.1 Profile fields, dated `athlete_metrics` (weight/FTP/HR), user locale/theme prefs
 - [ ] T2.2 Change password, password reset (SMTP optional / copy link), delete account, data export
 - [ ] T2.3 Settings pages
 

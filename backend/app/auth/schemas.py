@@ -1,5 +1,6 @@
 import re
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
@@ -14,10 +15,17 @@ _PASSWORD_CLASS_PATTERNS = (
 )
 
 
+Locale = Literal["fr", "en"]
+ThemeMode = Literal["system", "light", "dark"]
+
+
 class SignupRequest(BaseModel):
     email: EmailStr
     password: str
     display_name: str
+    # The UI choices made before signing up (emails also go out in `locale`).
+    locale: Locale | None = None
+    theme: ThemeMode | None = None
 
     @field_validator("password")
     @classmethod
@@ -45,3 +53,12 @@ class UserRead(BaseModel):
     id: uuid.UUID
     email: EmailStr
     is_platform_admin: bool
+    locale: Locale | None
+    theme: ThemeMode | None
+
+
+class PreferencesUpdate(BaseModel):
+    """Partial update: only the fields sent are changed."""
+
+    locale: Locale | None = None
+    theme: ThemeMode | None = None

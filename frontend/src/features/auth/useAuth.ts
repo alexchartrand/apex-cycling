@@ -4,7 +4,7 @@ import { clearApiCache } from "../../pwa/apiCache";
 import { fetchCurrentUser, login, logout, signup } from "./api";
 import type { LoginPayload, SignupPayload } from "./types";
 
-const CURRENT_USER_KEY = ["auth", "me"];
+export const CURRENT_USER_KEY = ["auth", "me"];
 
 export function useCurrentUser() {
   return useQuery({

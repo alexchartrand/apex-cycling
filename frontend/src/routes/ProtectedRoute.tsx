@@ -4,11 +4,13 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { BrandMark } from "../brand/BrandMark";
 import { Button, EmptyState } from "../components/ui";
 import { useCurrentUser } from "../features/auth/useAuth";
+import { useApplyAccountPreferences } from "../features/auth/usePreferences";
 
 export function ProtectedRoute() {
   const { t } = useTranslation();
   const { data: user, isLoading, error, refetch, isFetching } = useCurrentUser();
   const location = useLocation();
+  useApplyAccountPreferences(user);
 
   if (isLoading) {
     return (

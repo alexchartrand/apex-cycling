@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.athletes.models import Athlete
 from app.auth.deps import get_current_user
 from app.auth.models import User
-from app.auth.schemas import LoginRequest, SignupRequest, UserRead
+from app.auth.schemas import LoginRequest, PreferencesUpdate, SignupRequest, UserRead
 from app.core.config import API_PREFIX, get_settings
 from app.core.rate_limit import limiter
 from app.core.security import (
@@ -59,7 +59,12 @@ async def signup(
     if existing is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
 
-    user = User(email=payload.email, hashed_password=hash_password(payload.password))
+    user = User(
+        email=payload.email,
+        hashed_password=hash_password(payload.password),
+        locale=payload.locale,
+        theme=payload.theme,
+    )
     db.add(user)
     await db.flush()
 
@@ -126,4 +131,17 @@ async def logout(response: Response) -> None:
 
 @router.get("/me", response_model=UserRead)
 async def me(current_user: User = Depends(get_current_user)) -> User:
+    return current_user
+
+
+@router.patch("/me/preferences", response_model=UserRead)
+async def update_preferences(
+    payload: PreferencesUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(current_user, field, value)
+    await db.commit()
+    await db.refresh(current_user)
     return current_user

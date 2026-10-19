@@ -3,7 +3,7 @@ import uuid
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Date, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -27,7 +27,10 @@ class Athlete(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     club_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("clubs.id"), nullable=True, index=True)
     display_name: Mapped[str] = mapped_column(String(255))
     birthdate: Mapped[date | None] = mapped_column(Date, nullable=True)
-    gender: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # "female" / "male": the competition category, which is what UCI age
+    # categories and records boards split on — not a gender-identity field.
+    sex: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     user: Mapped["User | None"] = relationship(back_populates="athlete", foreign_keys=[user_id])
@@ -62,3 +65,22 @@ class CoachAthlete(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         )
     )
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AthleteMetric(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """One dated physiology measurement. Every value is optional so a row can
+    record just a weigh-in or just a new FTP; "the value at date X" is, per
+    field, the latest non-null value on or before X (see
+    `athletes/service.py::metrics_at`), which W/kg and TSS build on. One row
+    per athlete per day — re-posting a date updates that row.
+    """
+
+    __tablename__ = "athlete_metrics"
+    __table_args__ = (UniqueConstraint("athlete_id", "effective_date", name="uq_athlete_metric_date"),)
+
+    athlete_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("athletes.id"), index=True)
+    effective_date: Mapped[date] = mapped_column(Date)
+    weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ftp_w: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    resting_hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
