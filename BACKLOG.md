@@ -39,7 +39,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 
 **Phase 3 — Track analytics on sqorz data**
 - [x] T3.1 Effort detection (continuous lap blocks, standing/flying, half-lap pursuit splits)
-- [ ] T3.2 Multi-lap distances (F200, flying lap, 500m, 750m, 1km, 2/3/4km, custom) — supersedes "Multi-lap custom-distance metric" below
+- [x] T3.2 Multi-lap distances (F200, flying lap, 500m, 750m, 1km, 2/3/4km, custom) — supersedes "Multi-lap custom-distance metric" below
 - [ ] T3.3 Personal records (computed) + manual results
 - [ ] T3.4 Session editing (exclude laps, labels, notes, RPE, tags)
 - [ ] T3.5 Data-driven track settings (length, indoor, elevation, hidden loops/views)
@@ -105,7 +105,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
   - Why: `backend/app/core/config.py` already supports `.env` via pydantic-settings, but `docker-compose.yml` still hardcodes Postgres user/password/db name and `CORS_ORIGINS` inline instead of sourcing from `.env`.
   - Notes: dev-only risk today, but worth cleaning up before it's copy-pasted into a real deployment.
 
-- [ ] 🟢 Multi-lap custom-distance metric (e.g. pursuit "fastest 4km" spanning ~16 laps) — *added 7/24 (scoped out during M3)*
+- [x] 🟢 Multi-lap custom-distance metric (e.g. pursuit "fastest 4km" spanning ~16 laps) — *added 7/24 (scoped out during M3), resolved 10/19 (T3.2)*
   - Why: `find_best_distance_window` in `app/training/service.py` is deliberately scoped to a single lap's segments — sqorz never reports a track's total circuit length, so there's no reliable way to carry cumulative distance across a lap boundary.
   - Notes: revisit if per-checkpoint `distance_m` data turns out to be reliably populated for a target track. Deliberate scope call, not an oversight.
 

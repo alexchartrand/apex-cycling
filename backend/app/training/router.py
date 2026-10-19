@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.athletes.models import Athlete
 from app.auth.deps import require_athlete_access
 from app.db.session import get_db
+from app.training.efforts import StartType
 from app.training.schemas import EffortDetail, ProgressionMetric, ProgressionPoint, SessionDetail, SessionSummary, TrackSummary
 from app.training.service import (
     get_progression,
@@ -72,6 +73,7 @@ async def progression(
     distance_m: float | None = None,
     from_date: date | None = Query(default=None, alias="from"),
     to_date: date | None = Query(default=None, alias="to"),
+    start_type: StartType | None = None,
     athlete: Athlete = Depends(require_athlete_access),
     db: AsyncSession = Depends(get_db),
 ) -> list[ProgressionPoint]:
@@ -91,4 +93,5 @@ async def progression(
         distance_m=distance_m,
         from_date=from_date,
         to_date=to_date,
+        start_type=start_type,
     )

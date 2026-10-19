@@ -6,7 +6,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.training.efforts import CheckpointCrossing, LapInput, detect_efforts
+from app.training.distances import best_lap_window, laps_for_distance
+from app.training.efforts import CheckpointCrossing, LapInput, StartType, detect_efforts
 from app.training.models import EventTrack, LapSegmentTime, Track, TrackView, TrainingEvent, TrainingLap
 from app.training.schemas import (
     EffortDetail,
@@ -431,10 +432,17 @@ async def get_progression(
     distance_m: float | None,
     from_date: date | None,
     to_date: date | None,
+    start_type: StartType | None = None,
 ) -> list[ProgressionPoint]:
     """One point per session (`training_event`), taking the best (lowest)
     value achieved that day — see plan Data Model: "a progression view is
     the same metric computed per session and plotted across a date range."
+
+    `custom_distance` over a whole number of laps of a track with a known
+    length is the fastest run of that many consecutive laps inside one
+    effort (so it can span laps), optionally only standing or only flying
+    starts. Any other distance falls back to the best window of checkpoints
+    inside a single lap, and `start_type` doesn't apply.
     """
     loop_ids: list[uuid.UUID] = []
     if metric == ProgressionMetric.VIEW:
@@ -443,6 +451,13 @@ async def get_progression(
             return []
         track_id = view.track_id
         loop_ids = [vl.track_loop_id for vl in view.view_loops]
+
+    lap_count: int | None = None
+    track_length_m: float | None = None
+    if metric == ProgressionMetric.CUSTOM_DISTANCE:
+        track = await db.get(Track, track_id)
+        track_length_m = track.length_m if track is not None else None
+        lap_count = laps_for_distance(distance_m, track_length_m)
 
     laps = await _athlete_laps_for_track(db, athlete_id, track_id, from_date, to_date)
 
@@ -454,6 +469,21 @@ async def get_progression(
     for event_laps in laps_by_event.values():
         event = event_laps[0].event_track.training_event
         best: ProgressionPoint | None = None
+
+        if lap_count is not None:
+            efforts = detect_efforts([_lap_input(lap) for lap in event_laps], track_length_m)
+            window = best_lap_window(efforts, lap_count, start_type)
+            if window is not None:
+                points.append(
+                    ProgressionPoint(
+                        external_event_id=event.external_event_id,
+                        event_date=event.event_date,
+                        best_lap_id=window.lap_ids[0],
+                        time_ms=window.time_ms,
+                        achieved_distance_m=lap_count * track_length_m,
+                    )
+                )
+            continue
 
         for lap in event_laps:
             if metric == ProgressionMetric.LAP_TIME:
