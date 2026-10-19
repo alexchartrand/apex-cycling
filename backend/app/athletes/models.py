@@ -56,7 +56,8 @@ class CoachAthlete(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     coach_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     athlete_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("athletes.id"), index=True)
-    initiated_by_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    # Null once the initiating user deleted their account.
+    initiated_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     status: Mapped[CoachAthleteStatus] = mapped_column(
         Enum(
             CoachAthleteStatus,

@@ -23,6 +23,23 @@ class Settings(BaseSettings):
     cookie_secure: bool = True
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
+    # Public URL of the SPA, for links in emails and admin-generated
+    # password-reset links.
+    app_base_url: str = "http://localhost:5173"
+    password_reset_expire_minutes: int = 60
+    # Admin-generated links are handed over by a person, so they live longer.
+    password_reset_admin_expire_hours: int = 72
+
+    # Optional outgoing email (app/core/mail.py). Without SMTP_HOST and
+    # SMTP_FROM, email is off and password resets go through admin links.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    # "starttls" (port 587), "ssl" (implicit TLS, port 465) or "none".
+    smtp_security: str = "starttls"
+
     sqorz_base_url: str = "https://my.sqorz.com/json/training/transponder"
     sqorz_poll_interval_minutes: int = 20
 

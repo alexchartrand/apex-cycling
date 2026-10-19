@@ -1,8 +1,9 @@
 import re
 import uuid
-from typing import Literal
+from datetime import datetime
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr
 
 # Keep in sync with frontend/src/features/auth/passwordPolicy.ts
 MIN_PASSWORD_LENGTH = 12
@@ -19,26 +20,28 @@ Locale = Literal["fr", "en"]
 ThemeMode = Literal["system", "light", "dark"]
 
 
+def validate_password_strength(value: str) -> str:
+    if len(value) < MIN_PASSWORD_LENGTH:
+        raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters long")
+    classes_present = sum(1 for pattern in _PASSWORD_CLASS_PATTERNS if pattern.search(value))
+    if classes_present < MIN_CHARACTER_CLASSES:
+        raise ValueError(
+            f"Password must contain at least {MIN_CHARACTER_CLASSES} of: "
+            "lowercase letters, uppercase letters, numbers, symbols"
+        )
+    return value
+
+
+StrongPassword = Annotated[str, AfterValidator(validate_password_strength)]
+
+
 class SignupRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: StrongPassword
     display_name: str
     # The UI choices made before signing up (emails also go out in `locale`).
     locale: Locale | None = None
     theme: ThemeMode | None = None
-
-    @field_validator("password")
-    @classmethod
-    def _validate_password_strength(cls, value: str) -> str:
-        if len(value) < MIN_PASSWORD_LENGTH:
-            raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters long")
-        classes_present = sum(1 for pattern in _PASSWORD_CLASS_PATTERNS if pattern.search(value))
-        if classes_present < MIN_CHARACTER_CLASSES:
-            raise ValueError(
-                f"Password must contain at least {MIN_CHARACTER_CLASSES} of: "
-                "lowercase letters, uppercase letters, numbers, symbols"
-            )
-        return value
 
 
 class LoginRequest(BaseModel):
@@ -62,3 +65,41 @@ class PreferencesUpdate(BaseModel):
 
     locale: Locale | None = None
     theme: ThemeMode | None = None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: StrongPassword
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetRequested(BaseModel):
+    """Same answer whether or not the email is registered. `email_enabled`
+    false means nothing was sent: the user has to ask an admin for a link."""
+
+    email_enabled: bool
+
+
+class PasswordResetTokenCheck(BaseModel):
+    token: str
+
+
+class PasswordResetTokenInfo(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: StrongPassword
+
+
+class PasswordResetLink(BaseModel):
+    url: str
+    expires_at: datetime
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str

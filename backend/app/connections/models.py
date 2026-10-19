@@ -75,7 +75,8 @@ class TransponderAssignment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     start_date: Mapped[date] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    created_by_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    # Null once the user who entered it deleted their account.
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     connection: Mapped["DataSourceConnection"] = relationship(back_populates="assignments")

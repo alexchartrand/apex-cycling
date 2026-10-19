@@ -1,4 +1,7 @@
+import hashlib
+import secrets
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 
@@ -83,22 +86,46 @@ def _decode_payload(token: str, expected_type: TokenType) -> dict:
     return payload
 
 
-def decode_token(token: str, expected_type: TokenType) -> uuid.UUID:
+@dataclass(frozen=True)
+class TokenClaims:
+    user_id: uuid.UUID
+    issued_at: datetime
+    remember_me: bool
+
+
+def decode_token(token: str, expected_type: TokenType) -> TokenClaims:
+    """`remember_me` is only meaningful for refresh tokens: it's the choice
+    the token was originally issued with, so `/auth/refresh` can re-issue
+    cookies with matching persistence semantics."""
     payload = _decode_payload(token, expected_type)
     try:
-        return uuid.UUID(payload["sub"])
-    except (KeyError, ValueError) as exc:
-        raise InvalidTokenError("missing/invalid subject") from exc
+        return TokenClaims(
+            user_id=uuid.UUID(payload["sub"]),
+            issued_at=datetime.fromtimestamp(payload["iat"], timezone.utc),
+            remember_me=bool(payload.get("remember", True)),
+        )
+    except (KeyError, ValueError, TypeError) as exc:
+        raise InvalidTokenError("missing/invalid claims") from exc
 
 
-def decode_refresh_token(token: str) -> tuple[uuid.UUID, bool]:
-    """Like `decode_token`, but also returns the `remember_me` choice the
-    token was originally issued with, so `/auth/refresh` can re-issue cookies
-    with matching persistence semantics.
-    """
-    payload = _decode_payload(token, TokenType.REFRESH)
-    try:
-        user_id = uuid.UUID(payload["sub"])
-    except (KeyError, ValueError) as exc:
-        raise InvalidTokenError("missing/invalid subject") from exc
-    return user_id, bool(payload.get("remember", True))
+def issued_before_credentials_change(issued_at: datetime, credentials_changed_at: datetime | None) -> bool:
+    """True for a token minted before the user's last password change/reset,
+    which must no longer work (that's what signs other devices out). JWT
+    `iat` has one-second resolution, so compare at that resolution: the
+    cookies re-issued in the same request as the change stay valid."""
+    if credentials_changed_at is None:
+        return False
+    if credentials_changed_at.tzinfo is None:  # SQLite drops the offset
+        credentials_changed_at = credentials_changed_at.replace(tzinfo=timezone.utc)
+    return issued_at < credentials_changed_at.replace(microsecond=0)
+
+
+def new_reset_token() -> tuple[str, str]:
+    """A password-reset token and the hash to store: only the hash is kept,
+    so a database leak doesn't hand out working reset links."""
+    token = secrets.token_urlsafe(32)
+    return token, hash_reset_token(token)
+
+
+def hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()

@@ -7,7 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus
 from app.auth.models import User
 from app.clubs.models import ClubMembership, ClubRole
-from app.core.security import ACCESS_COOKIE_NAME, InvalidTokenError, TokenType, decode_token
+from app.core.security import (
+    ACCESS_COOKIE_NAME,
+    InvalidTokenError,
+    TokenType,
+    decode_token,
+    issued_before_credentials_change,
+)
 from app.db.session import get_db
 
 
@@ -19,13 +25,15 @@ async def get_current_user(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
 
     try:
-        user_id = decode_token(tt_access, TokenType.ACCESS)
+        claims = decode_token(tt_access, TokenType.ACCESS)
     except InvalidTokenError as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token") from exc
 
-    user = await db.get(User, user_id)
+    user = await db.get(User, claims.user_id)
     if user is None or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found or inactive")
+    if issued_before_credentials_change(claims.issued_at, user.credentials_changed_at):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session ended by a password change")
     return user
 
 
