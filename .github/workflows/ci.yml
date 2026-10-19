@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 jobs:
@@ -17,9 +17,45 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
+      - run: ruff check .
       - run: python -m pytest
 
-  frontend-build:
+  # Tests run on in-memory SQLite, so this is the only place the hand-written
+  # Postgres migrations actually execute before a deploy. `alembic check`
+  # fails if a model changed without a matching migration.
+  backend-migrations:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: apex_cycling
+          POSTGRES_PASSWORD: apex_cycling
+          POSTGRES_DB: apex_cycling
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U apex_cycling"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://apex_cycling:apex_cycling@localhost:5432/apex_cycling
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: alembic upgrade head
+      - run: alembic check
+      - run: alembic downgrade base
+      - run: alembic upgrade head
+
+  frontend:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -32,4 +68,6 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --legacy-peer-deps
+      - run: npm run lint
+      - run: npm test
       - run: npm run build

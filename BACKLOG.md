@@ -20,7 +20,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 **Phase 0 — Foundation**
 - [x] T0.1 Commit in-progress sqorz ports/DI refactor (step 1); add roadmap here
 - [x] T0.2 Mount every backend route under `/api` (client, Vite proxy, Caddyfile)
-- [ ] T0.3 Vitest + RTL in frontend; CI: `npm test`, ruff, Postgres `alembic upgrade head` job; fix ruff F821s
+- [x] T0.3 Vitest + RTL in frontend; CI: `npm test`, ruff, Postgres `alembic upgrade head` job; fix ruff F821s
 - [ ] T0.4 `.env`-driven dev `docker-compose.yml`
 
 **Phase 1 — Design system & app shell**

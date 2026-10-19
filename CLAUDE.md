@@ -32,6 +32,7 @@ npm install
 npm run dev
 npm run build      # tsc -b && vite build — this is what CI runs, so a type error fails it
 npm run lint       # oxlint
+npm test           # vitest (jsdom + Testing Library, setup in src/test/setup.ts)
 ```
 
 Full stack via Docker (recommended for manual/e2e testing):
@@ -40,7 +41,9 @@ cp .env.example .env
 docker compose up --build   # db (Postgres 16), backend (:8000), worker, frontend (:5173)
 ```
 
-CI (`.github/workflows/ci.yml`) runs backend `pytest` and frontend `npm run build` on every push/PR — no separate lint step in CI, so run `ruff`/`oxlint` locally.
+CI (`.github/workflows/ci.yml`, on push to `master` and PRs) runs backend `ruff` + `pytest`, a Postgres job doing `alembic upgrade head` → `alembic check` (fails if models drifted from migrations) → `downgrade base` → `upgrade head`, and frontend `lint` + `test` + `build`. Every new migration must keep that round-trip and `alembic check` clean.
+
+The backend `.venv` console scripts have stale shebangs from the Track Trainer rename — use `.venv/bin/python -m alembic` / `-m pytest` rather than `.venv/bin/alembic`.
 
 For a SQLite dev DB (skipping Postgres/Alembic entirely), see `backend/tests/conftest.py::db_session` for the pattern: `create_async_engine("sqlite+aiosqlite:///:memory:")` + `Base.metadata.create_all`, then override the `get_db` FastAPI dependency.
 
