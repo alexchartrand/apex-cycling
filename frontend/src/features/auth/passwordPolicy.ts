@@ -4,18 +4,22 @@ export const MIN_CHARACTER_CLASSES = 3;
 
 const CLASS_PATTERNS = [/[a-z]/, /[A-Z]/, /\d/, /[^a-zA-Z0-9]/];
 
-export function passwordStrengthErrors(password: string): string[] {
-  const errors: string[] = [];
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    errors.push(`At least ${MIN_PASSWORD_LENGTH} characters`);
-  }
+export type PasswordRule = "length" | "classes";
+
+/** The rules `password` fails, as codes the UI translates (see auth:passwordRules). */
+export function failedPasswordRules(password: string): PasswordRule[] {
+  const failed: PasswordRule[] = [];
+  if (password.length < MIN_PASSWORD_LENGTH) failed.push("length");
   const classes = CLASS_PATTERNS.filter((pattern) => pattern.test(password)).length;
-  if (classes < MIN_CHARACTER_CLASSES) {
-    errors.push(`At least ${MIN_CHARACTER_CLASSES} of: lowercase, uppercase, digit, symbol`);
-  }
-  return errors;
+  if (classes < MIN_CHARACTER_CLASSES) failed.push("classes");
+  return failed;
 }
 
 export function isPasswordStrong(password: string): boolean {
-  return passwordStrengthErrors(password).length === 0;
+  return failedPasswordRules(password).length === 0;
 }
+
+export const PASSWORD_RULE_COUNTS: Record<PasswordRule, number> = {
+  length: MIN_PASSWORD_LENGTH,
+  classes: MIN_CHARACTER_CLASSES,
+};

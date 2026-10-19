@@ -53,9 +53,11 @@
   --topbar-height: 56px;
 }
 
-/* ---------- Paper (light) ---------- */
+/* ---------- Paper (light) ----------
+   Theme selectors also match nested elements, so a region can pin a theme
+   (e.g. the always-ink brand panel on the auth pages: data-theme="dark"). */
 :root,
-:root[data-theme="light"] {
+[data-theme="light"] {
   color-scheme: light;
 
   --color-bg: #EAE3CE;
@@ -119,7 +121,7 @@
 }
 
 /* ---------- Night session (dark) ---------- */
-:root[data-theme="dark"] {
+[data-theme="dark"] {
   color-scheme: dark;
 
   --color-bg: #080D18;

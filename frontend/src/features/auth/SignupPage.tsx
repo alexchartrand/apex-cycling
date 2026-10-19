@@ -1,12 +1,14 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ApiError } from "../../api/client";
+import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
+import { Link, useNavigate } from "react-router-dom";
+import { errorMessage } from "../../api/errors";
 import { Button, Input } from "../../components/ui";
 import { AuthLayout } from "./AuthLayout";
-import { isPasswordStrong, passwordStrengthErrors } from "./passwordPolicy";
+import { failedPasswordRules, isPasswordStrong, PASSWORD_RULE_COUNTS } from "./passwordPolicy";
 import { useSignup } from "./useAuth";
 
 export function SignupPage() {
+  const { t } = useTranslation("auth");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -14,67 +16,83 @@ export function SignupPage() {
   const signup = useSignup();
   const navigate = useNavigate();
 
-  const strengthErrors = passwordStrengthErrors(password);
-  const passwordTouched = password.length > 0;
+  const failedRules = failedPasswordRules(password);
   const mismatch = confirmPassword.length > 0 && confirmPassword !== password;
-  const canSubmit =
-    displayName !== "" && email !== "" && isPasswordStrong(password) && password === confirmPassword;
+  const canSubmit = displayName !== "" && email !== "" && isPasswordStrong(password) && password === confirmPassword;
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
     try {
       await signup.mutateAsync({ email, password, display_name: displayName });
       navigate("/", { replace: true });
     } catch {
-      // error surfaced via signup.error below
+      // surfaced via signup.error below
     }
   }
 
+  const passwordHint =
+    password.length > 0 && failedRules.length > 0 ? (
+      <>
+        {t("signup.passwordNeeds")}
+        <ul className="auth__rules">
+          {failedRules.map((rule) => (
+            <li key={rule}>{t(`passwordRules.${rule}`, { count: PASSWORD_RULE_COUNTS[rule] })}</li>
+          ))}
+        </ul>
+      </>
+    ) : undefined;
+
   return (
-    <AuthLayout title="Create your account">
-      <form onSubmit={handleSubmit}>
-        <p>No club or invite needed — you'll be able to self-report transponder usage right away.</p>
+    <AuthLayout title={t("signup.title")} subtitle={t("signup.subtitle")}>
+      <form className="auth__form" onSubmit={handleSubmit}>
         <Input
-          label="Display name"
+          label={t("signup.displayName")}
+          autoComplete="name"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           required
         />
         <Input
-          label="Email"
+          label={t("signup.email")}
           type="email"
+          autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
         />
         <Input
-          label="Password"
+          label={t("signup.password")}
           type="password"
+          autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          hint={passwordHint}
           required
         />
-        {passwordTouched && strengthErrors.length > 0 && (
-          <p className="ui-card__hint">Password needs: {strengthErrors.join("; ")}</p>
-        )}
         <Input
-          label="Confirm password"
+          label={t("signup.confirmPassword")}
           type="password"
+          autoComplete="new-password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
+          error={mismatch ? t("signup.mismatch") : undefined}
           required
         />
-        {mismatch && <p role="alert">Passwords don't match</p>}
         {signup.error && (
-          <p role="alert">{signup.error instanceof ApiError ? signup.error.message : "Signup failed"}</p>
+          <p role="alert">
+            {errorMessage(signup.error, {
+              409: t("signup.errors.emailTaken"),
+              429: t("signup.errors.tooManyAttempts"),
+            })}
+          </p>
         )}
-        <Button type="submit" disabled={signup.isPending || !canSubmit}>
-          {signup.isPending ? "Creating account…" : "Sign up"}
+        <Button type="submit" size="lg" block loading={signup.isPending} disabled={!canSubmit}>
+          {signup.isPending ? t("signup.submitting") : t("signup.submit")}
         </Button>
       </form>
-      <p>
-        Already have an account? <a href="/login">Log in</a>
+      <p className="auth__switch">
+        {t("signup.haveAccount")} <Link to="/login">{t("signup.loginLink")}</Link>
       </p>
     </AuthLayout>
   );

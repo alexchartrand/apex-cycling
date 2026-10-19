@@ -40,14 +40,14 @@ function FieldShell({
       )}
       {children}
       {error != null ? (
-        <p className="field__error" id={`${id}-error`} role="alert">
+        <div className="field__error" id={`${id}-error`} role="alert">
           {error}
-        </p>
+        </div>
       ) : (
         hint != null && (
-          <p className="field__hint" id={`${id}-hint`}>
+          <div className="field__hint" id={`${id}-hint`}>
             {hint}
-          </p>
+          </div>
         )
       )}
     </div>

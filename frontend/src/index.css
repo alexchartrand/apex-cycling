@@ -228,25 +228,33 @@ th {
   color: var(--color-text-3);
 }
 
-/* ---------- Auth pages ---------- */
-
-.auth-page {
-  max-width: 420px;
-  margin: 0 auto;
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  gap: var(--space-5);
-  padding: var(--space-6);
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     transition-duration: 0ms !important;
     animation-duration: 0ms !important;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.boot-splash {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  animation: boot-pulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes boot-pulse {
+  from {
+    opacity: 0.45;
   }
 }
