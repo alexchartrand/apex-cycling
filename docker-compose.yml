@@ -47,7 +47,7 @@ services:
         condition: service_started
     # backend runs migrations on start; restart if the worker's first poll
     # races ahead of them and hits missing tables.
-    restart: on-failure
+    restart: "on-failure:5"
 
   frontend:
     build:
