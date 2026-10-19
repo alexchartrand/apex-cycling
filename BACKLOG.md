@@ -21,7 +21,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 - [x] T0.1 Commit in-progress sqorz ports/DI refactor (step 1); add roadmap here
 - [x] T0.2 Mount every backend route under `/api` (client, Vite proxy, Caddyfile)
 - [x] T0.3 Vitest + RTL in frontend; CI: `npm test`, ruff, Postgres `alembic upgrade head` job; fix ruff F821s
-- [ ] T0.4 `.env`-driven dev `docker-compose.yml`
+- [x] T0.4 `.env`-driven dev `docker-compose.yml`
 
 **Phase 1 — Design system & app shell**
 - [ ] T1.1 Semantic design tokens, light + dark ("night session") themes, fonts, dark wordmark, `/styleguide` — ✋ user checkpoint
@@ -101,7 +101,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
   - Why: Backend business logic is tightly coupled to the database layer. Which make maintenance and testting difficult.
   - Notes: Adding manual dependency injection. Use of the repository pattern and DTO
 
-- [ ] 🟡 Fuller `.env`-based config for dev compose — *added 7/23*
+- [x] 🟡 Fuller `.env`-based config for dev compose — *resolved 10/19 (T0.4)* — *added 7/23*
   - Why: `backend/app/core/config.py` already supports `.env` via pydantic-settings, but `docker-compose.yml` still hardcodes Postgres user/password/db name and `CORS_ORIGINS` inline instead of sourcing from `.env`.
   - Notes: dev-only risk today, but worth cleaning up before it's copy-pasted into a real deployment.
 
