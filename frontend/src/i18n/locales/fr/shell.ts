@@ -1,0 +1,39 @@
+import type { LocaleNamespace } from "../types";
+import type en from "../en/shell";
+
+export default {
+  nav: {
+    home: "Accueil",
+    log: "Journal",
+    records: "Records",
+    progress: "Progression",
+    tools: "Outils",
+    aero: "Labo aéro",
+    equipment: "Équipement",
+    coach: "Entraînement",
+    club: "Club",
+    import: "Importer",
+    settings: "Paramètres",
+    more: "Plus",
+  },
+  groups: { training: "Entraînement", analysis: "Analyse", team: "Équipe" },
+  skipToContent: "Aller au contenu",
+  collapseSidebar: "Réduire le menu",
+  expandSidebar: "Agrandir le menu",
+  accountMenu: "Menu du compte",
+  mainNavigation: "Navigation principale",
+  moreTitle: "Plus",
+  preferences: "Préférences",
+  soloAthlete: "Athlète indépendant",
+  comingSoon: {
+    badge: "Bientôt disponible",
+    log: "Toutes vos séances et activités dans une liste et un calendrier — tours sqorz, fichiers FIT, Strava et Intervals.icu.",
+    records: "Vos meilleurs temps au 200 m lancé, au tour lancé, au 500 m, au kilo et en poursuite, par piste, avec l'historique des records.",
+    tools: "Simulations CdA et puissance, planificateur de tableau de marche en poursuite avec affichage bord de piste, calculateurs de braquet et de densité de l'air.",
+    aero: "Estimez votre CdA à partir de la puissance et de la vitesse au tour, et comparez positions et équipements d'un essai à l'autre.",
+    equipment: "Vos vélos et braquets, liés aux séances pour estimer la cadence à partir de la vitesse au tour.",
+    coach: "Vos athlètes en un coup d'œil : dernières séances, nouveaux records, forme et état de synchronisation.",
+    club: "Créez ou rejoignez un club, invitez athlètes et entraîneurs, et gérez les pistes.",
+    settings: "Profil, historique de poids et de FTP, langue, thème et sécurité du compte.",
+  },
+} satisfies LocaleNamespace<typeof en>;

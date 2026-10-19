@@ -27,7 +27,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 - [x] T1.1 Semantic design tokens, light + dark ("night session") themes, fonts, dark wordmark, `/styleguide` — ✋ user checkpoint
 - [x] T1.2 Component library (Radix primitives, StatTile, DataTable, Sheet, Toast, ChartFrame…)
 - [x] T1.3 i18n FR/EN (i18next, Intl formatting) — infra + auth/shell done; remaining screens' strings are extracted as part of their T1.6 restyle
-- [ ] T1.4 Responsive AppShell (desktop sidebar, mobile bottom tabs, user menu, new route skeleton)
+- [x] T1.4 Responsive AppShell (desktop sidebar, mobile bottom tabs, user menu, new route skeleton)
 - [ ] T1.5 PWA (manifest, icons, offline shell, install prompt)
 - [ ] T1.6 Restyle existing screens on the new system (no behavior change)
 - [ ] T1.7 Redesign the velodrome diagram (real outline, lane markings, clean labels, `velodromeGeometry.ts` tests) — ✋ user checkpoint
