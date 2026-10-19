@@ -520,6 +520,9 @@ async def test_list_sessions_and_tracks_endpoints(client, db_session):
     assert sessions_resp.status_code == 200
     sessions_body = sessions_resp.json()
     assert [s["external_event_id"] for s in sessions_body] == ["evt2", "evt1"]
+    assert sessions_body[0]["lap_count"] == 1
+    assert sessions_body[0]["track_names"] == ["Test Track"]
+    assert sessions_body[0]["first_lap_at"].startswith("2026-06-20T10:00:00")
 
     tracks_resp = await client.get(f"/athletes/{athlete_id}/tracks")
     assert tracks_resp.status_code == 200

@@ -1,7 +1,7 @@
 export { Avatar } from "./Avatar";
 export { initialsOf } from "./initials";
 export { Badge, type BadgeTone } from "./Badge";
-export { Button, IconButton, type ButtonSize, type ButtonVariant } from "./Button";
+export { Button, ButtonLink, IconButton, type ButtonSize, type ButtonVariant } from "./Button";
 export { Card } from "./Card";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { DataTable, type DataTableColumn, type RowTone } from "./DataTable";

@@ -21,6 +21,10 @@
     transform var(--duration-fast) var(--ease-out);
 }
 
+a.btn:hover {
+  text-decoration: none;
+}
+
 .btn:active:not(:disabled) {
   transform: translateY(1px);
 }

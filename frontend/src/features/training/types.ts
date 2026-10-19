@@ -2,6 +2,10 @@ export interface SessionSummary {
   external_event_id: string;
   event_name: string;
   event_date: string;
+  lap_count: number;
+  track_names: string[];
+  first_lap_at: string | null;
+  last_lap_at: string | null;
 }
 
 export interface SegmentDetail {

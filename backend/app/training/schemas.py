@@ -48,6 +48,12 @@ class SessionSummary(BaseModel):
     external_event_id: str
     event_name: str
     event_date: date
+    lap_count: int
+    track_names: list[str]
+    # First lap start / last lap start for this athlete — not sqorz's
+    # event window, which spans the whole day for every rider.
+    first_lap_at: datetime | None
+    last_lap_at: datetime | None
 
 
 class TrackViewSummary(BaseModel):

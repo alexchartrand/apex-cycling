@@ -1,25 +1,22 @@
-.import-page__source {
-  max-width: 320px;
+.import-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--space-5);
+  align-items: start;
 }
 
-.import-panel {
+.import-page__main {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-5);
 }
 
-.import-panel__checkbox-row {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
+.import-upcoming .badge {
+  align-self: flex-start;
 }
 
-.import-panel__checkbox-row input[type="checkbox"] {
-  width: auto;
-  padding: 0;
-  border: none;
-}
-
-.import-panel form {
-  max-width: 300px;
+@media (max-width: 1099px) {
+  .import-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

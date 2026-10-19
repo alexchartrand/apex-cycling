@@ -59,7 +59,7 @@ import {
   useToast,
   type DataTableColumn,
 } from "../../components/ui";
-import { formatMs } from "../../features/training/format";
+import { createFormatters } from "../../i18n/format";
 import type { ThemeMode } from "../../theme/theme";
 import { useTheme } from "../../theme/useTheme";
 import "./StyleguidePage.css";
@@ -69,6 +69,8 @@ import "./StyleguidePage.css";
   App.tsx). The "Home preview" section is static mock data used to review
   the design direction before it's rolled out to real screens.
 */
+
+const formatMs = createFormatters("en").lapTime;
 
 const THEME_OPTIONS = [
   { value: "system" as const, label: "System", icon: <Monitor aria-hidden /> },

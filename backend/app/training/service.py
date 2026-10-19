@@ -2,7 +2,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -247,19 +247,53 @@ async def get_session_detail(db: AsyncSession, athlete_id: uuid.UUID, external_e
 
 
 async def list_athlete_sessions(db: AsyncSession, athlete_id: uuid.UUID) -> list[SessionSummary]:
-    events = (
-        await db.scalars(
-            select(TrainingEvent)
+    """Newest first, with per-session aggregates for list views. Two grouped
+    queries (lap stats, track names) rather than loading every lap.
+    """
+    lap_stats = (
+        await db.execute(
+            select(
+                TrainingEvent.id,
+                TrainingEvent.external_event_id,
+                TrainingEvent.name,
+                TrainingEvent.event_date,
+                func.count(TrainingLap.id),
+                func.min(TrainingLap.start_time),
+                func.max(TrainingLap.start_time),
+            )
             .join(EventTrack, EventTrack.training_event_id == TrainingEvent.id)
             .join(TrainingLap, TrainingLap.event_track_id == EventTrack.id)
             .where(TrainingLap.athlete_id == athlete_id)
-            .distinct()
-            .order_by(TrainingEvent.event_date.desc())
+            .group_by(TrainingEvent.id)
+            .order_by(TrainingEvent.event_date.desc(), func.min(TrainingLap.start_time).desc())
         )
     ).all()
+
+    track_rows = (
+        await db.execute(
+            select(EventTrack.training_event_id, Track.name)
+            .join(Track, Track.id == EventTrack.track_id)
+            .join(TrainingLap, TrainingLap.event_track_id == EventTrack.id)
+            .where(TrainingLap.athlete_id == athlete_id)
+            .distinct()
+            .order_by(Track.name)
+        )
+    ).all()
+    tracks_by_event: dict[uuid.UUID, list[str]] = {}
+    for event_id, track_name in track_rows:
+        tracks_by_event.setdefault(event_id, []).append(track_name)
+
     return [
-        SessionSummary(external_event_id=e.external_event_id, event_name=e.name, event_date=e.event_date)
-        for e in events
+        SessionSummary(
+            external_event_id=external_id,
+            event_name=name,
+            event_date=event_date,
+            lap_count=lap_count,
+            track_names=tracks_by_event.get(event_id, []),
+            first_lap_at=first_lap_at,
+            last_lap_at=last_lap_at,
+        )
+        for event_id, external_id, name, event_date, lap_count, first_lap_at, last_lap_at in lap_stats
     ]
 
 

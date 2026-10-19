@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
+import { Link, type LinkProps } from "react-router-dom";
 import "./Button.css";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -54,5 +55,26 @@ export function IconButton({ variant = "ghost", size = "md", className, children
     <Button variant={variant} size={size} className={["btn--icon", className].filter(Boolean).join(" ")} {...props}>
       {children}
     </Button>
+  );
+}
+
+type ButtonLinkProps = Omit<LinkProps, "className"> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  icon?: ReactNode;
+  iconRight?: ReactNode;
+  block?: boolean;
+  className?: string;
+};
+
+/** A router link that looks like a Button (never nest a <button> in an <a>). */
+export function ButtonLink({ variant = "primary", size = "md", icon, iconRight, block, className, children, ...props }: ButtonLinkProps) {
+  const classes = ["btn", `btn--${variant}`, `btn--${size}`, block && "btn--block", className].filter(Boolean).join(" ");
+  return (
+    <Link className={classes} {...props}>
+      {icon}
+      {children != null && <span className="btn__label">{children}</span>}
+      {iconRight}
+    </Link>
   );
 }

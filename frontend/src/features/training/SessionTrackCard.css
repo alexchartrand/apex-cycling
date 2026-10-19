@@ -1,0 +1,40 @@
+.track-card__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.track-card__stats .stat-tile {
+  background: var(--color-surface-2);
+}
+
+.track-card__jump.btn {
+  height: 22px;
+  margin-left: -8px;
+  padding: 0 8px;
+  font-size: var(--text-xs);
+  color: var(--color-accent);
+}
+
+.track-card__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.track-card__controls .field {
+  width: 180px;
+}
+
+@media (max-width: 899px) {
+  .track-card__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .track-card__controls .field {
+    flex: 1;
+    width: auto;
+  }
+}

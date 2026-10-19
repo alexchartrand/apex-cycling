@@ -20,6 +20,7 @@ export function useTransponderAssignments(athleteId: string) {
   return useQuery({
     queryKey: assignmentsKey(athleteId),
     queryFn: () => listTransponderAssignments(athleteId),
+    enabled: athleteId.length > 0,
   });
 }
 

@@ -31,3 +31,12 @@ export const gridProps = {
 } as const;
 
 export const cursorProps = { stroke: "var(--color-border-strong)", strokeWidth: 1 } as const;
+
+/**
+ * Y domain for time-in-ms series, padded and snapped outward to whole
+ * seconds so ticks read "24.0 / 25.0" instead of "24.981 / 25.112".
+ */
+export const secondsDomain: [(min: number) => number, (max: number) => number] = [
+  (min) => Math.floor((min - 150) / 1000) * 1000,
+  (max) => Math.ceil((max + 150) / 1000) * 1000,
+];

@@ -6,10 +6,11 @@ import { SignupPage } from "./features/auth/SignupPage";
 import { ComingSoonPage } from "./routes/ComingSoonPage";
 import { HomePage } from "./routes/HomePage";
 import { ImportPage } from "./routes/ImportPage";
-import { ProfilePage } from "./routes/ProfilePage";
-import { ProgressionPage } from "./routes/ProgressionPage";
+import { LogPage } from "./routes/LogPage";
+import { ProgressPage } from "./routes/ProgressPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
-import { SessionsPage } from "./routes/SessionsPage";
+import { SessionDetailPage } from "./routes/SessionDetailPage";
+import { SettingsPage } from "./routes/SettingsPage";
 
 // Dev-only living style guide; the lazy import keeps it out of prod bundles.
 const StyleguidePage = import.meta.env.DEV
@@ -34,18 +35,18 @@ export function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="/" element={<HomePage />} />
-          <Route path="/log" element={<SessionsPage />} />
-          <Route path="/sessions/:eventId" element={<SessionsPage />} />
+          <Route path="/log" element={<LogPage />} />
+          <Route path="/sessions/:eventId" element={<SessionDetailPage />} />
           <Route path="/activities/:activityId" element={<ComingSoonPage section="log" />} />
           <Route path="/records" element={<ComingSoonPage section="records" />} />
-          <Route path="/progress" element={<ProgressionPage />} />
+          <Route path="/progress" element={<ProgressPage />} />
           <Route path="/tools/*" element={<ComingSoonPage section="tools" />} />
           <Route path="/aero" element={<ComingSoonPage section="aero" />} />
           <Route path="/equipment" element={<ComingSoonPage section="equipment" />} />
           <Route path="/coach" element={<ComingSoonPage section="coach" />} />
           <Route path="/club/*" element={<ComingSoonPage section="club" />} />
           <Route path="/import" element={<ImportPage />} />
-          <Route path="/settings/*" element={<ProfilePage />} />
+          <Route path="/settings/*" element={<SettingsPage />} />
 
           {/* Pre-redesign URLs */}
           <Route path="/sessions" element={<Navigate to="/log" replace />} />

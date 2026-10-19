@@ -1,0 +1,16 @@
+.progress-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.progress-page__filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: start;
+}
+
+.progress-page .recharts-brush-texts {
+  font-size: var(--text-xs);
+  fill: var(--chart-axis);
+}
