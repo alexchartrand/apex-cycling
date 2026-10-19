@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronsLeft, ChevronsRight, Languages, LogOut, Monitor, Moon, MoreHorizontal, Palette, Settings, Sun } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Download, Languages, LogOut, Monitor, Moon, MoreHorizontal, Palette, Settings, Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { BrandMark } from "../brand/BrandMark";
@@ -9,6 +9,8 @@ import { useCurrentUser, useLogout } from "../features/auth/useAuth";
 import { COMPACT_SHELL_QUERY, useMediaQuery } from "../hooks/useMediaQuery";
 import { SUPPORTED_LANGUAGES, type Language } from "../i18n/language";
 import { useLanguage } from "../i18n/useLanguage";
+import { useInstallPrompt } from "../pwa/installPrompt";
+import { PwaStatus } from "../pwa/PwaStatus";
 import type { ThemeMode } from "../theme/theme";
 import { useTheme } from "../theme/useTheme";
 import { LanguageSwitcher, ThemeSwitcher } from "./preferences/PreferenceSwitchers";
@@ -103,6 +105,7 @@ export function AppShell() {
       </aside>
 
       <div className="shell__body">
+        <PwaStatus />
         <header className="shell__topbar">
           <Link to="/" aria-label="ApexCycling">
             <BrandMark size={32} />
@@ -185,6 +188,7 @@ function MoreSheet({
   activeKey: string | undefined;
 }) {
   const { t } = useTranslation("shell");
+  const { install } = useInstallPrompt();
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title={t("moreTitle")}>
       <div className="shell__more-grid">
@@ -208,6 +212,11 @@ function MoreSheet({
           <LanguageSwitcher size="md" />
           <ThemeSwitcher size="md" showLabels />
         </div>
+        {install && (
+          <Button variant="secondary" icon={<Download aria-hidden />} onClick={install}>
+            {t("pwa.install")}
+          </Button>
+        )}
       </div>
     </Dialog>
   );
@@ -227,6 +236,7 @@ function AccountMenu({ variant }: { variant: "full" | "compact" | "avatar" }) {
   const logout = useLogout();
   const { language, setLanguage } = useLanguage();
   const { mode, setMode } = useTheme();
+  const { install } = useInstallPrompt();
   const name = athlete.data?.display_name ?? user?.email ?? "";
 
   const trigger =
@@ -272,6 +282,11 @@ function AccountMenu({ variant }: { variant: "full" | "compact" | "avatar" }) {
         }))}
       />
       <MenuSeparator />
+      {install && (
+        <MenuItem icon={<Download aria-hidden />} onSelect={install}>
+          {t("shell:pwa.install")}
+        </MenuItem>
+      )}
       <MenuItem icon={<LogOut aria-hidden />} tone="danger" onSelect={() => logout.mutate()} disabled={logout.isPending}>
         {t("auth:logout")}
       </MenuItem>

@@ -28,7 +28,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 - [x] T1.2 Component library (Radix primitives, StatTile, DataTable, Sheet, Toast, ChartFrame…)
 - [x] T1.3 i18n FR/EN (i18next, Intl formatting) — infra + auth/shell done; remaining screens' strings are extracted as part of their T1.6 restyle
 - [x] T1.4 Responsive AppShell (desktop sidebar, mobile bottom tabs, user menu, new route skeleton)
-- [ ] T1.5 PWA (manifest, icons, offline shell, install prompt)
+- [x] T1.5 PWA (manifest, icons, offline shell, install prompt)
 - [ ] T1.6 Restyle existing screens on the new system (no behavior change)
 - [ ] T1.7 Redesign the velodrome diagram (real outline, lane markings, clean labels, `velodromeGeometry.ts` tests) — ✋ user checkpoint
 
@@ -53,7 +53,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 - [ ] T4.4 Club pages, athlete switcher, coach dashboard
 
 **Phase 5 — Production on OVH (v1.0 release)**
-- [ ] T5.1 Prod compose for shared host (loopback port, proxy headers, real-IP rate limiting, security headers)
+- [ ] T5.1 Prod compose for shared host (loopback port, proxy headers, real-IP rate limiting, security headers; `Cache-Control: no-cache` on `sw.js`/`index.html` so PWA updates are picked up)
 - [ ] T5.2 Backups (daily pg_dump + uploads, rotation, restore drill)
 - [ ] T5.3 Deploy script, log rotation, healthchecks, full `.env.prod.example`, `create-admin` CLI, OVH guide
 - [ ] T5.4 Structured logs, deep health, worker heartbeat, platform-admin page

@@ -1,0 +1,55 @@
+.pwa-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.pwa-banner svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pwa-banner--offline {
+  background: var(--color-highlight-soft);
+  color: var(--color-highlight-text);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pwa-update {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-5);
+  z-index: 180;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-3);
+}
+
+.pwa-update__icon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-accent);
+}
+
+.pwa-update__text {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+@media (max-width: 899px) {
+  .pwa-update {
+    bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom) + var(--space-3));
+  }
+}

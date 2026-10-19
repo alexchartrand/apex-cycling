@@ -25,6 +25,13 @@ export default {
   moreTitle: "Plus",
   preferences: "Préférences",
   soloAthlete: "Athlète indépendant",
+  pwa: {
+    offline: "Vous êtes hors ligne — affichage des dernières données chargées.",
+    updateAvailable: "Une nouvelle version d'ApexCycling est disponible.",
+    reload: "Mettre à jour",
+    later: "Plus tard",
+    install: "Installer l'application",
+  },
   comingSoon: {
     badge: "Bientôt disponible",
     log: "Toutes vos séances et activités dans une liste et un calendrier — tours sqorz, fichiers FIT, Strava et Intervals.icu.",
