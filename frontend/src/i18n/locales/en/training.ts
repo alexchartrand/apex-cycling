@@ -29,6 +29,12 @@ export default {
     chartCaption: "Lower is faster",
     track: "Track",
   },
+  diagram: {
+    label: "Track diagram with {{count}} timing loops",
+    direction: "Riding direction",
+    loopAria: "{{name}}, {{distance}} from the start line",
+    categories: { pursuit: "Pursuit lines", finish: "Finish line", distance: "Distance markers", other: "Other loops" },
+  },
   progress: {
     title: "Progress",
     description: "Your best time per session for one track and metric, over time.",

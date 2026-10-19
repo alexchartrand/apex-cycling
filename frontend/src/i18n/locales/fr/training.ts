@@ -32,6 +32,12 @@ export default {
     chartCaption: "Plus bas = plus rapide",
     track: "Piste",
   },
+  diagram: {
+    label: "Schéma de la piste avec {{count}} boucles de chronométrage",
+    direction: "Sens de course",
+    loopAria: "{{name}}, à {{distance}} de la ligne de départ",
+    categories: { pursuit: "Lignes de poursuite", finish: "Ligne d'arrivée", distance: "Repères de distance", other: "Autres boucles" },
+  },
   progress: {
     title: "Progression",
     description: "Votre meilleur temps par séance pour une piste et une mesure, au fil du temps.",

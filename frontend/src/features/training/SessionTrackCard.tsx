@@ -5,7 +5,7 @@ import { Button, Card, Select, StatTile } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
 import { LapChart, type LapChartMetric } from "./LapChart";
 import { bestLap, DEFAULT_LAP_DISTANCE_M, flying200Ms, lapNumber, type BestLap } from "./sessionStats";
-import { TrackSchema } from "./TrackSchema";
+import { VelodromeDiagram } from "./VelodromeDiagram";
 import type { TrackLoopSummary, TrackSessionDetail } from "./types";
 import "./SessionTrackCard.css";
 
@@ -92,7 +92,7 @@ export function SessionTrackCard({
         <LapChart laps={track.laps} selectedLapId={selectedLapId} leftMetric={leftMetric} rightMetric={rightMetric} />
       </div>
 
-      <TrackSchema loops={loops} lengthM={lengthM} />
+      <VelodromeDiagram loops={loops} lengthM={lengthM} />
     </Card>
   );
 }

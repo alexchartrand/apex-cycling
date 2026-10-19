@@ -59,6 +59,7 @@ import {
   useToast,
   type DataTableColumn,
 } from "../../components/ui";
+import { VelodromeDiagram } from "../../features/training/VelodromeDiagram";
 import { createFormatters } from "../../i18n/format";
 import type { ThemeMode } from "../../theme/theme";
 import { useTheme } from "../../theme/useTheme";
@@ -106,6 +107,17 @@ const MOCK_FORM = Array.from({ length: 42 }, (_, i) => {
   const fatigue = fitness + Math.sin(i / 2.2) * 9 + 2;
   return { day: i, fitness: +fitness.toFixed(1), fatigue: +fatigue.toFixed(1), form: +(fitness - fatigue).toFixed(1) };
 });
+
+const MOCK_LOOPS = [
+  { id: "fin", name: "Finish", distance_m: 250 },
+  { id: "p1", name: "Poursuite 1", distance_m: 235 },
+  { id: "m100", name: "100m", distance_m: 150 },
+  { id: "p2", name: "Poursuite 2", distance_m: 110 },
+  { id: "m200", name: "200m", distance_m: 50 },
+  { id: "m50", name: "50m", distance_m: null },
+  { id: "a1", name: "Apex1", distance_m: 47.5 },
+  { id: "a2", name: "Apex2", distance_m: 172.5 },
+];
 
 const MOCK_RECORDS = [
   { event: "Flying 200 m", time: "11.482", date: "Oct 17", isNew: true },
@@ -185,6 +197,13 @@ export function StyleguidePage() {
           <Badge tone="accent">Flying</Badge>
           <Badge tone="highlight">Standing start</Badge>
           <Badge>Excluded</Badge>
+        </div>
+      </Section>
+
+      <Section title="Velodrome" note="Real Bromont loop layout; P1 anchors the home straight. Full and mini variants.">
+        <div className="sg__velodrome">
+          <VelodromeDiagram loops={MOCK_LOOPS} lengthM={250} />
+          <VelodromeDiagram loops={MOCK_LOOPS} lengthM={250} variant="mini" />
         </div>
       </Section>
 

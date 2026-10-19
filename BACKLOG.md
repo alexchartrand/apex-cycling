@@ -30,7 +30,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 - [x] T1.4 Responsive AppShell (desktop sidebar, mobile bottom tabs, user menu, new route skeleton)
 - [x] T1.5 PWA (manifest, icons, offline shell, install prompt)
 - [x] T1.6 Restyle existing screens on the new system (no behavior change)
-- [ ] T1.7 Redesign the velodrome diagram (real outline, lane markings, clean labels, `velodromeGeometry.ts` tests) — ✋ user checkpoint
+- [x] T1.7 Redesign the velodrome diagram (real outline, lane markings, clean labels, `velodromeGeometry.ts` tests) — ✋ user checkpoint
 
 **Phase 2 — Athlete profile & account**
 - [ ] T2.1 Profile fields, dated `athlete_metrics` (weight/FTP/HR), user locale/theme prefs

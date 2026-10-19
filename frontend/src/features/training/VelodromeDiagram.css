@@ -1,0 +1,175 @@
+.velodrome {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.velodrome--mini {
+  max-width: 180px;
+}
+
+.velodrome__svg {
+  display: block;
+  height: auto;
+  overflow: visible;
+}
+
+.velodrome__infield {
+  fill: var(--track-infield);
+}
+
+.velodrome__cote {
+  fill: var(--track-cote);
+}
+
+.velodrome__surface {
+  fill: var(--track-surface);
+}
+
+/* Steeper banking reads darker: opacity per curvature level, set inline. */
+.velodrome__banking {
+  fill: var(--track-surface-2);
+}
+
+.velodrome__line {
+  fill: none;
+  stroke-linejoin: round;
+}
+
+.velodrome__line--measure {
+  stroke: var(--track-line-measure);
+  stroke-width: 1.6;
+}
+
+.velodrome__line--sprinter {
+  stroke: var(--track-line-sprinter);
+  stroke-width: 1.3;
+}
+
+.velodrome__line--stayer {
+  stroke: var(--track-line-stayer);
+  stroke-width: 1.3;
+}
+
+.velodrome--mini .velodrome__line--measure {
+  stroke-width: 0.8;
+}
+
+.velodrome__direction line {
+  stroke: var(--color-text-3);
+  stroke-width: 1.5;
+}
+
+.velodrome__direction marker path {
+  fill: var(--color-text-3);
+}
+
+.velodrome__direction text {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  fill: var(--color-text-3);
+}
+
+/* ---------- Timing loops ---------- */
+
+.velodrome__marker {
+  outline: none;
+}
+
+.velodrome__marker[role="button"] {
+  cursor: pointer;
+}
+
+.velodrome__hit {
+  stroke: transparent;
+  stroke-width: 16;
+}
+
+.velodrome__tick {
+  stroke: var(--marker-color);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  transition: stroke-width var(--duration-fast) var(--ease-out);
+}
+
+.velodrome--mini .velodrome__tick {
+  stroke-width: 1.5;
+}
+
+.velodrome__dot {
+  fill: var(--marker-color);
+  stroke: var(--color-surface);
+  stroke-width: 1.5;
+}
+
+.velodrome__leader {
+  stroke: var(--marker-color);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.velodrome__label-bg {
+  fill: var(--color-surface);
+  stroke: var(--marker-color);
+  stroke-width: 1.5;
+  transition:
+    fill var(--duration-fast) var(--ease-out),
+    stroke-width var(--duration-fast) var(--ease-out);
+}
+
+.velodrome__label {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--color-text);
+  pointer-events: none;
+}
+
+/* Hover/focus/selection highlights the whole marker: tick, dot and label. */
+.velodrome__marker--active .velodrome__tick {
+  stroke-width: 4.5;
+}
+
+.velodrome__marker--active .velodrome__label-bg {
+  stroke-width: 2.5;
+}
+
+.velodrome__marker--selected .velodrome__label-bg {
+  fill: var(--marker-color);
+}
+
+.velodrome__marker--selected .velodrome__label {
+  fill: var(--color-surface);
+}
+
+.velodrome__marker:focus-visible .velodrome__label-bg {
+  stroke: var(--color-accent);
+  stroke-width: 3;
+}
+
+.velodrome__legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-2);
+}
+
+.velodrome__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.velodrome__legend-swatch {
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+}
