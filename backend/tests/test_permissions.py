@@ -8,6 +8,7 @@ from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus
 from app.auth.deps import require_athlete_access
 from app.auth.models import User
 from app.clubs.models import Club, ClubMembership, ClubRole
+from app.core.config import API_PREFIX
 from app.main import app as real_app
 
 
@@ -25,7 +26,7 @@ async def probe(athlete=Depends(require_athlete_access)):
     return {"athlete_id": str(athlete.id)}
 
 
-real_app.include_router(probe_router)
+real_app.include_router(probe_router, prefix=API_PREFIX)
 
 
 async def _signup(client, email, display_name="Someone"):
@@ -51,7 +52,7 @@ async def test_unrelated_user_cannot_access_athlete(client, db_session):
     await _signup(client, "owner@example.com")
 
     other_client_transport = ASGITransport(app=real_app)
-    async with AsyncClient(transport=other_client_transport, base_url="http://test") as other_client:
+    async with AsyncClient(transport=other_client_transport, base_url="http://test/api") as other_client:
         await _signup(other_client, "stranger@example.com")
 
         async with db_session() as session:
@@ -67,7 +68,7 @@ async def test_coach_with_active_link_can_access_athlete(client, db_session):
     athlete_data = await _signup(client, "coached@example.com")
 
     coach_transport = ASGITransport(app=real_app)
-    async with AsyncClient(transport=coach_transport, base_url="http://test") as coach_client:
+    async with AsyncClient(transport=coach_transport, base_url="http://test/api") as coach_client:
         coach_data = await _signup(coach_client, "coach@example.com")
 
         async with db_session() as session:
@@ -89,7 +90,7 @@ async def test_coach_with_pending_link_cannot_access_athlete(client, db_session)
     athlete_data = await _signup(client, "pending-athlete@example.com")
 
     coach_transport = ASGITransport(app=real_app)
-    async with AsyncClient(transport=coach_transport, base_url="http://test") as coach_client:
+    async with AsyncClient(transport=coach_transport, base_url="http://test/api") as coach_client:
         coach_data = await _signup(coach_client, "pending-coach@example.com")
 
         async with db_session() as session:

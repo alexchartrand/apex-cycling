@@ -169,7 +169,7 @@ async def test_overlapping_assignment_for_different_athlete_still_rejected(clien
 
     from app.main import app as real_app
 
-    async with AsyncClient(transport=ASGITransport(app=real_app), base_url="http://test") as other_client:
+    async with AsyncClient(transport=ASGITransport(app=real_app), base_url="http://test/api") as other_client:
         user_b = await _signup(other_client, "athlete9b@example.com")
         athlete_b_id = await _self_athlete_id(db_session, user_b["id"])
 
@@ -254,7 +254,7 @@ async def test_non_overlapping_assignments_for_different_athletes_allowed(client
 
     from app.main import app as real_app
 
-    async with AsyncClient(transport=ASGITransport(app=real_app), base_url="http://test") as other_client:
+    async with AsyncClient(transport=ASGITransport(app=real_app), base_url="http://test/api") as other_client:
         user_b = await _signup(other_client, "athlete4b@example.com")
         athlete_b_id = await _self_athlete_id(db_session, user_b["id"])
 
@@ -355,7 +355,7 @@ async def test_unrelated_user_cannot_report_usage_for_other_athlete(client, db_s
 
     from app.main import app as real_app
 
-    async with AsyncClient(transport=ASGITransport(app=real_app), base_url="http://test") as stranger_client:
+    async with AsyncClient(transport=ASGITransport(app=real_app), base_url="http://test/api") as stranger_client:
         await _signup(stranger_client, "stranger-conn@example.com")
 
         resp = await stranger_client.post(

@@ -2,6 +2,11 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Every backend route is mounted under this prefix (see app/main.py), so the
+# edge proxy only has to forward one path to the backend and the SPA can own
+# every other URL.
+API_PREFIX = "/api"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

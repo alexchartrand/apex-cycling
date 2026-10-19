@@ -1,4 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+// Same-origin by default: in dev the Vite server proxies /api to the backend
+// (vite.config.ts), in prod the edge Caddy does (docker/Caddyfile). Set
+// VITE_API_URL only to point a build at a backend on another origin.
+const API_URL = `${import.meta.env.VITE_API_URL ?? ""}/api`;
 
 export class ApiError extends Error {
   status: number;

@@ -56,6 +56,8 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    environment:
+      API_PROXY_TARGET: http://backend:8000
     ports:
       - "5173:5173"
     depends_on:

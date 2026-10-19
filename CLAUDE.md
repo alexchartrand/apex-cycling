@@ -46,6 +46,8 @@ For a SQLite dev DB (skipping Postgres/Alembic entirely), see `backend/tests/con
 
 ## Backend architecture
 
+Every router is mounted under `/api` (`API_PREFIX` in `app/core/config.py`, applied in `app/main.py`); route modules declare their prefixes without it. Tests' `AsyncClient` uses `base_url="http://test/api"` so test paths omit it too. In dev the Vite server proxies `/api` to the backend (`API_PROXY_TARGET`), in prod the edge Caddy does — the SPA always calls same-origin.
+
 Domain modules under `backend/app/`: `auth`, `athletes`, `clubs`, `connections`, `ingestion`, `training`. Each (except `ingestion`) follows `models.py` / `schemas.py` / `router.py`, with a `service.py` where logic doesn't belong in the router.
 
 **Model registration**: `app/db/models.py` re-exports every model class from every module purely so they register on `Base.metadata`. Any script or process that touches the ORM outside of going through `app.main` (seeding, one-off scripts, standalone test setups) must `import app.db.models` first, or SQLAlchemy relationship/FK resolution crashes at first use. `backend/tests/conftest.py` and `app/db/seed.py` both do this.

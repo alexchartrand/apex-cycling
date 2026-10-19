@@ -50,9 +50,9 @@ services:
       context: .
       dockerfile: docker/frontend.prod.Dockerfile
       args:
-        # Same-origin build (see docker/Caddyfile): Caddy proxies /auth,
-        # /athletes, /health to backend and serves this bundle for
-        # everything else on one origin, so leave this blank.
+        # Same-origin build (see docker/Caddyfile): Caddy proxies /api to
+        # backend and serves this bundle for everything else on one
+        # origin, so leave this blank.
         VITE_API_URL: ""
     environment:
       DOMAIN: ${DOMAIN:-localhost}

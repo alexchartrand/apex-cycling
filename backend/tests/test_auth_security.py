@@ -49,7 +49,7 @@ async def test_login_rate_limit_is_per_ip(client, db_session):
     assert exhausted.status_code == 429
 
     other_transport = ASGITransport(app=app, client=("10.0.0.5", 555))
-    async with AsyncClient(transport=other_transport, base_url="http://test") as other_client:
+    async with AsyncClient(transport=other_transport, base_url="http://test/api") as other_client:
         resp = await other_client.post("/auth/login", json=payload)
         assert resp.status_code == 401
 

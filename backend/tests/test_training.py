@@ -248,7 +248,7 @@ async def test_normalize_snapshot_attributes_laps_to_correct_athlete_by_date_ran
     user_a = await _signup(client, "trainA@example.com")
     athlete_a_id = await _self_athlete_id(db_session, user_a["id"])
 
-    async with AsyncClient(transport=ASGITransport(app=real_app), base_url="http://test") as other_client:
+    async with AsyncClient(transport=ASGITransport(app=real_app), base_url="http://test/api") as other_client:
         user_b = await _signup(other_client, "trainB@example.com")
         athlete_b_id = await _self_athlete_id(db_session, user_b["id"])
 
@@ -358,7 +358,7 @@ async def test_normalize_snapshot_gives_each_athlete_their_own_event_copy(client
 
     from app.main import app as real_app
 
-    async with AsyncClient(transport=ASGITransport(app=real_app), base_url="http://test") as other_client:
+    async with AsyncClient(transport=ASGITransport(app=real_app), base_url="http://test/api") as other_client:
         user_b = await _signup(other_client, "trainJ@example.com")
         athlete_b_id = await _self_athlete_id(db_session, user_b["id"])
 

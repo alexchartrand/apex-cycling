@@ -6,7 +6,7 @@ from app.athletes.models import Athlete
 from app.auth.deps import get_current_user
 from app.auth.models import User
 from app.auth.schemas import LoginRequest, SignupRequest, UserRead
-from app.core.config import get_settings
+from app.core.config import API_PREFIX, get_settings
 from app.core.rate_limit import limiter
 from app.core.security import (
     ACCESS_COOKIE_NAME,
@@ -46,7 +46,7 @@ def _set_auth_cookies(response: Response, user_id, remember_me: bool = True) -> 
         # Unchecked "remember me": a browser-session cookie (no max_age) that's
         # gone once the browser closes, on top of the JWT's own shorter expiry.
         max_age=settings.refresh_token_expire_days * 24 * 60 * 60 if remember_me else None,
-        path="/auth",
+        path=f"{API_PREFIX}/auth",
     )
 
 
@@ -121,7 +121,7 @@ async def refresh(
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(response: Response) -> None:
     response.delete_cookie(ACCESS_COOKIE_NAME, path="/")
-    response.delete_cookie(REFRESH_COOKIE_NAME, path="/auth")
+    response.delete_cookie(REFRESH_COOKIE_NAME, path=f"{API_PREFIX}/auth")
 
 
 @router.get("/me", response_model=UserRead)

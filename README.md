@@ -23,11 +23,12 @@ docker compose up --build
 This starts four services:
 
 - `db` — Postgres 16, localhost:5432 (user/pass/db: `apex_cycling`)
-- `backend` — FastAPI, http://localhost:8000 (docs at `/docs`). Runs
-  migrations automatically on start.
+- `backend` — FastAPI, http://localhost:8000 (every route under `/api`,
+  docs at `/api/docs`). Runs migrations automatically on start.
 - `worker` — background APScheduler process that polls sqorz for any
   transponder with a currently-active assignment (no exposed port).
-- `frontend` — http://localhost:5173
+- `frontend` — http://localhost:5173 (the Vite dev server proxies `/api` to
+  the backend, so the SPA and API share one origin, same as in production)
 
 To seed a demo club/coach/athlete roster (all accounts use password
 `devpassword123`):
@@ -85,7 +86,7 @@ python -m app.ingestion.runner
 `docker-compose.prod.yml` builds multi-stage, non-dev images (no bind mounts,
 no `--reload`, no dev dependencies) and fronts the whole stack with a single
 [Caddy](https://caddyserver.com/) container that serves the built frontend
-and reverse-proxies backend routes (`/auth`, `/athletes`, `/health` — see
+and reverse-proxies every backend route (all under `/api` — see
 `docker/Caddyfile`) on the same origin, so the browser never makes a
 cross-origin request and no CORS configuration is needed in production.
 Caddy also handles TLS automatically: point a real domain's DNS at the host
@@ -106,7 +107,7 @@ migrations happen automatically on backend startup, same as dev.
 This exact compose file has been built and run end-to-end in this
 repository (own project name `apex-cycling-prod` so it never shares a
 network or volume with the dev stack): db/backend/worker/frontend all come
-up healthy, `GET /health` and the SPA both serve correctly through Caddy's
+up healthy, `GET /api/health` and the SPA both serve correctly through Caddy's
 TLS (self-signed for `localhost`, real Let's Encrypt for a real domain), and
 a full signup → cookie-authenticated request round-trip works through the
 proxy.
