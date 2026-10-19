@@ -4,6 +4,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel
 
+from app.training.efforts import StartType
+
 
 class SegmentDetail(BaseModel):
     """`time_ms` is this segment's own duration (a delta), not a cumulative
@@ -87,3 +89,36 @@ class ProgressionPoint(BaseModel):
     best_lap_id: uuid.UUID
     time_ms: int
     achieved_distance_m: float | None = None
+
+
+class HalfLapSplitDetail(BaseModel):
+    """Time between two consecutive pursuit-line crossings; null if either
+    crossing was missed.
+    """
+
+    index: int
+    from_line: str
+    to_line: str
+    time_ms: int | None
+
+
+class EffortDetail(BaseModel):
+    """One continuous block of laps. `lap_times_ms` has one entry per lap in
+    `lap_ids`, null for an unfinished lap; `total_time_ms`/`distance_m` only
+    count finished laps, and `distance_m` is null while the track's length
+    is unknown.
+    """
+
+    index: int
+    track_id: uuid.UUID
+    track_name: str
+    start_time: datetime
+    start_type: StartType
+    lap_ids: list[uuid.UUID]
+    completed_lap_count: int
+    lap_times_ms: list[int | None]
+    total_time_ms: int | None
+    best_lap_ms: int | None
+    distance_m: float | None
+    avg_speed_kmh: float | None
+    half_lap_splits: list[HalfLapSplitDetail]

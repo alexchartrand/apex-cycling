@@ -7,8 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.athletes.models import Athlete
 from app.auth.deps import require_athlete_access
 from app.db.session import get_db
-from app.training.schemas import ProgressionMetric, ProgressionPoint, SessionDetail, SessionSummary, TrackSummary
-from app.training.service import get_progression, get_session_detail, list_athlete_sessions, list_athlete_tracks
+from app.training.schemas import EffortDetail, ProgressionMetric, ProgressionPoint, SessionDetail, SessionSummary, TrackSummary
+from app.training.service import (
+    get_progression,
+    get_session_detail,
+    get_session_efforts,
+    list_athlete_sessions,
+    list_athlete_tracks,
+)
 
 router = APIRouter(prefix="/athletes/{athlete_id}", tags=["training"])
 
@@ -42,6 +48,19 @@ async def session_detail(
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
     return detail
+
+
+@router.get("/sessions/{event_id}/efforts", response_model=list[EffortDetail])
+async def session_efforts(
+    athlete_id: uuid.UUID,
+    event_id: str,
+    athlete: Athlete = Depends(require_athlete_access),
+    db: AsyncSession = Depends(get_db),
+) -> list[EffortDetail]:
+    efforts = await get_session_efforts(db, athlete.id, event_id)
+    if efforts is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    return efforts
 
 
 @router.get("/progression", response_model=list[ProgressionPoint])

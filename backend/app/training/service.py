@@ -6,8 +6,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.training.efforts import CheckpointCrossing, LapInput, detect_efforts
 from app.training.models import EventTrack, LapSegmentTime, Track, TrackView, TrainingEvent, TrainingLap
 from app.training.schemas import (
+    EffortDetail,
+    HalfLapSplitDetail,
     LapDetail,
     ProgressionMetric,
     ProgressionPoint,
@@ -179,7 +182,13 @@ def find_best_distance_window(
     return best
 
 
-async def get_session_detail(db: AsyncSession, athlete_id: uuid.UUID, external_event_id: str) -> SessionDetail | None:
+async def _load_event_laps(
+    db: AsyncSession, athlete_id: uuid.UUID, external_event_id: str
+) -> tuple[TrainingEvent, list[TrainingLap]] | None:
+    """The athlete's copy of a session and its laps (oldest first), with
+    tracks, views and checkpoint times loaded. None if the athlete has no
+    such session.
+    """
     event = await db.scalar(
         select(TrainingEvent).where(
             TrainingEvent.external_event_id == external_event_id, TrainingEvent.athlete_id == athlete_id
@@ -203,6 +212,14 @@ async def get_session_detail(db: AsyncSession, athlete_id: uuid.UUID, external_e
             .order_by(TrainingLap.start_time)
         )
     ).all()
+    return event, list(laps)
+
+
+async def get_session_detail(db: AsyncSession, athlete_id: uuid.UUID, external_event_id: str) -> SessionDetail | None:
+    loaded = await _load_event_laps(db, athlete_id, external_event_id)
+    if loaded is None:
+        return None
+    event, laps = loaded
 
     laps_by_track: dict[uuid.UUID, TrackSessionDetail] = {}
     for lap in laps:
@@ -244,6 +261,61 @@ async def get_session_detail(db: AsyncSession, athlete_id: uuid.UUID, external_e
         event_date=event.event_date,
         tracks=list(laps_by_track.values()),
     )
+
+
+def _lap_input(lap: TrainingLap) -> LapInput:
+    return LapInput(
+        lap_id=lap.id,
+        start_time=lap.start_time,
+        from_start=lap.from_start,
+        crossings=tuple(
+            CheckpointCrossing(loop_id=s.track_loop_id, loop_name=s.track_loop.name, time_ms=s.time_ms)
+            for s in sorted(lap.segment_times, key=lambda s: s.sequence_index)
+        ),
+    )
+
+
+async def get_session_efforts(db: AsyncSession, athlete_id: uuid.UUID, external_event_id: str) -> list[EffortDetail] | None:
+    """Continuous lap blocks of one session, oldest first. Detected per
+    track — laps on different tracks are never one effort.
+    """
+    loaded = await _load_event_laps(db, athlete_id, external_event_id)
+    if loaded is None:
+        return None
+    _, laps = loaded
+
+    laps_by_track: dict[uuid.UUID, list[TrainingLap]] = {}
+    for lap in laps:
+        laps_by_track.setdefault(lap.event_track.track_id, []).append(lap)
+
+    detected = []
+    for track_laps in laps_by_track.values():
+        track = track_laps[0].event_track.track
+        for effort in detect_efforts([_lap_input(lap) for lap in track_laps], track.length_m):
+            detected.append((track, effort))
+    detected.sort(key=lambda pair: pair[1].start_time)
+
+    return [
+        EffortDetail(
+            index=index,
+            track_id=track.id,
+            track_name=track.name,
+            start_time=effort.start_time,
+            start_type=effort.start_type,
+            lap_ids=[lap.lap_id for lap in effort.laps],
+            completed_lap_count=effort.completed_lap_count,
+            lap_times_ms=list(effort.lap_times_ms),
+            total_time_ms=effort.total_time_ms,
+            best_lap_ms=effort.best_lap_ms,
+            distance_m=effort.distance_m,
+            avg_speed_kmh=effort.avg_speed_kmh,
+            half_lap_splits=[
+                HalfLapSplitDetail(index=s.index, from_line=s.from_line, to_line=s.to_line, time_ms=s.time_ms)
+                for s in effort.half_lap_splits
+            ],
+        )
+        for index, (track, effort) in enumerate(detected, start=1)
+    ]
 
 
 async def list_athlete_sessions(db: AsyncSession, athlete_id: uuid.UUID) -> list[SessionSummary]:
