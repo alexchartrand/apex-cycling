@@ -7,6 +7,8 @@ COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci --legacy-peer-deps
 
 COPY frontend/ ./
+# physics.test.ts imports the shared test vectors, and `tsc -b` checks tests.
+COPY shared/ /shared/
 
 # Same-origin build: Caddy proxies API paths and serves this bundle from one
 # origin/port, so the app talks to itself via relative paths (no CORS needed).

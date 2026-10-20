@@ -61,7 +61,7 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 - [x] T5.5 First real deploy (https://apex-cycling.net, 10/20) + Playwright smoke suite in `e2e/` (green on the dev stack, a local prod stack and https://apex-cycling.net) — ✋ Phase 5 checkpoint. Still open from the deploy: SMTP and off-host backups (see bugs)
 
 **Phase 6 — Performance tools**
-- [ ] T6.1 Physics core (Python + TS, shared test vectors)
+- [x] T6.1 Physics core (Python + TS, shared test vectors) — standing starts model a start-power surge (2× race power until race pace, force-capped), calibrated on real pursuit/kilo first laps
 - [ ] T6.2 Tools: air density, CdA/power what-if, pursuit planner + trackside board, gear calculator
 
 **Phase 7 — External activities (power/HR/cadence)**

@@ -7,6 +7,8 @@ COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install --legacy-peer-deps
 
 COPY frontend/ ./
+# physics.test.ts imports the shared test vectors, and `tsc -b` checks tests.
+COPY shared/ /shared/
 
 EXPOSE 5173
 

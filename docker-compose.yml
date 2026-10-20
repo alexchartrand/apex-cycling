@@ -63,6 +63,7 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      - ./shared:/shared:ro
     environment:
       API_PROXY_TARGET: http://backend:8000
     ports:
