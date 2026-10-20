@@ -244,6 +244,22 @@ scripts/deploy.sh --no-pull        # https://localhost:8443, self-signed certifi
 `DOMAIN=localhost` makes Caddy use its own private CA, so the browser warns.
 Tear down with `scripts/compose.sh down -v`.
 
+### Smoke tests against a running deployment
+
+`e2e/` is a small Playwright suite that works against any base URL: health
+endpoint, security/caching headers (with `E2E_EDGE=1`, prod edge only), then a
+full journey (redirect when signed out, wrong password, sign up, main pages,
+reload, log out/in, delete the account) that fails on any console error, CSP
+violation or 5xx. It deletes the account it creates, so it is safe against
+production. Signup and login are rate limited per IP, so don't loop it.
+
+```bash
+cd e2e && npm install && npx playwright install chromium   # once
+E2E_BASE_URL=https://apex-cycling.net E2E_EDGE=1 npm test    # production
+E2E_BASE_URL=https://localhost:8443  E2E_EDGE=1 npm test    # local prod stack
+npm test                                                     # dev stack (:5173)
+```
+
 ### Not yet exercised
 
 Issuing a real Let's Encrypt certificate for a public domain, sending real

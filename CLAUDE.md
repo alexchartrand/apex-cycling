@@ -45,6 +45,12 @@ sudo scripts/restore.sh latest                    # replaces ALL data from the n
 scripts/compose.sh exec backend python -m app.auth.cli create-admin <email> "<name>"
 ```
 
+Browser smoke tests (from `e2e/`, Playwright; any base URL, deletes the account it signs up):
+```bash
+npm install && npx playwright install chromium   # once
+E2E_BASE_URL=https://apex-cycling.net E2E_EDGE=1 npm test   # E2E_EDGE=1 also asserts Caddy's headers; default target is the dev stack on :5173
+```
+
 Full stack via Docker (recommended for manual/e2e testing):
 ```bash
 cp .env.example .env

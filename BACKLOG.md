@@ -58,7 +58,7 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 - [x] T5.2 Backups: `backup` service (daily `pg_dump` + uploads tarball, 14 daily / 8 weekly, optional sync to any S3-compatible store such as OVH Object Storage), `scripts/restore.sh`, restore drill run for real
 - [x] T5.3 `scripts/server-setup.sh` (Docker, ufw + fail2ban, swap, unattended upgrades, log caps), `init-env.sh`, `deploy.sh` (build → pre-deploy backup → `up --wait` → health check → automatic rollback; `--rollback`), `compose.sh`, healthchecks on every service, full `.env.prod.example`, `create-admin` CLI (`python -m app.auth.cli`), README AWS guide, CI `prod-config` job
 - [x] T5.4 JSON logs with request id (`X-Request-ID`), deep `/api/health` (503 when DB down), worker heartbeat (`worker_heartbeats` table + file for the container healthcheck), platform-admin page `/admin` (worker status, failed syncs, newest accounts)
-- [ ] T5.5 Playwright e2e smoke suite — ✋ first real deploy with the user (OVH VPS, DNS A record, Let's Encrypt, SMTP, S3 backup target)
+- [x] T5.5 First real deploy (https://apex-cycling.net, 10/20) + Playwright smoke suite in `e2e/` (green on the dev stack, a local prod stack and https://apex-cycling.net) — ✋ Phase 5 checkpoint. Still open from the deploy: SMTP and off-host backups (see bugs)
 
 **Phase 6 — Performance tools**
 - [ ] T6.1 Physics core (Python + TS, shared test vectors)
