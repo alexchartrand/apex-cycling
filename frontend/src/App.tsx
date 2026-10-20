@@ -12,6 +12,7 @@ import { CoachPage } from "./routes/CoachPage";
 import { ComingSoonPage } from "./routes/ComingSoonPage";
 import { HomePage } from "./routes/HomePage";
 import { ActivityPage } from "./routes/ActivityPage";
+import { AeroPage } from "./routes/AeroPage";
 import { ImportPage } from "./routes/ImportPage";
 import { PowerCurvePage } from "./routes/PowerCurvePage";
 import { JoinPage } from "./routes/JoinPage";
@@ -58,7 +59,7 @@ export function App() {
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/power" element={<PowerCurvePage />} />
           <Route path="/tools/*" element={<ToolsPage />} />
-          <Route path="/aero" element={<ComingSoonPage section="aero" />} />
+          <Route path="/aero" element={<AeroPage />} />
           <Route path="/equipment" element={<ComingSoonPage section="equipment" />} />
           <Route path="/coach" element={<CoachPage />} />
           <Route path="/club" element={<ClubsPage />} />

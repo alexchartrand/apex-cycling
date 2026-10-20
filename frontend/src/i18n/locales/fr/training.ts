@@ -15,6 +15,7 @@ export default {
   session: {
     back: "Journal",
     recordings: "Enregistrée avec :",
+    estimateCda: "Estimer le CdA",
     notFound: "Cette séance n'existe pas ou ne vous appartient pas.",
     loadError: "Impossible de charger cette séance.",
     previous: "Séance précédente",

@@ -1,0 +1,172 @@
+.aero-lab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.aero-lab__pick-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-end;
+}
+
+.aero-lab__pick-row > .field {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.aero-lab__pick-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.aero-lab__problem p {
+  margin: 0 0 var(--space-2);
+}
+
+.aero-lab__stats {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.aero-lab__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.aero-lab__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.aero-lab__inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.aero-lab__rho {
+  margin: 0;
+}
+
+.aero-lab__laps {
+  max-height: 32rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.aero-lab__issue {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+
+.aero-lab__save-form {
+  gap: var(--space-4);
+}
+
+.aero-lab__save-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.aero-tests__scenario {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.aero-tests__scenario .field__control {
+  width: auto;
+}
+
+.aero-tests__scenario .aero-tests__power {
+  width: 6rem;
+}
+
+.aero-tests__setup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+}
+
+.aero-tests__detail {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+
+.aero-tests__setup .aero-tests__detail {
+  flex-basis: 100%;
+}
+
+.aero-tests__delta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.aero-tests__number {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.aero-tests__gain {
+  color: var(--color-positive);
+}
+
+.aero-tests__loss {
+  color: var(--color-negative);
+}
+
+.aero-tests__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+@media (max-width: 1099px) {
+  .aero-lab__stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 899px) {
+  .aero-lab__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aero-lab__inputs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .aero-lab__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .aero-lab__pick-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .aero-lab__pick-actions .btn {
+    flex: 1;
+  }
+
+  .aero-lab__save-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

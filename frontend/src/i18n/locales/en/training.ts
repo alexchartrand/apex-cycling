@@ -12,6 +12,7 @@ export default {
   session: {
     back: "Log",
     recordings: "Recorded with:",
+    estimateCda: "Estimate CdA",
     notFound: "This session doesn't exist, or it isn't yours.",
     loadError: "Couldn't load this session.",
     previous: "Previous session",

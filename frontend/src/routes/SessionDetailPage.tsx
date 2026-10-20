@@ -92,6 +92,11 @@ export function SessionDetailPage() {
               {recording.name ?? fmt.time(recording.start_time)}
             </Link>
           ))}
+          {session.activities.some((recording) => recording.has_power) && (
+            <Link to={`/aero?session=${encodeURIComponent(session.external_event_id)}`} className="session-detail__recording">
+              {t("session.estimateCda")}
+            </Link>
+          )}
         </p>
       )}
 

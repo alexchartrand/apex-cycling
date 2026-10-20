@@ -48,7 +48,6 @@ export default {
   },
   comingSoon: {
     badge: "Bientôt disponible",
-    aero: "Estimez votre CdA à partir de la puissance et de la vitesse au tour, et comparez positions et équipements d'un essai à l'autre.",
     equipment: "Vos vélos et braquets, liés aux séances pour estimer la cadence à partir de la vitesse au tour.",
     settings: "Profil, historique de poids et de FTP, langue, thème et sécurité du compte.",
   },

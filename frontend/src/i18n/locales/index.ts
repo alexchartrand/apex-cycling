@@ -1,4 +1,5 @@
 import enActivities from "./en/activities";
+import enAero from "./en/aero";
 import enAdmin from "./en/admin";
 import enAuth from "./en/auth";
 import enClub from "./en/club";
@@ -12,6 +13,7 @@ import enShell from "./en/shell";
 import enTools from "./en/tools";
 import enTraining from "./en/training";
 import frActivities from "./fr/activities";
+import frAero from "./fr/aero";
 import frAdmin from "./fr/admin";
 import frAuth from "./fr/auth";
 import frClub from "./fr/club";
@@ -40,6 +42,7 @@ export const resources = {
     admin: enAdmin,
     tools: enTools,
     activities: enActivities,
+    aero: enAero,
   },
   fr: {
     common: frCommon,
@@ -55,6 +58,7 @@ export const resources = {
     admin: frAdmin,
     tools: frTools,
     activities: frActivities,
+    aero: frAero,
   },
 } as const;
 
