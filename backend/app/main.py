@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.activities.router import analysis_router as activity_analysis_router
 from app.activities.router import router as activities_router
 from app.admin.router import router as admin_router
+from app.aero.router import router as aero_router
 from app.athletes.coach_router import router as coach_links_router
 from app.athletes.router import router as athletes_router
 from app.auth.router import router as auth_router
@@ -75,6 +76,7 @@ api_router.include_router(comments_router)
 api_router.include_router(comments_inbox_router)
 api_router.include_router(tracks_router)
 api_router.include_router(admin_router)
+api_router.include_router(aero_router)
 
 
 @api_router.get("/health")

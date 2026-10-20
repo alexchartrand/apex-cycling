@@ -29,6 +29,26 @@ MIN_SPEED_VARIATION = 0.03
 _PEAK_WIDTH_S = 30.0
 
 
+def _window_pieces(
+    time_s: Sequence[float], values: Sequence[float | None], start: float, end: float
+) -> list[tuple[float, float]]:
+    """(reading, seconds it covers) inside [start, end), each reading held
+    until the next (or for one second before a pause); missing readings left out."""
+    if end <= start or not time_s:
+        return []
+    n = len(time_s)
+    pieces = []
+    i = max(bisect_right(time_s, start) - 1, 0)
+    while i < n and time_s[i] < end:
+        gap = time_s[i + 1] - time_s[i] if i + 1 < n else 1.0
+        hold = gap if gap <= MAX_SAMPLE_GAP_S else 1.0
+        seconds = min(time_s[i] + hold, end) - max(time_s[i], start)
+        if seconds > 0 and values[i] is not None:
+            pieces.append((values[i], seconds))
+        i += 1
+    return pieces
+
+
 def window_mean(
     time_s: Sequence[float],
     values: Sequence[float | None],
@@ -40,20 +60,27 @@ def window_mean(
     """Average of a sampled signal over [start, end), each reading held until
     the next (or for one second before a pause). Missing readings and uncovered
     time don't count; None when less than `min_coverage` of the window has data."""
-    if end <= start or not time_s:
+    stats = window_stats(time_s, values, start, end, min_coverage=min_coverage)
+    return stats[0] if stats else None
+
+
+def window_stats(
+    time_s: Sequence[float],
+    values: Sequence[float | None],
+    start: float,
+    end: float,
+    *,
+    min_coverage: float = 0.5,
+) -> tuple[float, float] | None:
+    """(mean, time-weighted standard deviation) over the window, read like
+    `window_mean`; None when too little of it has data."""
+    pieces = _window_pieces(time_s, values, start, end)
+    covered = sum(seconds for _, seconds in pieces)
+    if not pieces or covered < min_coverage * (end - start):
         return None
-    n = len(time_s)
-    total = covered = 0.0
-    i = max(bisect_right(time_s, start) - 1, 0)
-    while i < n and time_s[i] < end:
-        gap = time_s[i + 1] - time_s[i] if i + 1 < n else 1.0
-        hold = gap if gap <= MAX_SAMPLE_GAP_S else 1.0
-        seconds = min(time_s[i] + hold, end) - max(time_s[i], start)
-        if seconds > 0 and values[i] is not None:
-            covered += seconds
-            total += values[i] * seconds
-        i += 1
-    return total / covered if covered >= min_coverage * (end - start) else None
+    mean = sum(value * seconds for value, seconds in pieces) / covered
+    variance = sum((value - mean) ** 2 * seconds for value, seconds in pieces) / covered
+    return mean, math.sqrt(variance)
 
 
 def best_event_match(

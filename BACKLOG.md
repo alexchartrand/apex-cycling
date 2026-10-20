@@ -74,7 +74,7 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 - [x] T7.7 Import hub (drag-and-drop upload with per-file status, Intervals.icu and Strava cards, sync history), Log list + calendar merging sessions and rides, activity page (zoomable multi-channel chart, zones, power curve, session link + clock offset, notes/RPE), `/power` comparison page, fitness/fatigue/form on Home and Progress, per-lap/effort power in the session views, `/streams` and `/analysis` endpoints — ✋ Phase 7 checkpoint. Checked in a browser (light/dark, EN/FR, phone) on seeded data; screenshots not kept. Open: Strava brand assets/"Connect with Strava" button (Strava reviews apps for more than one athlete), an activity-edit audit log, activities in the coach dashboard
 
 **Phase 8 — Aero lab**
-- [ ] T8.1 CdA/Crr estimation from power + sqorz lap speed
+- [x] T8.1 CdA/Crr estimation from power + sqorz lap speed (`analysis/aero.py`: per-lap energy balance with the speed change taken from the neighbouring laps, automatic steady-lap pick, CdA+Crr least squares when the laps span ≥ 10 % of speed, else Crr held at the default or a given value; `POST /athletes/{id}/sessions/{event}/aero`, inputs default to the track's air and the profile weight). Checked on synthetic laps and a synthetic FIT recording, **not on a real power file yet**
 - [ ] T8.2 Aero tests (setup A/B comparison)
 - [ ] T8.3 Aero lab UI
 

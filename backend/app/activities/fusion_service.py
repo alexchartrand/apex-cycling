@@ -191,7 +191,7 @@ async def suggest(db: AsyncSession, activity: Activity) -> SessionSuggestion:
 
 
 @dataclass
-class _Recording:
+class Recording:
     activity: Activity
     origin: float
     time_s: list[float]
@@ -208,8 +208,17 @@ class _Recording:
         shift = self.origin + self.activity.clock_offset_s
         return fusion.window_mean(self.time_s, self.channels[channel], start - shift, end - shift)
 
+    def stats(self, channel: str, start: float, end: float, *, min_coverage: float) -> tuple[float, float] | None:
+        """(mean, standard deviation) over a window, like `mean`."""
+        if channel not in self.channels:
+            return None
+        shift = self.origin + self.activity.clock_offset_s
+        return fusion.window_stats(
+            self.time_s, self.channels[channel], start - shift, end - shift, min_coverage=min_coverage
+        )
 
-async def _recordings(db: AsyncSession, athlete: Athlete, viewer: User, event: TrainingEvent) -> list[_Recording]:
+
+async def linked_recordings(db: AsyncSession, athlete: Athlete, viewer: User, event: TrainingEvent) -> list[Recording]:
     """The viewer-visible activities linked to the session, with their samples."""
     activities = list(
         await db.scalars(
@@ -228,11 +237,11 @@ async def _recordings(db: AsyncSession, athlete: Athlete, viewer: User, event: T
             for name in ("power_w", "heart_rate", "cadence")
             if (blob := getattr(stream, name)) is not None
         }
-        recordings.append(_Recording(activity, _ts(activity.start_time), streams.unpack("time_s", stream.time_s), channels))
+        recordings.append(Recording(activity, _ts(activity.start_time), streams.unpack("time_s", stream.time_s), channels))
     return recordings
 
 
-def _averages(recordings: list[_Recording], start: float, end: float) -> tuple[float | None, float | None, float | None]:
+def _averages(recordings: list[Recording], start: float, end: float) -> tuple[float | None, float | None, float | None]:
     for recording in recordings:
         if recording.covers(start, end):
             return (
@@ -243,7 +252,7 @@ def _averages(recordings: list[_Recording], start: float, end: float) -> tuple[f
     return None, None, None
 
 
-async def _event(db: AsyncSession, athlete: Athlete, external_event_id: str) -> TrainingEvent | None:
+async def session_event(db: AsyncSession, athlete: Athlete, external_event_id: str) -> TrainingEvent | None:
     return await db.scalar(
         select(TrainingEvent).where(
             TrainingEvent.athlete_id == athlete.id, TrainingEvent.external_event_id == external_event_id
@@ -254,8 +263,8 @@ async def _event(db: AsyncSession, athlete: Athlete, external_event_id: str) -> 
 async def add_activity_metrics_to_session(
     db: AsyncSession, athlete: Athlete, viewer: User, detail: SessionDetail
 ) -> None:
-    event = await _event(db, athlete, detail.external_event_id)
-    recordings = await _recordings(db, athlete, viewer, event) if event else []
+    event = await session_event(db, athlete, detail.external_event_id)
+    recordings = await linked_recordings(db, athlete, viewer, event) if event else []
     detail.activities = [
         LinkedActivity(
             id=r.activity.id,
@@ -283,8 +292,8 @@ async def add_activity_metrics_to_session(
 async def add_activity_metrics_to_efforts(
     db: AsyncSession, athlete: Athlete, viewer: User, external_event_id: str, efforts: list[EffortDetail]
 ) -> None:
-    event = await _event(db, athlete, external_event_id)
-    recordings = await _recordings(db, athlete, viewer, event) if event else []
+    event = await session_event(db, athlete, external_event_id)
+    recordings = await linked_recordings(db, athlete, viewer, event) if event else []
     for effort in efforts:
         if recordings and effort.total_time_ms:
             start = _ts(effort.start_time)
