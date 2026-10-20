@@ -1,5 +1,6 @@
 import logging
 import uuid
+from dataclasses import dataclass
 from datetime import date
 
 from sqlalchemy import select
@@ -33,14 +34,25 @@ async def get_active_sqorz_connection_ids() -> list[uuid.UUID]:
         return list(rows)
 
 
-async def poll_active_connections() -> None:
+@dataclass
+class PollResult:
+    connections: int = 0
+    failures: int = 0
+    last_error: str | None = None
+
+
+async def poll_active_connections() -> PollResult:
     connection_ids = await get_active_sqorz_connection_ids()
     logger.info("Polling %d active sqorz connection(s)", len(connection_ids))
+    result = PollResult(connections=len(connection_ids))
 
     for connection_id in connection_ids:
         try:
             async with AsyncSessionLocal() as db:
                 run = await build_sqorz_ingestion_service(db).ingest_by_id(connection_id)
             logger.info("Connection %s: run status=%s", connection_id, run.status if run else "missing")
-        except Exception:
+        except Exception as exc:
             logger.exception("Ingestion failed for connection %s", connection_id)
+            result.failures += 1
+            result.last_error = f"{connection_id}: {type(exc).__name__}: {exc}"[:500]
+    return result

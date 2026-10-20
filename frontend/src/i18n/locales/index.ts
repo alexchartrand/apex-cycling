@@ -1,3 +1,4 @@
+import enAdmin from "./en/admin";
 import enAuth from "./en/auth";
 import enClub from "./en/club";
 import enCoach from "./en/coach";
@@ -8,6 +9,7 @@ import enRecords from "./en/records";
 import enSettings from "./en/settings";
 import enShell from "./en/shell";
 import enTraining from "./en/training";
+import frAdmin from "./fr/admin";
 import frAuth from "./fr/auth";
 import frClub from "./fr/club";
 import frCoach from "./fr/coach";
@@ -31,6 +33,7 @@ export const resources = {
     settings: enSettings,
     club: enClub,
     coach: enCoach,
+    admin: enAdmin,
   },
   fr: {
     common: frCommon,
@@ -43,6 +46,7 @@ export const resources = {
     settings: frSettings,
     club: frClub,
     coach: frCoach,
+    admin: frAdmin,
   },
 } as const;
 

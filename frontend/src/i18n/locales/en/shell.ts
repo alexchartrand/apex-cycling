@@ -11,6 +11,7 @@ export default {
     club: "Club",
     import: "Import",
     settings: "Settings",
+    admin: "Administration",
     more: "More",
   },
   groups: { training: "Training", analysis: "Analysis", team: "Team" },

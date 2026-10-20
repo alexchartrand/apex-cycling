@@ -1,0 +1,32 @@
+export default {
+  title: "Administration",
+  description: "Is the background worker alive, which syncs are failing, and who signed up lately.",
+  loadFailed: "Couldn't load the status",
+  counts: { users: "Accounts", athletes: "Athletes", clubs: "Clubs", transponders: "Active transponders" },
+  worker: {
+    title: "Background worker",
+    state: { ok: "Running", stale: "Not responding", never: "Never started" },
+    never: "No heartbeat has been recorded yet. Check that the worker container is up.",
+    lastSeen: "Last heartbeat",
+    started: "Started",
+    lastPoll: "Last sqorz poll",
+    pollSummary: "{{when}} — {{count}} connection(s), {{failures}} failed",
+    noPoll: "Not finished yet",
+  },
+  failures: {
+    title: "Failed syncs",
+    none: "No failed syncs",
+    transponder: "Transponder",
+    when: "When",
+    http: "HTTP",
+    error: "Error",
+  },
+  users: {
+    title: "Newest accounts",
+    user: "Account",
+    joined: "Joined",
+    status: "Status",
+    admin: "Admin",
+    inactive: "Inactive",
+  },
+};

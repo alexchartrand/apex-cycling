@@ -1,0 +1,45 @@
+.admin-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.admin-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3);
+}
+
+.admin-worker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.admin-worker__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.admin-worker__facts dt {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+
+.admin-worker__facts dd {
+  margin: 0;
+}
+
+.admin-muted {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+
+.admin-error {
+  margin: 0;
+  color: var(--color-negative);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}

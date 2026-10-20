@@ -5,6 +5,7 @@ import { ForgotPasswordPage } from "./features/auth/ForgotPasswordPage";
 import { LoginPage } from "./features/auth/LoginPage";
 import { ResetPasswordPage } from "./features/auth/ResetPasswordPage";
 import { SignupPage } from "./features/auth/SignupPage";
+import { AdminPage } from "./routes/AdminPage";
 import { ClubPage } from "./routes/ClubPage";
 import { ClubsPage } from "./routes/ClubsPage";
 import { CoachPage } from "./routes/CoachPage";
@@ -56,6 +57,7 @@ export function App() {
           <Route path="/club" element={<ClubsPage />} />
           <Route path="/club/:clubId/*" element={<ClubPage />} />
           <Route path="/join" element={<JoinPage />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/settings/*" element={<SettingsPage />} />
 

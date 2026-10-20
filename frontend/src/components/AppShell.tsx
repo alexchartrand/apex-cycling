@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronsLeft, ChevronsRight, Download, Languages, LogOut, Monitor, Moon, MoreHorizontal, Palette, Settings, Sun } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Download, Languages, LogOut, Monitor, Moon, MoreHorizontal, Palette, Settings, ShieldCheck, Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { BrandMark } from "../brand/BrandMark";
@@ -303,6 +303,11 @@ function AccountMenu({ variant }: { variant: "full" | "compact" | "avatar" }) {
       <MenuItem icon={<Settings aria-hidden />} onSelect={() => navigate("/settings")}>
         {t("shell:nav.settings")}
       </MenuItem>
+      {user?.is_platform_admin && (
+        <MenuItem icon={<ShieldCheck aria-hidden />} onSelect={() => navigate("/admin")}>
+          {t("shell:nav.admin")}
+        </MenuItem>
+      )}
       <MenuSeparator />
       <MenuLabel>
         <Languages aria-hidden className="shell__menu-label-icon" /> {t("common:language")}

@@ -11,6 +11,7 @@ from app.connections.models import (  # noqa: F401
     RawSnapshot,
     TransponderAssignment,
 )
+from app.ops.models import WorkerHeartbeat  # noqa: F401
 from app.training.models import (  # noqa: F401
     EventClass,
     EventTrack,

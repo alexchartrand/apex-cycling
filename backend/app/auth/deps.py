@@ -37,6 +37,12 @@ async def get_current_user(
     return user
 
 
+async def require_platform_admin(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_platform_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Platform admin access required")
+    return current_user
+
+
 async def require_athlete_access(
     athlete_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
