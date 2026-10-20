@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="test" xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
+  <trk>
+    <name>Evening spin</name>
+    <type>cycling</type>
+    <trkseg>
+      <trkpt lat="45.0000" lon="-72.0000">
+        <ele>50.0</ele><time>2026-06-03T18:00:00Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>110</gpxtpx:hr><gpxtpx:cad>70</gpxtpx:cad></gpxtpx:TrackPointExtension><power>150</power></extensions>
+      </trkpt>
+      <trkpt lat="45.0010" lon="-72.0000">
+        <ele>50.0</ele><time>2026-06-03T18:00:10Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>115</gpxtpx:hr><gpxtpx:cad>75</gpxtpx:cad></gpxtpx:TrackPointExtension><power>250</power></extensions>
+      </trkpt>
+      <trkpt lat="45.0020" lon="-72.0000">
+        <ele>51.0</ele><time>2026-06-03T18:00:20Z</time>
+        <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>120</gpxtpx:hr><gpxtpx:cad>80</gpxtpx:cad></gpxtpx:TrackPointExtension><power>350</power></extensions>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

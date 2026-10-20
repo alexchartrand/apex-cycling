@@ -44,7 +44,12 @@ def read_original(relative_path: str) -> bytes:
 
 
 def delete_original(relative_path: str) -> None:
-    _resolve(relative_path).unlink(missing_ok=True)
+    path = _resolve(relative_path)
+    path.unlink(missing_ok=True)
+    try:
+        path.parent.rmdir()  # the athlete's folder, once their last file is gone
+    except OSError:
+        pass
 
 
 def delete_originals_after_commit(db: AsyncSession, relative_paths: list[str]) -> None:

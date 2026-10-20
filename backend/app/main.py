@@ -7,6 +7,7 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.activities.router import router as activities_router
 from app.admin.router import router as admin_router
 from app.athletes.coach_router import router as coach_links_router
 from app.athletes.router import router as athletes_router
@@ -54,6 +55,7 @@ app.add_middleware(RequestLogMiddleware)
 api_router = APIRouter(prefix=API_PREFIX)
 api_router.include_router(auth_router)
 api_router.include_router(athletes_router)
+api_router.include_router(activities_router)
 api_router.include_router(coach_links_router)
 api_router.include_router(clubs_router)
 api_router.include_router(invites_router)

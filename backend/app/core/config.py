@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     # Where original activity files (FIT/TCX/GPX) are kept; an uploads volume
     # in docker (app/activities/storage.py).
     uploads_dir: str = "/data/uploads"
+    # Largest single FIT/TCX/GPX file accepted (a 10-hour ride is ~2 MB).
+    max_activity_file_bytes: int = 15 * 1024 * 1024
 
     sqorz_base_url: str = "https://my.sqorz.com/json/training/transponder"
     sqorz_poll_interval_minutes: int = 20

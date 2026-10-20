@@ -86,6 +86,7 @@ async def test_delete_account_removes_activities_and_original_files(client, db_s
         for model in (Activity, ActivityStream, ActivityPowerCurve):
             assert (await session.scalars(select(model))).all() == []
     assert not (uploads_dir / activity.file_path).exists()
+    assert not (uploads_dir / activity.file_path).parent.exists()
 
 
 async def test_files_survive_a_rolled_back_deletion(db_session, uploads_dir):

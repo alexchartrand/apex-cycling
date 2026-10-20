@@ -66,7 +66,7 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 
 **Phase 7 — External activities (power/HR/cadence)**
 - [x] T7.1 Activities data model (`activities`, `activity_streams`, `activity_power_curves`, migration 0002), compressed streams, uploads storage, Fernet-encrypted connection credentials (`DATA_ENCRYPTION_KEY`, required in `.env.prod` — existing servers must add one before the next deploy; `init-env.sh` generates it for new ones), account export/delete cover activities
-- [ ] T7.2 FIT/TCX/GPX upload + parsing
+- [x] T7.2 FIT/TCX/GPX upload + parsing (`POST /athletes/{id}/activities/upload`, list/get/delete; SHA-256 + same-ride dedupe; originals kept). Parsers were checked against a hand-written FIT encoder and fixtures, **not a real device file** — try one of your own FIT exports before relying on it (open: validate against a real Garmin/Wahoo file)
 - [ ] T7.3 Metrics engine (MMP, NP/IF/TSS, CTL/ATL/TSB with sRPE fallback)
 - [ ] T7.4 Activity ↔ sqorz session fusion (per-lap power/HR/cadence)
 - [ ] T7.5 Intervals.icu sync (the worker needs the `uploads` volume mounted and writable in `docker-compose.prod.yml` + `worker.prod.Dockerfile` to store downloaded FIT files; add `intervals_icu` to the `data_source_provider` Postgres enum in its migration)
