@@ -15,6 +15,8 @@ from app.training.models import (  # noqa: F401
     EventClass,
     EventTrack,
     LapSegmentTime,
+    ManualResult,
+    PersonalRecord,
     Track,
     TrackLoop,
     TrackView,

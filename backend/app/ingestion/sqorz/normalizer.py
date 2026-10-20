@@ -258,7 +258,7 @@ async def _upsert_training_lap(
     await db.flush()
 
 
-async def normalize_snapshot(db: AsyncSession, payload: dict) -> None:
+async def normalize_snapshot(db: AsyncSession, payload: dict) -> set[uuid.UUID]:
     """Upsert a raw sqorz payload (one transponder's full `eventTrainingDetails`
     history) into the normalized training tables.
 
@@ -270,6 +270,9 @@ async def normalize_snapshot(db: AsyncSession, payload: dict) -> None:
     data (`TrainingEvent` and everything under it) is a private per-athlete
     copy, upserted by `(athlete_id, external_id)`, so re-running this against
     the same payload is idempotent and never duplicates rows.
+
+    Returns the ids of the athletes whose data was written, so callers can
+    refresh anything derived from it (e.g. personal records).
     """
     track_cache: dict[tuple[str, str], Track] = {}
     loop_cache: dict[tuple[uuid.UUID, str], TrackLoop] = {}
@@ -277,6 +280,7 @@ async def normalize_snapshot(db: AsyncSession, payload: dict) -> None:
 
     transponder_code = payload.get("transponderCode")
     assignments = await _load_assignments_for_transponder(db, transponder_code) if transponder_code else []
+    attributed_athlete_ids: set[uuid.UUID] = set()
 
     for event_entry in payload.get("eventTrainingDetails") or []:
         account_id = event_entry.get("accountId")
@@ -290,6 +294,7 @@ async def normalize_snapshot(db: AsyncSession, payload: dict) -> None:
         if athlete_id is None:
             continue
 
+        attributed_athlete_ids.add(athlete_id)
         training_event = await _upsert_training_event(db, athlete_id, account_id, detail)
         await _upsert_event_classes(db, training_event, detail.get("classes") or [])
 
@@ -311,3 +316,5 @@ async def normalize_snapshot(db: AsyncSession, payload: dict) -> None:
                     continue
                 event_track, loops_in_order = entry
                 await _upsert_training_lap(db, event_track, loops_in_order, athlete_id, transponder_code, lap_payload)
+
+    return attributed_athlete_ids

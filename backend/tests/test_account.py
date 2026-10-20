@@ -22,6 +22,7 @@ from app.db.base import Base
 from app.ingestion.sqorz.normalizer import normalize_snapshot
 from app.main import app as real_app
 from app.training.models import TrainingLap
+from app.training.records_service import recompute_personal_records
 from tests.test_training import _make_payload
 
 PASSWORD = "Correcthorse123!"
@@ -269,7 +270,13 @@ async def _signup_with_training(client, db_session, email: str, transponder: str
         await session.commit()
     async with db_session() as session:
         await normalize_snapshot(session, _make_payload(transponder_code=transponder))
+        await recompute_personal_records(session, athlete_id)
         await session.commit()
+    manual = await client.post(
+        f"/athletes/{athlete_id}/manual-results",
+        json={"event_key": "500m", "start_type": "standing", "time_ms": 36000, "achieved_on": "2026-06-10", "venue": "Elsewhere"},
+    )
+    assert manual.status_code == 201
     return user, athlete_id
 
 
@@ -284,6 +291,7 @@ async def test_export_contains_profile_and_training_data(client, db_session):
     archive = zipfile.ZipFile(io.BytesIO(resp.content))
     names = set(archive.namelist())
     assert {"account.json", "metrics.csv", "sessions.csv", "laps.csv", "lap_splits.csv", "tracks.csv"} <= names
+    assert {"records.csv", "manual_results.csv"} <= names
 
     account = json.loads(archive.read("account.json"))
     assert account["user"]["email"] == "rider@example.com"
@@ -296,6 +304,10 @@ async def test_export_contains_profile_and_training_data(client, db_session):
     assert len(splits) == 6
     metrics = list(csv.DictReader(io.StringIO(archive.read("metrics.csv").decode())))
     assert metrics[0]["weight_kg"] == "70.0"
+    records = list(csv.DictReader(io.StringIO(archive.read("records.csv").decode())))
+    assert [r["event_key"] for r in records] == ["lap"]
+    manual = list(csv.DictReader(io.StringIO(archive.read("manual_results.csv").decode())))
+    assert [(m["event_key"], m["time_ms"]) for m in manual] == [("500m", "36000")]
 
 
 async def _rows_referencing(session, user_id: uuid.UUID, athlete_id: uuid.UUID) -> list[str]:

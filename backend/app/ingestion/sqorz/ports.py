@@ -3,6 +3,7 @@ implementations are wired together in factory.py; nothing in service.py
 should import sqlalchemy directly, only these interfaces.
 """
 import uuid
+from collections.abc import Collection
 from datetime import datetime
 from typing import Protocol
 
@@ -53,7 +54,15 @@ class RawSnapshotRepositoryPort(Protocol):
 
 
 class SnapshotNormalizerPort(Protocol):
-    async def normalize(self, payload: dict) -> None: ...
+    async def normalize(self, payload: dict) -> set[uuid.UUID]:
+        """Stores the payload's laps; returns the athletes it wrote data for."""
+        ...
+
+
+class AthleteRecordsPort(Protocol):
+    async def recompute(self, athlete_ids: Collection[uuid.UUID]) -> None:
+        """Refreshes data derived from the athletes' laps (personal records)."""
+        ...
 
 
 class UnitOfWorkPort(Protocol):

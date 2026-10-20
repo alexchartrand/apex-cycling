@@ -1,9 +1,11 @@
 import enum
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.training.distances import STANDARD_EVENTS_BY_KEY
 from app.training.efforts import StartType
 
 
@@ -122,3 +124,64 @@ class EffortDetail(BaseModel):
     distance_m: float | None
     avg_speed_kmh: float | None
     half_lap_splits: list[HalfLapSplitDetail]
+
+
+class RecordEntry(BaseModel):
+    """One line of the records board or of a record's history. `place` is
+    the track's name, or the venue text of a manual result with no track.
+    """
+
+    place: str
+    track_id: uuid.UUID | None
+    event_key: str
+    start_type: StartType
+    time_ms: int
+    achieved_on: date
+    source: Literal["sqorz", "manual"]
+    is_competition: bool = False
+    external_event_id: str | None = None
+    lap_id: uuid.UUID | None = None
+    manual_result_id: uuid.UUID | None = None
+
+
+class ManualResultWrite(BaseModel):
+    """A result entered by hand. Either `track_id` or `venue` says where."""
+
+    event_key: str
+    start_type: StartType
+    time_ms: int = Field(gt=0, le=7_200_000)
+    achieved_on: date
+    track_id: uuid.UUID | None = None
+    venue: str | None = Field(default=None, max_length=255)
+    is_competition: bool = False
+    notes: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("venue", "notes")
+    @classmethod
+    def _blank_is_none(cls, value: str | None) -> str | None:
+        value = value.strip() if value else None
+        return value or None
+
+    @model_validator(mode="after")
+    def _check_event_and_place(self) -> "ManualResultWrite":
+        event = STANDARD_EVENTS_BY_KEY.get(self.event_key)
+        if event is None:
+            raise ValueError(f"Unknown event {self.event_key!r}")
+        if self.start_type not in event.start_types:
+            raise ValueError(f"{self.event_key} has no {self.start_type.value} start")
+        if self.track_id is None and self.venue is None:
+            raise ValueError("Give either a track or a venue")
+        return self
+
+
+class ManualResultRead(BaseModel):
+    id: uuid.UUID
+    event_key: str
+    start_type: StartType
+    time_ms: int
+    achieved_on: date
+    track_id: uuid.UUID | None
+    venue: str | None
+    place: str
+    is_competition: bool
+    notes: str | None

@@ -104,11 +104,21 @@ class FakeSnapshotRepo:
 
 
 class FakeNormalizer:
-    def __init__(self):
+    def __init__(self, athlete_ids: set[uuid.UUID] | None = None):
         self.calls: list[dict] = []
+        self._athlete_ids = athlete_ids or set()
 
     async def normalize(self, payload):
         self.calls.append(payload)
+        return self._athlete_ids
+
+
+class FakeRecords:
+    def __init__(self):
+        self.calls: list[set[uuid.UUID]] = []
+
+    async def recompute(self, athlete_ids):
+        self.calls.append(set(athlete_ids))
 
 
 class FakeUnitOfWork:
@@ -119,13 +129,16 @@ class FakeUnitOfWork:
         self.commits += 1
 
 
-def _build_service(*, client, connection_repo=None, run_repo=None, snapshot_repo=None, normalizer=None, uow=None):
+def _build_service(
+    *, client, connection_repo=None, run_repo=None, snapshot_repo=None, normalizer=None, records=None, uow=None
+):
     return SqorzIngestionService(
         client=client,
         connection_repo=connection_repo or FakeConnectionRepo(CONNECTION),
         run_repo=run_repo or FakeRunRepo(),
         snapshot_repo=snapshot_repo or FakeSnapshotRepo(),
         normalizer=normalizer or FakeNormalizer(),
+        records=records or FakeRecords(),
         unit_of_work=uow or FakeUnitOfWork(),
     )
 
@@ -198,3 +211,26 @@ async def test_ingest_by_id_returns_none_for_unknown_connection():
     run = await service.ingest_by_id(uuid.uuid4())
 
     assert run is None
+
+
+async def test_ingest_recomputes_records_for_the_athletes_normalization_touched():
+    athlete_ids = {uuid.uuid4(), uuid.uuid4()}
+    records = FakeRecords()
+    service = _build_service(
+        client=FakeSqorzClient(), normalizer=FakeNormalizer(athlete_ids), records=records
+    )
+
+    await service.ingest(CONNECTION)
+
+    assert records.calls == [athlete_ids]
+
+
+async def test_ingest_does_not_recompute_records_when_the_fetch_fails():
+    records = FakeRecords()
+    service = _build_service(
+        client=FakeSqorzClient(error=SqorzClientError("boom", http_status=503)), records=records
+    )
+
+    await service.ingest(CONNECTION)
+
+    assert records.calls == []

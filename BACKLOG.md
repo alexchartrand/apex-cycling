@@ -40,7 +40,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 **Phase 3 — Track analytics on sqorz data**
 - [x] T3.1 Effort detection (continuous lap blocks, standing/flying, half-lap pursuit splits)
 - [x] T3.2 Multi-lap distances (F200, flying lap, 500m, 750m, 1km, 2/3/4km, custom) — supersedes "Multi-lap custom-distance metric" below
-- [ ] T3.3 Personal records (computed) + manual results
+- [x] T3.3 Personal records (computed) + manual results
 - [ ] T3.4 Session editing (exclude laps, labels, notes, RPE, tags)
 - [ ] T3.5 Data-driven track settings (length, indoor, elevation, hidden loops/views)
 - [ ] T3.6 Session detail rework (overview/laps/efforts/notes tabs, checkpoint click → split column) — supersedes "Wire up a click action…" below

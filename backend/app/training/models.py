@@ -203,3 +203,47 @@ class LapSegmentTime(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     training_lap: Mapped["TrainingLap"] = relationship(back_populates="segment_times")
     track_loop: Mapped["TrackLoop"] = relationship()
+
+
+class PersonalRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """An athlete's best computed result for one standard event on one
+    track and start type (see `training/distances.py::STANDARD_EVENTS`).
+    Derived data: `records_service.recompute_personal_records` rebuilds an
+    athlete's rows from their laps after every sqorz normalization and every
+    lap edit, so never edit these directly. `event_key` / `start_type` are
+    plain strings ("500m", "standing") rather than DB enums.
+    """
+
+    __tablename__ = "personal_records"
+    __table_args__ = (
+        UniqueConstraint("athlete_id", "track_id", "event_key", "start_type", name="uq_personal_record_key"),
+    )
+
+    athlete_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("athletes.id"), index=True)
+    track_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tracks.id"), index=True)
+    event_key: Mapped[str] = mapped_column(String(16))
+    start_type: Mapped[str] = mapped_column(String(16))
+    time_ms: Mapped[int] = mapped_column(Integer)
+    achieved_on: Mapped[date] = mapped_column(Date)
+    training_event_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("training_events.id"), index=True)
+    # First lap of the record performance (a 4 km pursuit spans many).
+    training_lap_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("training_laps.id"), index=True)
+
+
+class ManualResult(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """A result the athlete entered by hand — a race, or a track with no
+    sqorz timing. Counts toward the records board alongside computed
+    records. Either `track_id` (a known track) or free-text `venue`.
+    """
+
+    __tablename__ = "manual_results"
+
+    athlete_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("athletes.id"), index=True)
+    track_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("tracks.id"), nullable=True, index=True)
+    venue: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    event_key: Mapped[str] = mapped_column(String(16))
+    start_type: Mapped[str] = mapped_column(String(16))
+    time_ms: Mapped[int] = mapped_column(Integer)
+    achieved_on: Mapped[date] = mapped_column(Date)
+    is_competition: Mapped[bool] = mapped_column(Boolean, default=False)
+    notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)

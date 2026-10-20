@@ -23,17 +23,20 @@ class StandardEvent:
     """A distance track cyclists race and keep records for. `distance_m`
     None means one lap of whatever track it's ridden on. `view_name` marks
     an event timed by a track view (sqorz's own named checkpoint group)
-    instead of whole laps.
+    instead of whole laps. `start_types` are the starts records are kept
+    for: a flying 200 or a single flying lap is only ever flying, while the
+    longer distances are raced both from a standing start and rolling.
     """
 
     key: str
     distance_m: float | None
     view_name: str | None = None
+    start_types: tuple[StartType, ...] = (StartType.STANDING, StartType.FLYING)
 
 
 STANDARD_EVENTS: tuple[StandardEvent, ...] = (
-    StandardEvent("f200", 200, view_name="200m"),
-    StandardEvent("lap", None),
+    StandardEvent("f200", 200, view_name="200m", start_types=(StartType.FLYING,)),
+    StandardEvent("lap", None, start_types=(StartType.FLYING,)),
     StandardEvent("500m", 500),
     StandardEvent("750m", 750),
     StandardEvent("1km", 1000),
@@ -41,6 +44,8 @@ STANDARD_EVENTS: tuple[StandardEvent, ...] = (
     StandardEvent("3km", 3000),
     StandardEvent("4km", 4000),
 )
+
+STANDARD_EVENTS_BY_KEY: dict[str, StandardEvent] = {event.key: event for event in STANDARD_EVENTS}
 
 
 def laps_for_distance(distance_m: float, track_length_m: float | None) -> int | None:

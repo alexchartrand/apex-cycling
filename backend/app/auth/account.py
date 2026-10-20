@@ -27,6 +27,8 @@ from app.training.models import (
     EventClass,
     EventTrack,
     LapSegmentTime,
+    ManualResult,
+    PersonalRecord,
     Track,
     TrackLoop,
     TrainingEvent,
@@ -112,6 +114,22 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
             ("session_tracks.csv", EventTrack, event_tracks),
             ("laps.csv", TrainingLap, laps),
             ("lap_splits.csv", LapSegmentTime, segments),
+            (
+                "records.csv",
+                PersonalRecord,
+                list(await db.scalars(select(PersonalRecord).where(PersonalRecord.athlete_id == athlete.id))),
+            ),
+            (
+                "manual_results.csv",
+                ManualResult,
+                list(
+                    await db.scalars(
+                        select(ManualResult)
+                        .where(ManualResult.athlete_id == athlete.id)
+                        .order_by(ManualResult.achieved_on)
+                    )
+                ),
+            ),
             ("tracks.csv", Track, list(await db.scalars(select(Track).where(Track.id.in_(track_ids))))),
             (
                 "track_loops.csv",
@@ -149,6 +167,8 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     if athlete is not None:
         event_ids = select(TrainingEvent.id).where(TrainingEvent.athlete_id == athlete.id)
         lap_ids = select(TrainingLap.id).where(TrainingLap.athlete_id == athlete.id)
+        await db.execute(delete(PersonalRecord).where(PersonalRecord.athlete_id == athlete.id))
+        await db.execute(delete(ManualResult).where(ManualResult.athlete_id == athlete.id))
         await db.execute(delete(LapSegmentTime).where(LapSegmentTime.training_lap_id.in_(lap_ids)))
         await db.execute(delete(TrainingLap).where(TrainingLap.athlete_id == athlete.id))
         await db.execute(delete(EventTrack).where(EventTrack.training_event_id.in_(event_ids)))

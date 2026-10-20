@@ -6,6 +6,7 @@ from app.db.base import utcnow
 from app.ingestion.sqorz.client import SqorzClientError
 from app.ingestion.sqorz.dtos import DataSourceConnectionRecord, IngestionRunRecord
 from app.ingestion.sqorz.ports import (
+    AthleteRecordsPort,
     DataSourceConnectionRepositoryPort,
     IngestionRunRepositoryPort,
     RawSnapshotRepositoryPort,
@@ -31,7 +32,8 @@ def _extract_account_info(payload: dict) -> tuple[str | None, str | None]:
 class SqorzIngestionService:
     """Fetches a transponder's full history, dedupes against the latest
     stored snapshot by content hash, records an IngestionRun, and triggers
-    normalization into the query-friendly training tables.
+    normalization into the query-friendly training tables, then refreshes
+    the personal records derived from them.
     """
 
     def __init__(
@@ -42,6 +44,7 @@ class SqorzIngestionService:
         run_repo: IngestionRunRepositoryPort,
         snapshot_repo: RawSnapshotRepositoryPort,
         normalizer: SnapshotNormalizerPort,
+        records: AthleteRecordsPort,
         unit_of_work: UnitOfWorkPort,
     ) -> None:
         self._client = client
@@ -49,6 +52,7 @@ class SqorzIngestionService:
         self._run_repo = run_repo
         self._snapshot_repo = snapshot_repo
         self._normalizer = normalizer
+        self._records = records
         self._unit_of_work = unit_of_work
 
     async def ingest(self, connection: DataSourceConnectionRecord) -> IngestionRunRecord:
@@ -86,7 +90,8 @@ class SqorzIngestionService:
         # Always re-normalize the freshly fetched payload (even if unchanged from
         # the last snapshot) so a newly-added TransponderAssignment backfills
         # attribution for laps that were previously unattributed.
-        await self._normalizer.normalize(payload)
+        athlete_ids = await self._normalizer.normalize(payload)
+        await self._records.recompute(athlete_ids)
 
         run = await self._run_repo.mark_success(run.id, http_status=200, completed_at=utcnow())
 
