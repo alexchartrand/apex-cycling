@@ -17,6 +17,8 @@ from app.training.models import (  # noqa: F401
     LapSegmentTime,
     ManualResult,
     PersonalRecord,
+    SessionComment,
+    SessionCommentRead,
     Track,
     TrackLoop,
     TrackView,

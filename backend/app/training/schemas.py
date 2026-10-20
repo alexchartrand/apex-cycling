@@ -318,3 +318,43 @@ class TrackUpdate(BaseModel):
         if value is None:
             raise ValueError("Send the full list (empty to show everything)")
         return value
+
+
+class CommentWrite(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("body")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("A comment can't be empty")
+        return value
+
+
+class CommentRead(BaseModel):
+    id: uuid.UUID
+    author_user_id: uuid.UUID
+    author_name: str | None
+    # Written by the athlete themself, as opposed to a coach or club admin.
+    by_athlete: bool
+    body: str
+    created_at: datetime
+    edited_at: datetime | None
+    # What the requesting user may do with it.
+    can_edit: bool
+    can_delete: bool
+
+
+class CommentInboxItem(BaseModel):
+    """New comments on one session, for the inbox."""
+
+    athlete_id: uuid.UUID
+    athlete_name: str
+    external_event_id: str
+    event_name: str
+    event_date: date
+    unread_count: int
+    latest_at: datetime
+    latest_author_name: str | None
+    latest_excerpt: str

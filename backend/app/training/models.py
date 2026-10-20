@@ -271,3 +271,30 @@ class ManualResult(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     achieved_on: Mapped[date] = mapped_column(Date)
     is_competition: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
+class SessionComment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """One message in the thread on an athlete's session, between the athlete
+    and the people with access to their data (coaches, club admins). Hangs off
+    the athlete's private `TrainingEvent`, so it goes with it; sync never
+    touches it. Comments an account wrote are deleted with the account.
+    """
+
+    __tablename__ = "session_comments"
+
+    training_event_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("training_events.id"), index=True)
+    author_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    body: Mapped[str] = mapped_column(Text)
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SessionCommentRead(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Where a user has read up to in one session's thread: comments by
+    others newer than `last_read_at` are "new" in their inbox."""
+
+    __tablename__ = "session_comment_reads"
+    __table_args__ = (UniqueConstraint("user_id", "training_event_id", name="uq_session_comment_read"),)
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    training_event_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("training_events.id"), index=True)
+    last_read_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

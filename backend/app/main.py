@@ -12,6 +12,8 @@ from app.connections.router import ingestion_runs_router
 from app.connections.router import router as connections_router
 from app.core.config import API_PREFIX, get_settings
 from app.core.rate_limit import limiter
+from app.training.comments_router import inbox_router as comments_inbox_router
+from app.training.comments_router import router as comments_router
 from app.training.records_router import router as records_router
 from app.training.router import router as training_router
 from app.training.tracks_router import router as tracks_router
@@ -47,6 +49,8 @@ api_router.include_router(connections_router)
 api_router.include_router(ingestion_runs_router)
 api_router.include_router(training_router)
 api_router.include_router(records_router)
+api_router.include_router(comments_router)
+api_router.include_router(comments_inbox_router)
 api_router.include_router(tracks_router)
 
 

@@ -30,6 +30,8 @@ from app.training.models import (
     LapSegmentTime,
     ManualResult,
     PersonalRecord,
+    SessionComment,
+    SessionCommentRead,
     Track,
     TrackLoop,
     TrainingEvent,
@@ -115,6 +117,17 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
                 list(await db.scalars(select(EventClass).where(EventClass.training_event_id.in_(event_ids)))),
             ),
             ("session_tracks.csv", EventTrack, event_tracks),
+            (
+                "session_comments.csv",
+                SessionComment,
+                list(
+                    await db.scalars(
+                        select(SessionComment)
+                        .where(SessionComment.training_event_id.in_(event_ids))
+                        .order_by(SessionComment.created_at)
+                    )
+                ),
+            ),
             ("laps.csv", TrainingLap, laps),
             ("lap_splits.csv", LapSegmentTime, segments),
             (
@@ -171,6 +184,8 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     tracks). Doesn't commit."""
     event_ids = select(TrainingEvent.id).where(TrainingEvent.athlete_id == athlete.id)
     lap_ids = select(TrainingLap.id).where(TrainingLap.athlete_id == athlete.id)
+    await db.execute(delete(SessionComment).where(SessionComment.training_event_id.in_(event_ids)))
+    await db.execute(delete(SessionCommentRead).where(SessionCommentRead.training_event_id.in_(event_ids)))
     await db.execute(delete(PersonalRecord).where(PersonalRecord.athlete_id == athlete.id))
     await db.execute(delete(ManualResult).where(ManualResult.athlete_id == athlete.id))
     await db.execute(delete(LapSegmentTime).where(LapSegmentTime.training_lap_id.in_(lap_ids)))
@@ -203,6 +218,9 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     """
     athlete = await _self_athlete(db, user)
 
+    # What the user wrote in other people's session threads goes with them.
+    await db.execute(delete(SessionComment).where(SessionComment.author_user_id == user.id))
+    await db.execute(delete(SessionCommentRead).where(SessionCommentRead.user_id == user.id))
     await db.execute(delete(CoachAthlete).where(CoachAthlete.coach_user_id == user.id))
     await db.execute(
         update(CoachAthlete).where(CoachAthlete.initiated_by_user_id == user.id).values(initiated_by_user_id=None)
