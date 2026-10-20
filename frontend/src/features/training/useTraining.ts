@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { getProgression, getSessionDetail, listSessions, listTracks } from "./api";
-import type { ProgressionParams } from "./types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getProgression, getSessionDetail, listSessions, listTracks, updateTrack } from "./api";
+import type { ProgressionParams, TrackUpdate } from "./types";
 
 export function useSessions(athleteId: string) {
   return useQuery({
@@ -31,5 +31,17 @@ export function useProgression(athleteId: string, params: ProgressionParams | nu
     queryKey: ["progression", athleteId, params],
     queryFn: () => getProgression(athleteId, params!),
     enabled: params !== null,
+  });
+}
+
+/** Saves a track's settings; a new length changes records and distances, so those refetch too. */
+export function useUpdateTrack(trackId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: TrackUpdate) => updateTrack(trackId, payload),
+    onSuccess: () =>
+      Promise.all(
+        ["tracks", "progression", "records", "session-detail"].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
+      ),
   });
 }

@@ -46,12 +46,16 @@ export interface SessionDetail {
 export interface TrackViewSummary {
   id: string;
   name: string;
+  /** Left out of view pickers (display only). */
+  hidden: boolean;
 }
 
 export interface TrackLoopSummary {
   id: string;
   name: string;
   distance_m: number | null;
+  /** Not drawn on the track diagram (display only). */
+  hidden: boolean;
 }
 
 export interface TrackSummary {
@@ -60,6 +64,21 @@ export interface TrackSummary {
   views: TrackViewSummary[];
   loops: TrackLoopSummary[];
   length_m: number | null;
+  indoor: boolean | null;
+  elevation_m: number | null;
+  default_temp_c: number | null;
+  /** Whether the signed-in user may change these settings. */
+  can_edit: boolean;
+}
+
+/** Fields left out are unchanged; null clears a fact. The hidden lists are the full set to hide. */
+export interface TrackUpdate {
+  length_m?: number | null;
+  indoor?: boolean | null;
+  elevation_m?: number | null;
+  default_temp_c?: number | null;
+  hidden_loop_ids?: string[];
+  hidden_view_ids?: string[];
 }
 
 export type ProgressionMetric = "view" | "lap_time" | "custom_distance";

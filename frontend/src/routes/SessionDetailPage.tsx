@@ -56,7 +56,7 @@ export function SessionDetailPage() {
       <div className="session-detail">
         {detail.data?.tracks.map((track) => {
           const meta = tracks.data?.find((candidate) => candidate.id === track.track_id);
-          return <SessionTrackCard key={track.track_id} track={track} loops={meta?.loops ?? []} lengthM={meta?.length_m} />;
+          return <SessionTrackCard key={track.track_id} track={track} meta={meta} />;
         })}
       </div>
     </>

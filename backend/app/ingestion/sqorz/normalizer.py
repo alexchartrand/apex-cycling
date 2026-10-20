@@ -18,6 +18,17 @@ from app.training.models import (
 )
 
 
+# New loops whose name starts with one of these start out hidden on the track
+# diagram: the Bromont velodrome reports "Courbe 1/2" checkpoints that aren't
+# part of its reference layout. Only a default — editable per track, and a
+# later sync never changes a loop's `hidden`.
+DEFAULT_HIDDEN_LOOP_PREFIXES = ("courbe",)
+
+
+def _is_default_hidden(loop_name: str | None) -> bool:
+    return bool(loop_name) and loop_name.strip().lower().startswith(DEFAULT_HIDDEN_LOOP_PREFIXES)
+
+
 def _parse_iso_datetime(value: str | None) -> datetime | None:
     if value is None:
         return None
@@ -117,7 +128,12 @@ async def _get_or_create_loop(
             select(TrackLoop).where(TrackLoop.track_id == track.id, TrackLoop.external_loop_id == external_loop_id)
         )
         if loop is None:
-            loop = TrackLoop(track_id=track.id, external_loop_id=external_loop_id, name=name or external_loop_id)
+            loop = TrackLoop(
+                track_id=track.id,
+                external_loop_id=external_loop_id,
+                name=name or external_loop_id,
+                hidden=_is_default_hidden(name),
+            )
             db.add(loop)
             await db.flush()
         cache[key] = loop

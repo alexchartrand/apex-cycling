@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 
@@ -384,7 +385,29 @@ async def list_athlete_sessions(db: AsyncSession, athlete_id: uuid.UUID) -> list
     ]
 
 
-async def list_athlete_tracks(db: AsyncSession, athlete_id: uuid.UUID) -> list[TrackSummary]:
+def track_summary(track: Track, *, can_edit: bool) -> TrackSummary:
+    return TrackSummary(
+        id=track.id,
+        name=track.name,
+        views=[TrackViewSummary(id=v.id, name=v.name, hidden=v.hidden) for v in track.views],
+        length_m=track.length_m,
+        indoor=track.indoor,
+        elevation_m=track.elevation_m,
+        default_temp_c=track.default_temp_c,
+        can_edit=can_edit,
+        loops=sorted(
+            (
+                TrackLoopSummary(id=loop.id, name=loop.name, distance_m=loop.distance_m, hidden=loop.hidden)
+                for loop in track.loops
+            ),
+            key=lambda loop: (loop.distance_m is None, loop.distance_m if loop.distance_m is not None else 0.0),
+        ),
+    )
+
+
+async def list_athlete_tracks(
+    db: AsyncSession, athlete_id: uuid.UUID, *, can_edit: Callable[[Track], bool] = lambda track: False
+) -> list[TrackSummary]:
     tracks = (
         await db.scalars(
             select(Track)
@@ -396,19 +419,7 @@ async def list_athlete_tracks(db: AsyncSession, athlete_id: uuid.UUID) -> list[T
             .order_by(Track.name)
         )
     ).all()
-    return [
-        TrackSummary(
-            id=t.id,
-            name=t.name,
-            views=[TrackViewSummary(id=v.id, name=v.name) for v in t.views],
-            length_m=t.length_m,
-            loops=sorted(
-                (TrackLoopSummary(id=loop.id, name=loop.name, distance_m=loop.distance_m) for loop in t.loops),
-                key=lambda loop: (loop.distance_m is None, loop.distance_m if loop.distance_m is not None else 0.0),
-            ),
-        )
-        for t in tracks
-    ]
+    return [track_summary(t, can_edit=can_edit(t)) for t in tracks]
 
 
 async def _athlete_laps_for_track(

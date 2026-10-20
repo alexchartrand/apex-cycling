@@ -2,7 +2,6 @@ import { useMemo, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useElementWidth } from "../../hooks/useElementWidth";
 import { useFormat } from "../../i18n/useFormat";
-import type { TrackLoopSummary } from "./types";
 import {
   bounds,
   buildVelodrome,
@@ -14,15 +13,11 @@ import {
   placeLoops,
   pointAt,
   type LoopCategory,
+  type LoopInput,
   type PlacedLoop,
   type Velodrome,
 } from "./velodromeGeometry";
 import "./VelodromeDiagram.css";
-
-// Loops not drawn for now: real sqorz data for the Bromont track has extra
-// "Courbe 1/2" checkpoints that aren't part of the reference layout.
-// Becomes a per-track setting in T3.5.
-const DEFAULT_HIDDEN_PREFIXES = ["courbe"];
 
 const CATEGORY_COLORS: Record<LoopCategory, string> = {
   pursuit: "var(--color-marker)",
@@ -38,9 +33,8 @@ const BANKING_LEVELS = 12;
 type Variant = "full" | "mini";
 
 type Props = {
-  loops: TrackLoopSummary[];
+  loops: LoopInput[];
   lengthM: number | null | undefined;
-  hiddenLoopPrefixes?: string[];
   /** Controlled selection; omit to let the diagram manage it. */
   selectedLoopId?: string | null;
   onSelectLoop?: (loopId: string | null) => void;
@@ -106,7 +100,6 @@ function bankingPaths(track: Velodrome, layout: Layout): string[] {
 export function VelodromeDiagram({
   loops,
   lengthM,
-  hiddenLoopPrefixes = DEFAULT_HIDDEN_PREFIXES,
   selectedLoopId,
   onSelectLoop,
   variant = "full",
@@ -118,7 +111,7 @@ export function VelodromeDiagram({
   const [hovered, setHovered] = useState<string | null>(null);
   const selected = selectedLoopId !== undefined ? selectedLoopId : internalSelected;
 
-  const placement = useMemo(() => placeLoops(loops, lengthM, hiddenLoopPrefixes), [loops, lengthM, hiddenLoopPrefixes]);
+  const placement = useMemo(() => placeLoops(loops, lengthM), [loops, lengthM]);
   const track = useMemo(() => (placement ? buildVelodrome(placement.lengthM) : null), [placement]);
   const layout = useMemo(() => (track ? computeLayout(track, width, variant) : null), [track, width, variant]);
 

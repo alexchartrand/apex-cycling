@@ -160,11 +160,12 @@ export function isPursuitOne(name: string): boolean {
 /** "200m" / "50 m" style split markers name the REMAINING distance to the finish line. */
 export const NAMED_DISTANCE_PATTERN = /^(\d+(?:\.\d+)?)\s*m$/i;
 
-export type LoopInput = { id: string; name: string; distance_m: number | null };
+export type LoopInput = { id: string; name: string; distance_m: number | null; hidden?: boolean };
 export type PlacedLoop = { id: string; name: string; category: LoopCategory; distanceM: number; s: number };
 
 /**
- * Places loops on the diagram:
+ * Places loops on the diagram (loops flagged `hidden` — a per-track setting —
+ * are left out entirely, including from the furthest-distance length fallback):
  *  - track length is the manually set `lengthM`, else the furthest reported
  *    checkpoint distance (a rough fallback — sqorz never reports length);
  *  - a missing `distance_m` is recovered from "NNNm" names (remaining
@@ -175,11 +176,8 @@ export type PlacedLoop = { id: string; name: string; category: LoopCategory; dis
 export function placeLoops(
   loops: LoopInput[],
   lengthM: number | null | undefined,
-  hiddenPrefixes: string[] = [],
 ): { lengthM: number; placed: PlacedLoop[] } | null {
-  const visible = loops.filter(
-    (loop) => !hiddenPrefixes.some((prefix) => loop.name.trim().toLowerCase().startsWith(prefix)),
-  );
+  const visible = loops.filter((loop) => !loop.hidden);
   const total =
     lengthM ||
     visible.reduce((max, loop) => (loop.distance_m != null ? Math.max(max, loop.distance_m) : max), 0) ||

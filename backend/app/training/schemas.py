@@ -75,20 +75,30 @@ class SessionSummary(BaseModel):
 class TrackViewSummary(BaseModel):
     id: uuid.UUID
     name: str
+    hidden: bool
 
 
 class TrackLoopSummary(BaseModel):
     id: uuid.UUID
     name: str
     distance_m: float | None
+    hidden: bool
 
 
 class TrackSummary(BaseModel):
+    """`hidden` loops/views are display-only choices; `can_edit` says whether
+    the requesting user may change this track's settings.
+    """
+
     id: uuid.UUID
     name: str
     views: list[TrackViewSummary]
     loops: list[TrackLoopSummary]
     length_m: float | None
+    indoor: bool | None
+    elevation_m: float | None
+    default_temp_c: float | None
+    can_edit: bool
 
 
 class ProgressionMetric(str, enum.Enum):
@@ -284,3 +294,24 @@ class EffortLabelUpdate(BaseModel):
 class EffortLabel(BaseModel):
     first_lap_id: uuid.UUID
     label: str | None
+
+
+class TrackUpdate(BaseModel):
+    """PATCH body: only the fields sent change. The facts (length…) may be
+    null to clear them; `hidden_loop_ids` / `hidden_view_ids` are the full
+    set to hide on this track (everything else is shown).
+    """
+
+    length_m: float | None = Field(default=None, gt=0, le=1000)
+    indoor: bool | None = None
+    elevation_m: float | None = Field(default=None, ge=-500, le=6000)
+    default_temp_c: float | None = Field(default=None, ge=-40, le=60)
+    hidden_loop_ids: list[uuid.UUID] | None = None
+    hidden_view_ids: list[uuid.UUID] | None = None
+
+    @field_validator("hidden_loop_ids", "hidden_view_ids")
+    @classmethod
+    def _sets_not_null(cls, value: list[uuid.UUID] | None) -> list[uuid.UUID]:
+        if value is None:
+            raise ValueError("Send the full list (empty to show everything)")
+        return value

@@ -86,7 +86,7 @@ export function ProgressPage() {
             >
               <option value="lap_time">{t("progress.metrics.lapTime")}</option>
               <option value="custom_distance">{t("progress.metrics.customDistance")}</option>
-              {selectedTrack?.views.map((view) => (
+              {selectedTrack?.views.filter((view) => !view.hidden).map((view) => (
                 <option key={view.id} value={`${VIEW_PREFIX}${view.id}`}>
                   {view.name}
                 </option>

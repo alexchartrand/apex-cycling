@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.athletes.models import Athlete
-from app.auth.deps import require_athlete_access
+from app.auth.deps import get_current_user, require_athlete_access
+from app.auth.models import User
 from app.db.session import get_db
 from app.training.edit_service import set_effort_label, update_lap, update_session
 from app.training.efforts import StartType
@@ -23,6 +24,7 @@ from app.training.schemas import (
     SessionUpdate,
     TrackSummary,
 )
+from app.training.tracks_service import can_edit_track
 from app.training.service import (
     get_progression,
     get_session_detail,
@@ -47,9 +49,10 @@ async def sessions(
 async def tracks(
     athlete_id: uuid.UUID,
     athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[TrackSummary]:
-    return await list_athlete_tracks(db, athlete.id)
+    return await list_athlete_tracks(db, athlete.id, can_edit=lambda track: can_edit_track(current_user, track))
 
 
 @router.get("/sessions/{event_id}", response_model=SessionDetail)

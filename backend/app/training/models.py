@@ -27,6 +27,11 @@ class Track(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # ingestion path; it's a manually-set fact about the physical facility,
     # used to place sensors proportionally on the track schema diagram.
     length_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # More manually-set facts about the facility (see `tracks_service`); sync
+    # never writes them. Null = not known.
+    indoor: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    elevation_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+    default_temp_c: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     loops: Mapped[list["TrackLoop"]] = relationship(back_populates="track")
     views: Mapped[list["TrackView"]] = relationship(back_populates="track")
@@ -49,6 +54,9 @@ class TrackLoop(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     external_loop_id: Mapped[str] = mapped_column(String(255), index=True)
     name: Mapped[str] = mapped_column(String(255))
     distance_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Not drawn on the track diagram (an extra checkpoint that isn't part of
+    # the reference layout). Display only — timings still use the loop.
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     track: Mapped["Track"] = relationship(back_populates="loops")
 
@@ -65,6 +73,8 @@ class TrackView(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     external_track_view_id: Mapped[str] = mapped_column(String(255), index=True)
     name: Mapped[str] = mapped_column(String(255))
     circuit: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Left out of view pickers (progression…); display only.
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     track: Mapped["Track"] = relationship(back_populates="views")
     view_loops: Mapped[list["TrackViewLoop"]] = relationship(

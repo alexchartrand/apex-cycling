@@ -1,31 +1,26 @@
 import { useMemo, useRef, useState } from "react";
-import { Flag, ListOrdered, Route, Timer } from "lucide-react";
+import { Flag, ListOrdered, Route, SlidersHorizontal, Timer } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button, Card, Select, StatTile } from "../../components/ui";
+import { Button, Card, IconButton, Select, StatTile, Tooltip } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
 import { LapChart, type LapChartMetric } from "./LapChart";
 import { bestLap, DEFAULT_LAP_DISTANCE_M, flying200Ms, lapNumber, type BestLap } from "./sessionStats";
 import { VelodromeDiagram } from "./VelodromeDiagram";
-import type { TrackLoopSummary, TrackSessionDetail } from "./types";
+import { TrackSettingsDialog } from "./TrackSettingsDialog";
+import type { TrackSessionDetail, TrackSummary } from "./types";
 import "./SessionTrackCard.css";
 
 const METRICS: LapChartMetric[] = ["lapTime", "flying200", "none"];
 
-export function SessionTrackCard({
-  track,
-  loops,
-  lengthM,
-}: {
-  track: TrackSessionDetail;
-  loops: TrackLoopSummary[];
-  lengthM: number | null | undefined;
-}) {
+export function SessionTrackCard({ track, meta }: { track: TrackSessionDetail; meta: TrackSummary | undefined }) {
   const { t } = useTranslation("training");
   const fmt = useFormat();
   const [selectedLapId, setSelectedLapId] = useState<string | null>(null);
   const [leftMetric, setLeftMetric] = useState<LapChartMetric>("lapTime");
   const [rightMetric, setRightMetric] = useState<LapChartMetric>("flying200");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
+  const lengthM = meta?.length_m;
 
   const bestLapTime = useMemo(() => bestLap(track.laps, (lap) => lap.whole_lap_time_ms), [track.laps]);
   const bestFlying200 = useMemo(() => bestLap(track.laps, flying200Ms), [track.laps]);
@@ -46,7 +41,19 @@ export function SessionTrackCard({
   }
 
   return (
-    <Card eyebrow={t("session.track")} title={track.track_name}>
+    <Card
+      eyebrow={t("session.track")}
+      title={track.track_name}
+      actions={
+        meta?.can_edit ? (
+          <Tooltip content={t("trackSettings.open")}>
+            <IconButton aria-label={t("trackSettings.open")} variant="ghost" onClick={() => setSettingsOpen(true)}>
+              <SlidersHorizontal aria-hidden />
+            </IconButton>
+          </Tooltip>
+        ) : undefined
+      }
+    >
       <div className="track-card__stats">
         <StatTile label={t("session.laps")} icon={<ListOrdered aria-hidden />} value={track.laps.length} />
         <StatTile
@@ -92,7 +99,8 @@ export function SessionTrackCard({
         <LapChart laps={track.laps} selectedLapId={selectedLapId} leftMetric={leftMetric} rightMetric={rightMetric} />
       </div>
 
-      <VelodromeDiagram loops={loops} lengthM={lengthM} />
+      <VelodromeDiagram loops={meta?.loops ?? []} lengthM={lengthM} />
+      {meta?.can_edit && <TrackSettingsDialog track={meta} open={settingsOpen} onOpenChange={setSettingsOpen} />}
     </Card>
   );
 }

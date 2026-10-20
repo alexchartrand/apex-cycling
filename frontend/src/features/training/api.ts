@@ -5,6 +5,7 @@ import type {
   SessionDetail,
   SessionSummary,
   TrackSummary,
+  TrackUpdate,
 } from "./types";
 
 export function listSessions(athleteId: string): Promise<SessionSummary[]> {
@@ -28,4 +29,8 @@ export function getProgression(athleteId: string, params: ProgressionParams): Pr
   if (params.from) query.set("from", params.from);
   if (params.to) query.set("to", params.to);
   return apiFetch<ProgressionPoint[]>(`/athletes/${athleteId}/progression?${query.toString()}`);
+}
+
+export function updateTrack(trackId: string, payload: TrackUpdate): Promise<TrackSummary> {
+  return apiFetch<TrackSummary>(`/tracks/${trackId}`, { method: "PATCH", body: JSON.stringify(payload) });
 }

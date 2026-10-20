@@ -11,6 +11,7 @@ from app.core.config import API_PREFIX, get_settings
 from app.core.rate_limit import limiter
 from app.training.records_router import router as records_router
 from app.training.router import router as training_router
+from app.training.tracks_router import router as tracks_router
 
 settings = get_settings()
 
@@ -40,6 +41,7 @@ api_router.include_router(connections_router)
 api_router.include_router(ingestion_runs_router)
 api_router.include_router(training_router)
 api_router.include_router(records_router)
+api_router.include_router(tracks_router)
 
 
 @api_router.get("/health")

@@ -65,11 +65,11 @@ describe("placeLoops", () => {
     { id: "m200", name: "200m", distance_m: 50 },
     { id: "m50", name: "50m", distance_m: null },
     { id: "p1", name: "P1", distance_m: 237.5 },
-    { id: "curve", name: "Courbe 1", distance_m: 60 },
+    { id: "curve", name: "Courbe 1", distance_m: 60, hidden: true },
   ];
 
   it("anchors P1 on the home straight and puts P2 exactly opposite", () => {
-    const result = placeLoops(loops, 250, ["courbe"])!;
+    const result = placeLoops(loops, 250)!;
     const byId = Object.fromEntries(result.placed.map((p) => [p.id, p]));
     expect(byId.p1.s).toBe(0);
     expect(byId.p2.s).toBe(125);
@@ -79,19 +79,19 @@ describe("placeLoops", () => {
   });
 
   it("puts the finish line 12.5 m after P1, further along the home straight", () => {
-    const result = placeLoops(loops, 250, ["courbe"])!;
+    const result = placeLoops(loops, 250)!;
     const finish = result.placed.find((p) => p.id === "fin")!;
     expect(finish.s).toBe(12.5);
     expect(pointAt(track, finish.s).x).toBeGreaterThan(pointAt(track, 0).x);
   });
 
   it("recovers a missing distance from an 'NNNm' name", () => {
-    const result = placeLoops(loops, 250, ["courbe"])!;
+    const result = placeLoops(loops, 250)!;
     expect(result.placed.find((p) => p.id === "m50")!.distanceM).toBe(200);
   });
 
-  it("hides loops by name prefix and categorizes the rest", () => {
-    const result = placeLoops(loops, 250, ["courbe"])!;
+  it("leaves out loops flagged hidden and categorizes the rest", () => {
+    const result = placeLoops(loops, 250)!;
     expect(result.placed.map((p) => p.id)).not.toContain("curve");
     expect(categorizeLoop("Dép-Arr")).toBe("finish");
     expect(categorizeLoop("P1")).toBe("pursuit");
