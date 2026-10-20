@@ -1,0 +1,30 @@
+.activity-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.activity-page .badge {
+  align-self: flex-start;
+}
+
+.activity-page__zones {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.activity-page__side {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 899px) {
+  .activity-page__zones,
+  .activity-page__side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

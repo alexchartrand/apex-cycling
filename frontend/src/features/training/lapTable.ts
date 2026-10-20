@@ -38,6 +38,15 @@ export function lapSpeedKmh(lap: LapDetail, lapLengthM: number | null | undefine
   return lapLengthM && ms ? (lapLengthM / (ms / 1000)) * 3.6 : null;
 }
 
+/** Which recorded channels any lap of the table has, so empty columns stay out. */
+export function recordingColumns(laps: LapDetail[]): { power: boolean; heartRate: boolean; cadence: boolean } {
+  return {
+    power: laps.some((lap) => lap.avg_power_w != null),
+    heartRate: laps.some((lap) => lap.avg_heart_rate != null),
+    cadence: laps.some((lap) => lap.avg_cadence != null),
+  };
+}
+
 function csvField(value: string | number | null): string {
   if (value == null) return "";
   const text = String(value);
@@ -45,13 +54,27 @@ function csvField(value: string | number | null): string {
 }
 
 const seconds = (ms: number | null) => (ms == null ? null : (ms / 1000).toFixed(3));
+const rounded = (value: number | null | undefined) => (value == null ? null : Math.round(value));
 
 /**
  * The lap table as CSV. Deliberately machine-readable whatever the UI
  * language: comma separated, "." decimals, seconds, ISO timestamps.
  */
 export function lapsToCsv(laps: LapDetail[], columns: SplitColumn[], lapLengthM: number | null | undefined): string {
-  const header = ["lap", "start_time", "lap_time_s", "speed_kmh", "flying_200_s", ...columns.map((c) => `${c.name}_s`), "excluded", "label"];
+  const recorded = recordingColumns(laps);
+  const header = [
+    "lap",
+    "start_time",
+    "lap_time_s",
+    "speed_kmh",
+    "flying_200_s",
+    ...(recorded.power ? ["avg_power_w"] : []),
+    ...(recorded.heartRate ? ["avg_heart_rate_bpm"] : []),
+    ...(recorded.cadence ? ["avg_cadence_rpm"] : []),
+    ...columns.map((c) => `${c.name}_s`),
+    "excluded",
+    "label",
+  ];
   const rows = laps.map((lap, index) => {
     const speed = lapSpeedKmh(lap, lapLengthM);
     return [
@@ -60,6 +83,9 @@ export function lapsToCsv(laps: LapDetail[], columns: SplitColumn[], lapLengthM:
       seconds(lap.whole_lap_time_ms),
       speed == null ? null : speed.toFixed(2),
       seconds(flying200Ms(lap)),
+      ...(recorded.power ? [rounded(lap.avg_power_w)] : []),
+      ...(recorded.heartRate ? [rounded(lap.avg_heart_rate)] : []),
+      ...(recorded.cadence ? [rounded(lap.avg_cadence)] : []),
       ...columns.map((c) => seconds(splitMs(lap, c.loopId))),
       lap.excluded ? "yes" : "no",
       lap.label,

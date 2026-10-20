@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, SearchX } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { ButtonLink, EmptyState, PageHeader, SkeletonGroup, TabPanel, Tabs, Tooltip, type TabItem } from "../components/ui";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
@@ -83,6 +83,17 @@ export function SessionDetailPage() {
       {detail.isLoading && <SkeletonGroup lines={8} />}
       {notFound && <EmptyState icon={<SearchX aria-hidden />} title={t("session.notFound")} />}
       {detail.isError && !notFound && <p role="alert">{t("session.loadError")}</p>}
+
+      {session && session.activities && session.activities.length > 0 && (
+        <p className="session-detail__recordings">
+          <span>{t("session.recordings")}</span>
+          {session.activities.map((recording) => (
+            <Link key={recording.id} to={`/activities/${recording.id}`} className="session-detail__recording">
+              {recording.name ?? fmt.time(recording.start_time)}
+            </Link>
+          ))}
+        </p>
+      )}
 
       {session && (
         <Tabs items={items} value={tab} onValueChange={selectTab} aria-label={t("session.tabs.label")}>

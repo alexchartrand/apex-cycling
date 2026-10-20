@@ -45,7 +45,8 @@ function doFetch(path: string, init?: RequestInit): Promise<Response> {
     ...init,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      // A FormData body needs the browser to set its own multipart boundary.
+      ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       ...init?.headers,
     },
   });

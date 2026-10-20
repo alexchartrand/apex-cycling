@@ -15,7 +15,7 @@ import {
   type DataTableColumn,
 } from "../../../components/ui";
 import { useFormat } from "../../../i18n/useFormat";
-import { lapSpeedKmh, lapsToCsv, splitColumns, splitMs } from "../lapTable";
+import { lapSpeedKmh, lapsToCsv, recordingColumns, splitColumns, splitMs } from "../lapTable";
 import {
   DEFAULT_LAP_DISTANCE_M,
   flying200Ms,
@@ -84,6 +84,7 @@ export function TrackLaps({
     () => splitColumns(track.laps, hiddenLoopIds),
     [track.laps, hiddenLoopIds],
   );
+  const recorded = useMemo(() => recordingColumns(track.laps), [track.laps]);
   const rows = useMemo(
     () => track.laps.map((lap, index) => ({ lap, n: lapNumber(lap, index) })),
     [track.laps],
@@ -149,6 +150,41 @@ export function TrackLaps({
       cell: ({ lap }) => fmt.seconds(flying200Ms(lap)),
       sortValue: ({ lap }) => flying200Ms(lap),
     },
+    ...(recorded.power
+      ? [
+          {
+            id: "power",
+            header: `${t("laps.power")} (W)`,
+            align: "right" as const,
+            cell: ({ lap }: LapRow) => fmt.number(lap.avg_power_w, 0),
+            sortValue: ({ lap }: LapRow) => lap.avg_power_w,
+          },
+        ]
+      : []),
+    ...(recorded.heartRate
+      ? [
+          {
+            id: "heartRate",
+            header: `${t("laps.heartRate")} (bpm)`,
+            align: "right" as const,
+            cell: ({ lap }: LapRow) => fmt.number(lap.avg_heart_rate, 0),
+            sortValue: ({ lap }: LapRow) => lap.avg_heart_rate,
+            hideOnMobile: true,
+          },
+        ]
+      : []),
+    ...(recorded.cadence
+      ? [
+          {
+            id: "cadence",
+            header: `${t("laps.cadence")} (rpm)`,
+            align: "right" as const,
+            cell: ({ lap }: LapRow) => fmt.number(lap.avg_cadence, 0),
+            sortValue: ({ lap }: LapRow) => lap.avg_cadence,
+            hideOnMobile: true,
+          },
+        ]
+      : []),
     ...columns.map((column): DataTableColumn<LapRow> => ({
       id: `${SPLIT_PREFIX}${column.loopId}`,
       header: `${column.name} (s)`,

@@ -3,6 +3,9 @@ import { ArrowRight, CalendarDays, Clock, CloudDownload, Flag, ListOrdered, Radi
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Badge, ButtonLink, Card, EmptyState, SkeletonGroup, StatTile, type DeltaDirection } from "../components/ui";
+import { FitnessCard } from "../features/activities/FitnessCard";
+import { useActivities } from "../features/activities/useActivities";
+import "../features/activities/Activities.css";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { useIngestionRuns, useTransponderAssignments } from "../features/connections/useConnections";
 import { bestLap, DEFAULT_LAP_DISTANCE_M, flying200Ms, startOfWeek, summarizeWeek } from "../features/training/sessionStats";
@@ -28,6 +31,7 @@ export function HomePage() {
   const athlete = useActiveAthlete();
   const athleteId = athlete.data?.id ?? "";
   const sessions = useSessions(athleteId);
+  const activities = useActivities(athleteId);
   const runs = useIngestionRuns(athleteId);
   const assignments = useTransponderAssignments(athleteId);
   const latest = sessions.data?.[0];
@@ -53,7 +57,7 @@ export function HomePage() {
 
   const lastRun = runs.data?.[0];
   const activeCount = assignments.data?.filter((a) => a.end_date === null).length ?? 0;
-  const noData = sessions.data?.length === 0 && assignments.data?.length === 0;
+  const noData = sessions.data?.length === 0 && assignments.data?.length === 0 && activities.data?.length === 0;
 
   return (
     <div className="home">
@@ -77,6 +81,8 @@ export function HomePage() {
           action={<ButtonLink to="/import">{t("onboarding.action")}</ButtonLink>}
         />
       )}
+
+      {athleteId !== "" && <FitnessCard athleteId={athleteId} hideWhenEmpty />}
 
       {sessions.data && sessions.data.length > 0 && (
         <>

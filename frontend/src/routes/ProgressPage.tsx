@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { Brush, CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from "recharts";
 import { axisProps, ChartFrame, ChartTooltip, cursorProps, gridProps, secondsDomain } from "../components/charts";
 import { Card, EmptyState, Input, PageHeader, Select, SkeletonGroup } from "../components/ui";
+import { FitnessCard } from "../features/activities/FitnessCard";
+import "../features/activities/Activities.css";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import {
   availableEvents,
@@ -63,6 +65,8 @@ export function ProgressPage() {
   return (
     <>
       <PageHeader title={t("progress.title")} description={t("progress.description")} />
+
+      {athleteId !== "" && <FitnessCard athleteId={athleteId} />}
 
       {tracks.isLoading && <SkeletonGroup lines={4} />}
       {tracks.isError && <p role="alert">{t("common:loadError")}</p>}

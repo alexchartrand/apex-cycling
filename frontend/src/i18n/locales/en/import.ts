@@ -1,15 +1,11 @@
 export default {
   title: "Import",
   description: "Bring your training data into ApexCycling.",
-  comingSoon: "Coming soon",
   sources: {
     sqorz: {
       title: "Sqorz transponder",
       description: "Report the transponder you rode with and when. Laps are pulled from my.sqorz.com and attributed to you for that period.",
     },
-    files: { title: "FIT / TCX / GPX files", description: "Upload rides from any head unit to add power, heart rate and cadence." },
-    strava: { title: "Strava", description: "Sync activities from your Strava account automatically." },
-    intervals: { title: "Intervals.icu", description: "Sync activities and power data with an Intervals.icu API key." },
   },
   form: {
     title: "Add a transponder",

@@ -36,6 +36,21 @@ export interface LapDetail {
   label: string | null;
   segments: SegmentDetail[];
   views: ViewTime[];
+  /** From a linked recording (head unit, power meter) over this lap. */
+  avg_power_w?: number | null;
+  avg_heart_rate?: number | null;
+  avg_cadence?: number | null;
+}
+
+export interface LinkedActivity {
+  id: string;
+  name: string | null;
+  start_time: string;
+  elapsed_s: number;
+  clock_offset_s: number;
+  has_power: boolean;
+  has_heart_rate: boolean;
+  has_cadence: boolean;
 }
 
 export interface TrackSessionDetail {
@@ -55,6 +70,8 @@ export interface SessionDetail {
   rpe: number | null;
   tags: string[];
   tracks: TrackSessionDetail[];
+  /** Recordings linked to this session. */
+  activities?: LinkedActivity[];
 }
 
 /** PATCH body: fields left out are unchanged; null (or blank) clears one. */
@@ -106,6 +123,9 @@ export interface Effort {
   distance_m: number | null;
   avg_speed_kmh: number | null;
   half_lap_splits: HalfLapSplit[];
+  avg_power_w?: number | null;
+  avg_heart_rate?: number | null;
+  avg_cadence?: number | null;
 }
 
 export interface TrackViewSummary {

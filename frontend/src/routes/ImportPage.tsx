@@ -1,21 +1,51 @@
-import { Activity, FileUp, Waves } from "lucide-react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, PageHeader, SkeletonGroup } from "../components/ui";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import { PageHeader, SkeletonGroup } from "../components/ui";
+import { ActivityUpload } from "../features/activities/ActivityUpload";
+import { IntervalsSource } from "../features/activities/IntervalsSource";
+import { StravaSource, type StravaReturn } from "../features/activities/StravaSource";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { SqorzSource } from "../features/connections/SqorzSource";
 import { SyncActivity } from "../features/connections/SyncActivity";
+import "../features/activities/Activities.css";
 import "../features/connections/Connections.css";
 import "./ImportPage.css";
 
-const UPCOMING = [
-  { key: "files", icon: FileUp },
-  { key: "strava", icon: Activity },
-  { key: "intervals", icon: Waves },
-] as const;
+const RETURNS: StravaReturn[] = ["connected", "denied", "error"];
 
 export function ImportPage() {
   const { t } = useTranslation(["import", "common"]);
   const athlete = useActiveAthlete();
+  const queryClient = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const stravaParam = params.get("strava");
+  const returned = RETURNS.find((value) => value === stravaParam) ?? null;
+
+  // Back from Strava's consent screen: the connection and its first import changed.
+  useEffect(() => {
+    if (returned) void queryClient.invalidateQueries({ queryKey: ["strava"] });
+  }, [returned, queryClient]);
+  useEffect(() => {
+    if (!returned) return;
+    const timer = setTimeout(() => {
+      void queryClient.invalidateQueries({ queryKey: ["strava"] });
+      void queryClient.invalidateQueries({ queryKey: ["activities"] });
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [returned, queryClient]);
+
+  // The banner is shown once; a refresh shouldn't repeat it.
+  useEffect(() => {
+    if (!stravaParam) return;
+    const timer = setTimeout(() => {
+      const next = new URLSearchParams(params);
+      next.delete("strava");
+      setParams(next, { replace: true });
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [stravaParam, params, setParams]);
 
   return (
     <>
@@ -25,19 +55,10 @@ export function ImportPage() {
       {athlete.data && (
         <div className="import-page">
           <div className="import-page__main">
+            <ActivityUpload athleteId={athlete.data.id} />
+            <IntervalsSource athleteId={athlete.data.id} />
+            <StravaSource athleteId={athlete.data.id} returned={returned} />
             <SqorzSource athleteId={athlete.data.id} />
-            <div className="import-upcoming">
-              {UPCOMING.map(({ key, icon: Icon }) => (
-                <div key={key} className="import-upcoming__card">
-                  <div className="import-upcoming__head">
-                    <h4>{t(`sources.${key}.title`)}</h4>
-                    <Icon aria-hidden />
-                  </div>
-                  <p>{t(`sources.${key}.description`)}</p>
-                  <Badge tone="accent">{t("comingSoon")}</Badge>
-                </div>
-              ))}
-            </div>
           </div>
           <aside className="import-page__side">
             <SyncActivity athleteId={athlete.data.id} />

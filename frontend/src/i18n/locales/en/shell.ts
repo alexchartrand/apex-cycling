@@ -4,6 +4,7 @@ export default {
     log: "Log",
     records: "Records",
     progress: "Progress",
+    power: "Power",
     tools: "Tools",
     aero: "Aero lab",
     equipment: "Equipment",
@@ -44,7 +45,6 @@ export default {
   },
   comingSoon: {
     badge: "Coming soon",
-    log: "Every session and activity in one list and calendar — sqorz laps, FIT files, Strava and Intervals.icu.",
     aero: "Estimate your CdA from power and lap speed, and compare positions and equipment run by run.",
     equipment: "Your bikes and gear ratios, linked to sessions so cadence can be estimated from lap speed.",
     settings: "Profile, weight and FTP history, language, theme and account security.",

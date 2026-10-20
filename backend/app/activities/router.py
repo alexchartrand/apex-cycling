@@ -72,7 +72,7 @@ async def _find(db: AsyncSession, athlete: Athlete, viewer: User, activity_id: u
 
 
 @router.post("/upload", response_model=list[UploadResult])
-@limiter.limit("20/minute")
+@limiter.limit("40/minute")
 async def upload_activities(
     request: Request,
     files: list[UploadFile],

@@ -11,7 +11,9 @@ import { ClubsPage } from "./routes/ClubsPage";
 import { CoachPage } from "./routes/CoachPage";
 import { ComingSoonPage } from "./routes/ComingSoonPage";
 import { HomePage } from "./routes/HomePage";
+import { ActivityPage } from "./routes/ActivityPage";
 import { ImportPage } from "./routes/ImportPage";
+import { PowerCurvePage } from "./routes/PowerCurvePage";
 import { JoinPage } from "./routes/JoinPage";
 import { LogPage } from "./routes/LogPage";
 import { ProgressPage } from "./routes/ProgressPage";
@@ -51,9 +53,10 @@ export function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/log" element={<LogPage />} />
           <Route path="/sessions/:eventId" element={<SessionDetailPage />} />
-          <Route path="/activities/:activityId" element={<ComingSoonPage section="log" />} />
+          <Route path="/activities/:activityId" element={<ActivityPage />} />
           <Route path="/records" element={<RecordsPage />} />
           <Route path="/progress" element={<ProgressPage />} />
+          <Route path="/power" element={<PowerCurvePage />} />
           <Route path="/tools/*" element={<ToolsPage />} />
           <Route path="/aero" element={<ComingSoonPage section="aero" />} />
           <Route path="/equipment" element={<ComingSoonPage section="equipment" />} />

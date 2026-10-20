@@ -49,6 +49,10 @@ export function EffortCard({ athleteId, eventId, effort }: { athleteId: string; 
           unit={effort.avg_speed_kmh != null ? "km/h" : undefined}
         />
         <StatTile label={t("efforts.bestLap")} tone="accent" value={fmt.lapTime(effort.best_lap_ms)} />
+        {effort.avg_power_w != null && <StatTile label={t("efforts.avgPower")} value={fmt.number(effort.avg_power_w, 0)} unit="W" />}
+        {effort.avg_heart_rate != null && (
+          <StatTile label={t("efforts.avgHeartRate")} value={fmt.number(effort.avg_heart_rate, 0)} unit="bpm" />
+        )}
       </div>
       {hasUnfinishedLap && <p className="effort-card__note">{t("efforts.unfinishedNote")}</p>}
 

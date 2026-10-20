@@ -4,6 +4,7 @@ import {
   Bike,
   CalendarDays,
   CloudDownload,
+  Gauge,
   Home,
   Settings,
   Trophy,
@@ -18,6 +19,7 @@ export type NavKey =
   | "log"
   | "records"
   | "progress"
+  | "power"
   | "tools"
   | "aero"
   | "equipment"
@@ -41,6 +43,7 @@ export const NAV_ITEMS: Record<NavKey, NavItem> = {
   log: { key: "log", to: "/log", icon: CalendarDays, alsoMatches: ["/sessions", "/activities"] },
   records: { key: "records", to: "/records", icon: Trophy },
   progress: { key: "progress", to: "/progress", icon: BarChart3 },
+  power: { key: "power", to: "/power", icon: Gauge },
   tools: { key: "tools", to: "/tools", icon: Wrench },
   aero: { key: "aero", to: "/aero", icon: Zap },
   equipment: { key: "equipment", to: "/equipment", icon: Bike },
@@ -52,7 +55,7 @@ export const NAV_ITEMS: Record<NavKey, NavItem> = {
 
 /** Desktop sidebar, top to bottom. */
 export const SIDEBAR_GROUPS: NavGroup[] = [
-  { key: null, items: [NAV_ITEMS.home, NAV_ITEMS.log, NAV_ITEMS.records, NAV_ITEMS.progress] },
+  { key: null, items: [NAV_ITEMS.home, NAV_ITEMS.log, NAV_ITEMS.records, NAV_ITEMS.progress, NAV_ITEMS.power] },
   { key: "analysis", items: [NAV_ITEMS.tools, NAV_ITEMS.aero, NAV_ITEMS.equipment] },
   { key: "team", items: [NAV_ITEMS.club, NAV_ITEMS.coach] },
 ];
@@ -64,6 +67,7 @@ export const MOBILE_TABS: NavItem[] = [NAV_ITEMS.home, NAV_ITEMS.log, NAV_ITEMS.
 
 export const MORE_SHEET_ITEMS: NavItem[] = [
   NAV_ITEMS.progress,
+  NAV_ITEMS.power,
   NAV_ITEMS.aero,
   NAV_ITEMS.equipment,
   NAV_ITEMS.import,

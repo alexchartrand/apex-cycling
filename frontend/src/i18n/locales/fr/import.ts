@@ -4,15 +4,11 @@ import type en from "../en/import";
 export default {
   title: "Importer",
   description: "Ajoutez vos données d'entraînement à ApexCycling.",
-  comingSoon: "Bientôt disponible",
   sources: {
     sqorz: {
       title: "Transpondeur sqorz",
       description: "Indiquez le transpondeur utilisé et pendant quelle période. Les tours sont récupérés sur my.sqorz.com et vous sont attribués pour cette période.",
     },
-    files: { title: "Fichiers FIT / TCX / GPX", description: "Téléversez les sorties de n'importe quel compteur pour ajouter puissance, fréquence cardiaque et cadence." },
-    strava: { title: "Strava", description: "Synchronisez automatiquement les activités de votre compte Strava." },
-    intervals: { title: "Intervals.icu", description: "Synchronisez activités et puissance avec une clé d'API Intervals.icu." },
   },
   form: {
     title: "Ajouter un transpondeur",

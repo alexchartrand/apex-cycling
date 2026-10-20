@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lapSpeedKmh, lapsToCsv, splitColumns, splitMs } from "./lapTable";
+import { lapSpeedKmh, lapsToCsv, recordingColumns, splitColumns, splitMs } from "./lapTable";
 import type { LapDetail, SegmentDetail } from "./types";
 
 function seg(loopId: string, name: string, index: number, ms: number | null): SegmentDetail {
@@ -85,5 +85,27 @@ describe("lapsToCsv", () => {
   it("falls back to the position when sqorz gave no start number", () => {
     const csv = lapsToCsv([lap("1", 25000, []), lap("2", 24000, [])], [], null);
     expect(csv.split("\r\n")[2].startsWith("2,")).toBe(true);
+  });
+});
+
+describe("recorded channels in the lap table", () => {
+  const recorded = (id: string, extra: Partial<LapDetail>) => lap(id, 25000, full, extra);
+
+  it("knows which channels any lap has", () => {
+    expect(recordingColumns([lap("1", 25000, full)])).toEqual({ power: false, heartRate: false, cadence: false });
+    expect(recordingColumns([recorded("1", { avg_power_w: 300 }), recorded("2", { avg_cadence: 110 })])).toEqual({
+      power: true,
+      heartRate: false,
+      cadence: true,
+    });
+  });
+
+  it("adds power, heart rate and cadence to the CSV only when recorded", () => {
+    const plain = lapsToCsv([lap("1", 25000, full)], [], 250).split("\r\n")[0];
+    expect(plain).toBe("lap,start_time,lap_time_s,speed_kmh,flying_200_s,excluded,label");
+
+    const csv = lapsToCsv([recorded("1", { avg_power_w: 612.4, avg_heart_rate: 171.6, avg_cadence: null })], [], 250).split("\r\n");
+    expect(csv[0]).toBe("lap,start_time,lap_time_s,speed_kmh,flying_200_s,avg_power_w,avg_heart_rate_bpm,excluded,label");
+    expect(csv[1]).toContain(",612,172,");
   });
 });

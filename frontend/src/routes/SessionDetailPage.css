@@ -3,3 +3,20 @@
   flex-direction: column;
   gap: var(--space-5);
 }
+
+.session-detail__recordings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}
+
+.session-detail__recording {
+  padding: 2px var(--space-3);
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+}
