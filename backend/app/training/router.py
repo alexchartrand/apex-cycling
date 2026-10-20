@@ -7,8 +7,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.athletes.models import Athlete
 from app.auth.deps import require_athlete_access
 from app.db.session import get_db
+from app.training.edit_service import set_effort_label, update_lap, update_session
 from app.training.efforts import StartType
-from app.training.schemas import EffortDetail, ProgressionMetric, ProgressionPoint, SessionDetail, SessionSummary, TrackSummary
+from app.training.schemas import (
+    EffortDetail,
+    EffortLabel,
+    EffortLabelUpdate,
+    LapEdit,
+    LapUpdate,
+    ProgressionMetric,
+    ProgressionPoint,
+    SessionDetail,
+    SessionMeta,
+    SessionSummary,
+    SessionUpdate,
+    TrackSummary,
+)
 from app.training.service import (
     get_progression,
     get_session_detail,
@@ -49,6 +63,49 @@ async def session_detail(
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
     return detail
+
+
+@router.patch("/sessions/{event_id}", response_model=SessionMeta)
+async def edit_session(
+    athlete_id: uuid.UUID,
+    event_id: str,
+    payload: SessionUpdate,
+    athlete: Athlete = Depends(require_athlete_access),
+    db: AsyncSession = Depends(get_db),
+) -> SessionMeta:
+    updated = await update_session(db, athlete.id, event_id, payload)
+    if updated is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    return updated
+
+
+@router.patch("/laps/{lap_id}", response_model=LapEdit)
+async def edit_lap(
+    athlete_id: uuid.UUID,
+    lap_id: uuid.UUID,
+    payload: LapUpdate,
+    athlete: Athlete = Depends(require_athlete_access),
+    db: AsyncSession = Depends(get_db),
+) -> LapEdit:
+    updated = await update_lap(db, athlete.id, lap_id, payload)
+    if updated is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lap not found")
+    return updated
+
+
+@router.put("/sessions/{event_id}/efforts/{first_lap_id}/label", response_model=EffortLabel)
+async def label_effort(
+    athlete_id: uuid.UUID,
+    event_id: str,
+    first_lap_id: uuid.UUID,
+    payload: EffortLabelUpdate,
+    athlete: Athlete = Depends(require_athlete_access),
+    db: AsyncSession = Depends(get_db),
+) -> EffortLabel:
+    labelled = await set_effort_label(db, athlete.id, event_id, first_lap_id, payload.label)
+    if labelled is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Effort not found")
+    return labelled
 
 
 @router.get("/sessions/{event_id}/efforts", response_model=list[EffortDetail])

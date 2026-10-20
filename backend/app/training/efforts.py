@@ -61,6 +61,9 @@ class LapInput:
     start_time: datetime
     from_start: bool
     crossings: tuple[CheckpointCrossing, ...]  # in lap order (sequence_index)
+    # The athlete's exclusion. The lap still belongs to its effort (so the
+    # laps around it stay chained), but it can't be anyone's best.
+    excluded: bool = False
 
     @property
     def total_time_ms(self) -> int | None:
@@ -89,7 +92,7 @@ class Effort:
     total_time_ms: int | None  # sum of the finished laps
     distance_m: float | None  # finished laps x track length, if the length is known
     avg_speed_kmh: float | None
-    best_lap_ms: int | None
+    best_lap_ms: int | None  # fastest finished lap that isn't excluded
     half_lap_splits: tuple[HalfLapSplit, ...]
 
     @property
@@ -166,6 +169,7 @@ def half_lap_splits(laps: list[LapInput]) -> list[HalfLapSplit]:
 def build_effort(laps: list[LapInput], track_length_m: float | None) -> Effort:
     lap_times = tuple(lap.total_time_ms for lap in laps)
     finished = [t for t in lap_times if t is not None]
+    counted = [lap.total_time_ms for lap in laps if lap.total_time_ms is not None and not lap.excluded]
     total_time_ms = sum(finished) if finished else None
     distance_m = track_length_m * len(finished) if track_length_m and finished else None
     avg_speed_kmh = distance_m / (total_time_ms / 1000) * 3.6 if distance_m and total_time_ms else None
@@ -177,7 +181,7 @@ def build_effort(laps: list[LapInput], track_length_m: float | None) -> Effort:
         total_time_ms=total_time_ms,
         distance_m=distance_m,
         avg_speed_kmh=avg_speed_kmh,
-        best_lap_ms=min(finished) if finished else None,
+        best_lap_ms=min(counted) if counted else None,
         half_lap_splits=tuple(half_lap_splits(laps)),
     )
 

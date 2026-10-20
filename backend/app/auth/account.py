@@ -46,6 +46,8 @@ def _plain(value: Any) -> Any:
         return str(value)
     if hasattr(value, "value"):  # enums
         return value.value
+    if isinstance(value, list):  # e.g. session tags
+        return json.dumps(value, ensure_ascii=False)
     return value
 
 

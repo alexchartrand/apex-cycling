@@ -54,7 +54,7 @@ def session_results(
     `view_times_ms[event_key][lap_id]` is each lap's time for the track view
     that defines a view-timed event (the flying 200), already computed by the
     caller. The first lap of a standing start never counts for the flying
-    200 — it isn't flying.
+    200 — it isn't flying. Excluded laps never count.
     """
     efforts = detect_efforts(laps, track_length_m)
     laps_by_id = {lap.lap_id: lap for lap in laps}
@@ -82,7 +82,7 @@ def session_results(
             for effort in efforts:
                 for index, lap in enumerate(effort.laps):
                     time_ms = lap_times.get(lap.lap_id)
-                    if time_ms is None or (index == 0 and effort.start_type == StartType.STANDING):
+                    if time_ms is None or lap.excluded or (index == 0 and effort.start_type == StartType.STANDING):
                         continue
                     offer(event.key, StartType.FLYING, time_ms, lap)
             continue

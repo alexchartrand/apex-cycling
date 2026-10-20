@@ -248,6 +248,8 @@ async def get_session_detail(db: AsyncSession, athlete_id: uuid.UUID, external_e
                 class_code=lap.class_code,
                 start_number=lap.start_number,
                 whole_lap_time_ms=_whole_lap_time_ms(segments),
+                excluded=lap.excluded,
+                label=lap.label,
                 segments=[
                     SegmentDetail(sequence_index=s.sequence_index, loop_name=s.track_loop.name, time_ms=d.time_ms)
                     for s, d in zip(ordered_segments, deltas)
@@ -258,8 +260,12 @@ async def get_session_detail(db: AsyncSession, athlete_id: uuid.UUID, external_e
 
     return SessionDetail(
         external_event_id=event.external_event_id,
-        event_name=event.name,
+        event_name=event.title_override or event.name,
+        title_override=event.title_override,
         event_date=event.event_date,
+        notes=event.notes,
+        rpe=event.rpe,
+        tags=event.tags or [],
         tracks=list(laps_by_track.values()),
     )
 
@@ -269,6 +275,7 @@ def _lap_input(lap: TrainingLap) -> LapInput:
         lap_id=lap.id,
         start_time=lap.start_time,
         from_start=lap.from_start,
+        excluded=lap.excluded,
         crossings=tuple(
             CheckpointCrossing(loop_id=s.track_loop_id, loop_name=s.track_loop.name, time_ms=s.time_ms)
             for s in sorted(lap.segment_times, key=lambda s: s.sequence_index)
@@ -295,12 +302,14 @@ async def get_session_efforts(db: AsyncSession, athlete_id: uuid.UUID, external_
         for effort in detect_efforts([_lap_input(lap) for lap in track_laps], track.length_m):
             detected.append((track, effort))
     detected.sort(key=lambda pair: pair[1].start_time)
+    labels = {lap.id: lap.effort_label for lap in laps if lap.effort_label}
 
     return [
         EffortDetail(
             index=index,
             track_id=track.id,
             track_name=track.name,
+            label=labels.get(effort.laps[0].lap_id),
             start_time=effort.start_time,
             start_type=effort.start_type,
             lap_ids=[lap.lap_id for lap in effort.laps],
@@ -329,6 +338,9 @@ async def list_athlete_sessions(db: AsyncSession, athlete_id: uuid.UUID) -> list
                 TrainingEvent.id,
                 TrainingEvent.external_event_id,
                 TrainingEvent.name,
+                TrainingEvent.title_override,
+                TrainingEvent.rpe,
+                TrainingEvent.tags,
                 TrainingEvent.event_date,
                 func.count(TrainingLap.id),
                 func.min(TrainingLap.start_time),
@@ -359,14 +371,16 @@ async def list_athlete_sessions(db: AsyncSession, athlete_id: uuid.UUID) -> list
     return [
         SessionSummary(
             external_event_id=external_id,
-            event_name=name,
+            event_name=title_override or name,
             event_date=event_date,
             lap_count=lap_count,
             track_names=tracks_by_event.get(event_id, []),
+            rpe=rpe,
+            tags=tags or [],
             first_lap_at=first_lap_at,
             last_lap_at=last_lap_at,
         )
-        for event_id, external_id, name, event_date, lap_count, first_lap_at, last_lap_at in lap_stats
+        for event_id, external_id, name, title_override, rpe, tags, event_date, lap_count, first_lap_at, last_lap_at in lap_stats
     ]
 
 
@@ -486,6 +500,8 @@ async def get_progression(
             continue
 
         for lap in event_laps:
+            if lap.excluded:
+                continue
             if metric == ProgressionMetric.LAP_TIME:
                 candidate_time = _whole_lap_time_ms(lap.segment_times)
                 candidate_distance = None

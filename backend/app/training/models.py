@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, false, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -116,6 +116,13 @@ class TrainingEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     sport_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     start_timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     end_timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The athlete's own annotations. `name` is re-written from sqorz on every
+    # sync, so a renamed session lives in `title_override` instead; sync never
+    # touches any of these.
+    title_override: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rpe: Mapped[int | None] = mapped_column(Integer, nullable=True)  # rate of perceived exertion, 1-10
+    tags: Mapped[list[str]] = mapped_column(JSON, default=list, server_default=text("'[]'"))
 
     classes: Mapped[list["EventClass"]] = relationship(back_populates="training_event")
     event_tracks: Mapped[list["EventTrack"]] = relationship(back_populates="training_event")
@@ -173,6 +180,13 @@ class TrainingLap(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     from_start: Mapped[bool] = mapped_column(Boolean, default=True)
     start_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Edits made by the athlete; sync never overwrites them. An excluded lap
+    # (bad timing, a warm-up…) stays in its effort but never counts toward
+    # records or progression. `effort_label` names the effort this lap
+    # *starts* — efforts are computed, not stored, so their first lap carries it.
+    excluded: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    label: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    effort_label: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     event_track: Mapped["EventTrack"] = relationship(back_populates="laps")
     segment_times: Mapped[list["LapSegmentTime"]] = relationship(

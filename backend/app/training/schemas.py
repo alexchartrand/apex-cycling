@@ -31,6 +31,8 @@ class LapDetail(BaseModel):
     class_code: str | None
     start_number: int | None
     whole_lap_time_ms: int | None
+    excluded: bool
+    label: str | None
     segments: list[SegmentDetail]
     views: list[ViewTime]
 
@@ -42,9 +44,17 @@ class TrackSessionDetail(BaseModel):
 
 
 class SessionDetail(BaseModel):
+    """`event_name` is the title to show: the athlete's `title_override` if
+    they set one, else sqorz's own session name.
+    """
+
     external_event_id: str
     event_name: str
+    title_override: str | None
     event_date: date
+    notes: str | None
+    rpe: int | None
+    tags: list[str]
     tracks: list[TrackSessionDetail]
 
 
@@ -54,6 +64,8 @@ class SessionSummary(BaseModel):
     event_date: date
     lap_count: int
     track_names: list[str]
+    rpe: int | None
+    tags: list[str]
     # First lap start / last lap start for this athlete — not sqorz's
     # event window, which spans the whole day for every rider.
     first_lap_at: datetime | None
@@ -114,6 +126,7 @@ class EffortDetail(BaseModel):
     index: int
     track_id: uuid.UUID
     track_name: str
+    label: str | None
     start_time: datetime
     start_type: StartType
     lap_ids: list[uuid.UUID]
@@ -185,3 +198,89 @@ class ManualResultRead(BaseModel):
     place: str
     is_competition: bool
     notes: str | None
+
+
+def _clean_text(value: str | None) -> str | None:
+    value = value.strip() if value else None
+    return value or None
+
+
+class SessionUpdate(BaseModel):
+    """PATCH body: only the fields sent change; null (or blank) clears one."""
+
+    title_override: str | None = Field(default=None, max_length=255)
+    notes: str | None = Field(default=None, max_length=5000)
+    rpe: int | None = Field(default=None, ge=1, le=10)
+    tags: list[str] | None = Field(default=None, max_length=20)
+
+    @field_validator("title_override", "notes")
+    @classmethod
+    def _blank_is_none(cls, value: str | None) -> str | None:
+        return _clean_text(value)
+
+    @field_validator("tags")
+    @classmethod
+    def _clean_tags(cls, value: list[str] | None) -> list[str]:
+        """Trimmed, non-empty, at most 32 characters each, no duplicates
+        (ignoring case), in the order given. Null clears them all."""
+        seen: set[str] = set()
+        cleaned = []
+        for tag in value or []:
+            tag = tag.strip()
+            if not tag:
+                continue
+            if len(tag) > 32:
+                raise ValueError("A tag is at most 32 characters")
+            if tag.casefold() not in seen:
+                seen.add(tag.casefold())
+                cleaned.append(tag)
+        return cleaned
+
+
+class SessionMeta(BaseModel):
+    external_event_id: str
+    event_name: str
+    title_override: str | None
+    notes: str | None
+    rpe: int | None
+    tags: list[str]
+
+
+class LapUpdate(BaseModel):
+    """PATCH body for one lap: only the fields sent change. `excluded` can't
+    be null; a blank `label` clears it."""
+
+    excluded: bool | None = None
+    label: str | None = Field(default=None, max_length=100)
+
+    @field_validator("excluded")
+    @classmethod
+    def _excluded_not_null(cls, value: bool | None) -> bool:
+        if value is None:
+            raise ValueError("excluded must be true or false")
+        return value
+
+    @field_validator("label")
+    @classmethod
+    def _blank_label_is_none(cls, value: str | None) -> str | None:
+        return _clean_text(value)
+
+
+class LapEdit(BaseModel):
+    lap_id: uuid.UUID
+    excluded: bool
+    label: str | None
+
+
+class EffortLabelUpdate(BaseModel):
+    label: str | None = Field(default=None, max_length=100)
+
+    @field_validator("label")
+    @classmethod
+    def _blank_is_none(cls, value: str | None) -> str | None:
+        return _clean_text(value)
+
+
+class EffortLabel(BaseModel):
+    first_lap_id: uuid.UUID
+    label: str | None

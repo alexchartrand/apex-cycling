@@ -80,7 +80,8 @@ class LapWindow:
 
 
 def lap_windows(effort: Effort, lap_count: int) -> list[LapWindow]:
-    """Every run of `lap_count` consecutive finished laps in the effort. A
+    """Every run of `lap_count` consecutive finished, non-excluded laps in the
+    effort. A
     window beginning on the effort's first lap starts the way the effort did
     (standing, flying or unknown); any later window is a rolling start, so
     flying.
@@ -88,7 +89,7 @@ def lap_windows(effort: Effort, lap_count: int) -> list[LapWindow]:
     windows = []
     for first in range(len(effort.laps) - lap_count + 1):
         times = effort.lap_times_ms[first : first + lap_count]
-        if any(t is None for t in times):
+        if any(t is None for t in times) or any(lap.excluded for lap in effort.laps[first : first + lap_count]):
             continue
         windows.append(
             LapWindow(
