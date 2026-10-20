@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from app.athletes.coach_router import router as coach_links_router
 from app.athletes.router import router as athletes_router
 from app.auth.router import router as auth_router
 from app.clubs.router import invites_router
@@ -39,6 +40,7 @@ app.add_middleware(
 api_router = APIRouter(prefix=API_PREFIX)
 api_router.include_router(auth_router)
 api_router.include_router(athletes_router)
+api_router.include_router(coach_links_router)
 api_router.include_router(clubs_router)
 api_router.include_router(invites_router)
 api_router.include_router(connections_router)

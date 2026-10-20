@@ -130,3 +130,51 @@ async def test_club_admin_can_access_managed_athlete_without_login(client, db_se
 
     resp = await client.get(f"/probe/{junior_id}")
     assert resp.status_code == 200
+
+
+async def test_coach_with_revoked_link_cannot_access_athlete(client, db_session):
+    athlete_data = await _signup(client, "revoked-athlete@example.com")
+
+    coach_transport = ASGITransport(app=real_app)
+    async with AsyncClient(transport=coach_transport, base_url="http://test/api") as coach_client:
+        coach_data = await _signup(coach_client, "revoked-coach@example.com")
+
+        async with db_session() as session:
+            athlete = await session.scalar(
+                select(Athlete).where(Athlete.user_id == uuid.UUID(athlete_data["id"]))
+            )
+            session.add(
+                CoachAthlete(
+                    coach_user_id=uuid.UUID(coach_data["id"]),
+                    athlete_id=athlete.id,
+                    initiated_by_user_id=uuid.UUID(coach_data["id"]),
+                    status=CoachAthleteStatus.REVOKED,
+                )
+            )
+            await session.commit()
+
+        assert (await coach_client.get(f"/probe/{athlete.id}")).status_code == 403
+
+
+async def test_coach_waiting_on_their_own_acceptance_cannot_access_athlete(client, db_session):
+    athlete_data = await _signup(client, "asked-athlete@example.com")
+
+    coach_transport = ASGITransport(app=real_app)
+    async with AsyncClient(transport=coach_transport, base_url="http://test/api") as coach_client:
+        coach_data = await _signup(coach_client, "asked-coach@example.com")
+
+        async with db_session() as session:
+            athlete = await session.scalar(
+                select(Athlete).where(Athlete.user_id == uuid.UUID(athlete_data["id"]))
+            )
+            session.add(
+                CoachAthlete(
+                    coach_user_id=uuid.UUID(coach_data["id"]),
+                    athlete_id=athlete.id,
+                    initiated_by_user_id=uuid.UUID(athlete_data["id"]),
+                    status=CoachAthleteStatus.PENDING_COACH_ACCEPTANCE,
+                )
+            )
+            await session.commit()
+
+        assert (await coach_client.get(f"/probe/{athlete.id}")).status_code == 403

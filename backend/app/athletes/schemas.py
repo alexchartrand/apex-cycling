@@ -1,10 +1,11 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, computed_field, model_validator
+from pydantic import BaseModel, EmailStr, Field, computed_field, model_validator
 
 from app.athletes.categories import age_category
+from app.athletes.models import CoachAthleteStatus
 
 Sex = Literal["female", "male"]
 
@@ -85,3 +86,46 @@ class CurrentMetricsRead(BaseModel):
     ftp_w: DatedValueRead | None
     max_hr: DatedValueRead | None
     resting_hr: DatedValueRead | None
+
+
+class CoachLinkRead(BaseModel):
+    """One coach–athlete link as the requesting user sees it."""
+
+    id: uuid.UUID
+    status: CoachAthleteStatus
+    athlete_id: uuid.UUID
+    athlete_name: str
+    coach_user_id: uuid.UUID
+    coach_name: str | None
+    initiated_by_me: bool
+    # A pending request that is mine to accept or decline.
+    needs_my_response: bool
+    created_at: datetime
+    responded_at: datetime | None
+
+
+class CoachLinkRequest(BaseModel):
+    """Asks for a link, as the coach (`acting_as="coach"`: I want to coach
+    this athlete) or as the athlete side (`"athlete"`: I want this person to
+    coach me, or the managed athlete I run). The other person is named by id
+    (someone in a club I belong to) or by email; an email answer never says
+    whether the address has an account."""
+
+    acting_as: Literal["coach", "athlete"]
+    athlete_id: uuid.UUID | None = None
+    athlete_email: EmailStr | None = None
+    coach_user_id: uuid.UUID | None = None
+    coach_email: EmailStr | None = None
+
+    @model_validator(mode="after")
+    def _names_the_other_person(self) -> "CoachLinkRequest":
+        if self.acting_as == "coach":
+            if (self.athlete_id is None) == (self.athlete_email is None):
+                raise ValueError("Give exactly one of athlete_id or athlete_email")
+        elif (self.coach_user_id is None) == (self.coach_email is None):
+            raise ValueError("Give exactly one of coach_user_id or coach_email")
+        return self
+
+
+class CoachLinkRequested(BaseModel):
+    requested: bool = True

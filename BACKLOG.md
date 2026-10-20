@@ -48,7 +48,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 
 **Phase 4 — Clubs & coaching (M4b)**
 - [x] T4.1 Clubs backend (create, members, roles, managed athletes, invite links, club↔sqorz account link)
-- [ ] T4.2 Coach–athlete links (request/accept/revoke both ways)
+- [x] T4.2 Coach–athlete links (request/accept/revoke both ways)
 - [ ] T4.3 Session comments (coach ↔ athlete)
 - [ ] T4.4 Club pages, athlete switcher, coach dashboard
 
