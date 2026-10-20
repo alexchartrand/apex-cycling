@@ -5,6 +5,7 @@ happened once this was actually run against Postgres. Every enum column
 must set `values_callable` so SQLAlchemy emits `.value`, not `.name`.
 """
 
+from app.activities.models import Activity, ActivitySource
 from app.athletes.models import CoachAthlete, CoachAthleteStatus
 from app.clubs.models import ClubInvite, ClubMembership, ClubRole
 from app.connections.models import (
@@ -17,6 +18,7 @@ from app.connections.models import (
 )
 
 CASES = [
+    (Activity, "source", ActivitySource),
     (ClubMembership, "role", ClubRole),
     (ClubInvite, "role", ClubRole),
     (CoachAthlete, "status", CoachAthleteStatus),

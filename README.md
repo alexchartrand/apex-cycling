@@ -192,6 +192,11 @@ sudo scripts/restore.sh /var/backups/apex-cycling/weekly/apex-20261018-030000.du
                         /var/backups/apex-cycling/weekly/uploads-20261018-030000.tar.gz
 ```
 
+The backup holds third-party credentials (Strava tokens, Intervals.icu keys)
+encrypted with `DATA_ENCRYPTION_KEY` from `.env.prod`. Keep a copy of that file
+with the backups: restoring onto a server with a different key still works, but
+those connections can no longer be read and users have to reconnect them.
+
 This was drilled for real: back up, change data, restore, confirm the old data
 is back and the newer changes are gone. Repeat the drill after changing the
 backup setup.

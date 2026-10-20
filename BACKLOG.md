@@ -65,11 +65,11 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 - [x] T6.2 Tools (`/tools`): CdA & power what-if with a sensitivity table, pursuit planner (half-lap schedule, ridden-effort overlay lap by lap, full-screen trackside board at `/tools/pursuit/board` with tap-per-line gaps), gearing, air density; inputs live in the URL ("Copy link"), weight and track pre-filled from the profile — ✋ Phase 6 checkpoint
 
 **Phase 7 — External activities (power/HR/cadence)**
-- [ ] T7.1 Activities data model, compressed streams, encrypted credentials
+- [x] T7.1 Activities data model (`activities`, `activity_streams`, `activity_power_curves`, migration 0002), compressed streams, uploads storage, Fernet-encrypted connection credentials (`DATA_ENCRYPTION_KEY`, required in `.env.prod` — existing servers must add one before the next deploy; `init-env.sh` generates it for new ones), account export/delete cover activities
 - [ ] T7.2 FIT/TCX/GPX upload + parsing
 - [ ] T7.3 Metrics engine (MMP, NP/IF/TSS, CTL/ATL/TSB with sRPE fallback)
 - [ ] T7.4 Activity ↔ sqorz session fusion (per-lap power/HR/cadence)
-- [ ] T7.5 Intervals.icu sync
+- [ ] T7.5 Intervals.icu sync (the worker needs the `uploads` volume mounted and writable in `docker-compose.prod.yml` + `worker.prod.Dockerfile` to store downloaded FIT files; add `intervals_icu` to the `data_source_provider` Postgres enum in its migration)
 - [ ] T7.6 Strava OAuth sync (Strava data visible to owner only, per Strava API terms)
 - [ ] T7.7 Import hub, Log/calendar, activity detail, power curve, fitness chart
 

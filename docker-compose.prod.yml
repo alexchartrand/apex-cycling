@@ -38,6 +38,7 @@ services:
     environment:
       DATABASE_URL: *db-url
       JWT_SECRET: ${JWT_SECRET:?set a long random JWT_SECRET in .env.prod}
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY in .env.prod (python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" or openssl rand -base64 32 | tr + - | tr / _)}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       CORS_ORIGINS: ${CORS_ORIGINS:-["https://${DOMAIN:-localhost}"]}
       APP_BASE_URL: ${APP_BASE_URL:-https://${DOMAIN:-localhost}}
@@ -74,6 +75,7 @@ services:
     environment:
       DATABASE_URL: *db-url
       SQORZ_POLL_INTERVAL_MINUTES: ${SQORZ_POLL_INTERVAL_MINUTES:-20}
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY in .env.prod (python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" or openssl rand -base64 32 | tr + - | tr / _)}
       LOG_FORMAT: json
     depends_on:
       db:

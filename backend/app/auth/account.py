@@ -18,6 +18,9 @@ from typing import Any
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.activities import streams
+from app.activities.models import Activity, ActivityPowerCurve, ActivityStream
+from app.activities.storage import delete_originals_after_commit
 from app.athletes.models import Athlete, AthleteMetric, CoachAthlete
 from app.auth.models import PasswordResetToken, User
 from app.clubs.models import ClubInvite, ClubMembership
@@ -169,6 +172,7 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
         ]
         for filename, model, rows in tables:
             files[filename] = _csv(model, rows)
+        await _add_activities(db, athlete, files)
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -177,10 +181,41 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
     return buffer.getvalue()
 
 
+async def _add_activities(db: AsyncSession, athlete: Athlete, files: dict[str, str]) -> None:
+    """activities.csv plus one `activity_data/<id>.csv` of samples each. The
+    original uploaded files are not included: they hold nothing the samples
+    don't, and can be large."""
+    activities = list(
+        await db.scalars(select(Activity).where(Activity.athlete_id == athlete.id).order_by(Activity.start_time))
+    )
+    files["activities.csv"] = _csv(Activity, activities)
+    activity_ids = [a.id for a in activities]
+    curves = list(
+        await db.scalars(
+            select(ActivityPowerCurve)
+            .where(ActivityPowerCurve.activity_id.in_(activity_ids))
+            .order_by(ActivityPowerCurve.activity_id, ActivityPowerCurve.duration_s)
+        )
+    )
+    files["activity_power_curves.csv"] = _csv(ActivityPowerCurve, curves)
+    for stream in await db.scalars(select(ActivityStream).where(ActivityStream.activity_id.in_(activity_ids))):
+        columns = {
+            channel: streams.unpack(channel, blob)
+            for channel in streams.CHANNELS
+            if (blob := getattr(stream, channel)) is not None
+        }
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(columns)
+        for row in zip(*columns.values()):
+            writer.writerow("" if value is None else value for value in row)
+        files[f"activity_data/{stream.activity_id}.csv"] = buffer.getvalue()
+
+
 async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     """Deletes an athlete profile and everything hanging off it: training
-    data, records, metrics, transponder assignments, personal connections and
-    coach links. Shared rows stay (sqorz connections and their snapshots,
+    data, imported activities, records, metrics, transponder assignments,
+    personal connections and coach links. Shared rows stay (sqorz connections and their snapshots,
     tracks). Doesn't commit."""
     event_ids = select(TrainingEvent.id).where(TrainingEvent.athlete_id == athlete.id)
     lap_ids = select(TrainingLap.id).where(TrainingLap.athlete_id == athlete.id)
@@ -196,6 +231,20 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     await db.execute(delete(AthleteMetric).where(AthleteMetric.athlete_id == athlete.id))
     await db.execute(delete(TransponderAssignment).where(TransponderAssignment.athlete_id == athlete.id))
     await db.execute(delete(CoachAthlete).where(CoachAthlete.athlete_id == athlete.id))
+
+    # Imported activities: rows now, original files once the deletion commits.
+    activity_ids = select(Activity.id).where(Activity.athlete_id == athlete.id)
+    delete_originals_after_commit(
+        db,
+        list(
+            await db.scalars(
+                select(Activity.file_path).where(Activity.athlete_id == athlete.id, Activity.file_path.is_not(None))
+            )
+        ),
+    )
+    await db.execute(delete(ActivityPowerCurve).where(ActivityPowerCurve.activity_id.in_(activity_ids)))
+    await db.execute(delete(ActivityStream).where(ActivityStream.activity_id.in_(activity_ids)))
+    await db.execute(delete(Activity).where(Activity.athlete_id == athlete.id))
 
     # Personal (non-sqorz) connections belong to the athlete outright.
     connection_ids = select(DataSourceConnection.id).where(DataSourceConnection.athlete_id == athlete.id)

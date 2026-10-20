@@ -80,7 +80,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           cp .env.prod.example .env.prod
-          sed -i -e 's/^JWT_SECRET=$/JWT_SECRET=ci/' -e 's/^POSTGRES_PASSWORD=$/POSTGRES_PASSWORD=ci/' -e 's/^ACME_EMAIL=$/ACME_EMAIL=ci@example.com/' .env.prod
+          sed -i -e 's/^JWT_SECRET=$/JWT_SECRET=ci/' -e 's/^DATA_ENCRYPTION_KEY=$/DATA_ENCRYPTION_KEY=ci/' -e 's/^POSTGRES_PASSWORD=$/POSTGRES_PASSWORD=ci/' -e 's/^ACME_EMAIL=$/ACME_EMAIL=ci@example.com/' .env.prod
           docker compose -f docker-compose.prod.yml --env-file .env.prod config --quiet
       - run: |
           docker run --rm -e ACME_EMAIL=ci@example.com -e DOMAIN=example.com \

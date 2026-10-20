@@ -4,7 +4,7 @@
 #   scripts/init-env.sh <domain> <letsencrypt-email>
 #
 # Refuses to overwrite an existing .env.prod (rotating JWT_SECRET signs
-# everyone out; changing POSTGRES_PASSWORD here would not change the database).
+# everyone out, a new DATA_ENCRYPTION_KEY orphans stored connections; changing POSTGRES_PASSWORD here would not change the database).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -14,12 +14,14 @@ cd "$(dirname "$0")/.."
 domain=$1
 email=$2
 jwt=$(openssl rand -hex 32)
+data_key=$(openssl rand -base64 32 | tr '+/' '-_')
 pg=$(openssl rand -hex 24)
 
 umask 077
 sed -e "s|^DOMAIN=.*|DOMAIN=$domain|" \
     -e "s|^ACME_EMAIL=.*|ACME_EMAIL=$email|" \
     -e "s|^JWT_SECRET=.*|JWT_SECRET=$jwt|" \
+    -e "s|^DATA_ENCRYPTION_KEY=.*|DATA_ENCRYPTION_KEY=$data_key|" \
     -e "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$pg|" \
     .env.prod.example > .env.prod
 

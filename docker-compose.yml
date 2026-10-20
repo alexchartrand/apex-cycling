@@ -33,6 +33,7 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
     volumes:
       - ./backend:/app
+      - uploads:/data/uploads
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -73,3 +74,4 @@ services:
 
 volumes:
   db_data:
+  uploads:

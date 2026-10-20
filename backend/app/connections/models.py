@@ -5,6 +5,7 @@ from datetime import date, datetime
 from sqlalchemy import JSON, Date, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.crypto import EncryptedJSON
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
@@ -39,7 +40,8 @@ class DataSourceConnection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     external_id: Mapped[str] = mapped_column(String(255), index=True)
     athlete_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("athletes.id"), nullable=True, index=True)
-    credentials: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Encrypted at rest (app/core/crypto.py).
+    credentials: Mapped[dict | None] = mapped_column(EncryptedJSON, nullable=True)
     status: Mapped[DataSourceConnectionStatus] = mapped_column(
         Enum(
             DataSourceConnectionStatus,

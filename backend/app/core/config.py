@@ -40,6 +40,16 @@ class Settings(BaseSettings):
     # "starttls" (port 587), "ssl" (implicit TLS, port 465) or "none".
     smtp_security: str = "starttls"
 
+    # Encrypts third-party credentials at rest (app/core/crypto.py): one Fernet
+    # key, or several comma-separated for rotation (the first encrypts, all
+    # decrypt). The default is public — production must set its own, and
+    # docker-compose.prod.yml refuses to start without one.
+    data_encryption_key: str = "H4tZyMCFh158yS6kTE9PcevpCeYVP7PZo57crhYEBSE="
+
+    # Where original activity files (FIT/TCX/GPX) are kept; an uploads volume
+    # in docker (app/activities/storage.py).
+    uploads_dir: str = "/data/uploads"
+
     sqorz_base_url: str = "https://my.sqorz.com/json/training/transponder"
     sqorz_poll_interval_minutes: int = 20
 
