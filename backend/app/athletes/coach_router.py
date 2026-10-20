@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.athletes import coaching
 from app.athletes.coaching import CoachLinkError, NotAllowed
+from app.athletes.dashboard import AthleteCard, coach_dashboard
 from app.athletes.models import Athlete
 from app.athletes.schemas import CoachLinkRead, CoachLinkRequest, CoachLinkRequested
 from app.auth.deps import get_current_user
@@ -107,6 +108,14 @@ async def inbox(
 ) -> list[CoachLinkRead]:
     """Requests waiting for my answer, as coach or as athlete."""
     return await coaching.inbox(db, current_user)
+
+
+@router.get("/dashboard", response_model=list[AthleteCard])
+async def dashboard(
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+) -> list[AthleteCard]:
+    """One summary card per athlete I actively coach."""
+    return await coach_dashboard(db, current_user)
 
 
 @router.post("/{link_id}/accept", response_model=CoachLinkRead)
