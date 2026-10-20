@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.activities.models import ActivitySource
 
@@ -31,8 +31,40 @@ class ActivityRead(BaseModel):
     max_heart_rate: float | None
     avg_cadence: float | None
     avg_speed_mps: float | None
+    notes: str | None
+    rpe: int | None
     file_format: str | None
     created_at: datetime
+
+
+class ActivityUpdate(BaseModel):
+    """Only the fields sent change; null clears one."""
+
+    name: str | None = Field(default=None, max_length=255)
+    notes: str | None = Field(default=None, max_length=5000)
+    rpe: int | None = Field(default=None, ge=1, le=10)
+
+
+class PowerCurvePoint(BaseModel):
+    duration_s: int
+    power_w: float
+    activity_id: uuid.UUID
+    start_time: datetime
+
+
+class TrainingLoadDay(BaseModel):
+    day: date
+    tss: float
+    ctl: float
+    atl: float
+    tsb: float
+
+
+class TrainingLoadRead(BaseModel):
+    days: list[TrainingLoadDay]
+    # Activities in the window with neither power-based TSS nor an RPE: they
+    # add no load, and rating their effort would.
+    unrated_activities: int
 
 
 class UploadResult(BaseModel):

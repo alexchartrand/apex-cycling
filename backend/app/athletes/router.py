@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.activities.metrics_service import refresh_tss
 from app.athletes.models import Athlete, AthleteMetric
 from app.athletes.schemas import (
     AthleteMetricRead,
@@ -85,6 +86,7 @@ async def record_metrics(
     for field, value in payload.model_dump(exclude={"effective_date"}).items():
         if value is not None:
             setattr(row, field, value)
+    await refresh_tss(db, athlete)  # a new FTP re-scores the activities it applies to
     await db.commit()
     await db.refresh(row)
     return row
@@ -111,4 +113,5 @@ async def delete_metric(
     if row is None or row.athlete_id != athlete.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Measurement not found")
     await db.delete(row)
+    await refresh_tss(db, athlete)
     await db.commit()

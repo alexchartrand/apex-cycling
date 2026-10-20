@@ -2,7 +2,18 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, LargeBinary, String, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -58,11 +69,18 @@ class Activity(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     avg_power_w: Mapped[float | None] = mapped_column(Float, nullable=True)
     max_power_w: Mapped[float | None] = mapped_column(Float, nullable=True)
     normalized_power_w: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Power-based training stress: needs the rider's FTP on that day, so it is
+    # refreshed whenever their FTP history changes (metrics_service.refresh_tss).
     tss: Mapped[float | None] = mapped_column(Float, nullable=True)
     avg_heart_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
     max_heart_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
     avg_cadence: Mapped[float | None] = mapped_column(Float, nullable=True)
     avg_speed_mps: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # The athlete's own notes. RPE (1-10) stands in for power when there is none:
+    # the training load falls back to duration x effort (analysis/metrics.py).
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rpe: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # The original upload, relative to UPLOADS_DIR (app/activities/storage.py).
     file_path: Mapped[str | None] = mapped_column(String(512), nullable=True)

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
 from app.activities import storage, streams
+from app.activities.metrics_service import apply_power_metrics, visible_conditions
 from app.activities.models import Activity, ActivitySource, ActivityStream
 from app.activities.parsers import ActivityParseError, ParsedActivity, parse_activity_file
 from app.activities.summary import summarize
@@ -31,13 +32,9 @@ class ImportOutcome:
 
 
 def visible_activities(athlete: Athlete, viewer: User) -> Select[tuple[Activity]]:
-    """The athlete's activities this viewer may see. Strava's API terms only
-    allow a user's Strava data to be shown to that user, so anyone else
-    (coach, club admin) doesn't get Strava-sourced ones."""
-    query = select(Activity).where(Activity.athlete_id == athlete.id)
-    if athlete.user_id != viewer.id:
-        query = query.where(Activity.source != ActivitySource.STRAVA)
-    return query
+    """The athlete's activities this viewer may see (see `visible_conditions`
+    for the Strava rule)."""
+    return select(Activity).where(*visible_conditions(athlete, viewer))
 
 
 async def _find_same_ride(db: AsyncSession, athlete_id: uuid.UUID, parsed: ParsedActivity) -> Activity | None:
@@ -140,4 +137,6 @@ async def import_activity_file(
         return ImportOutcome("duplicate", winner)
 
     activity.file_path = await asyncio.to_thread(storage.save_original, athlete_id, sha256, file_format, content)
+    if "power_w" in parsed.channels:
+        await apply_power_metrics(db, activity, parsed.time_s, parsed.channels["power_w"])
     return ImportOutcome("created", activity)

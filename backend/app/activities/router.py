@@ -1,14 +1,14 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.activities import service
+from app.activities import metrics_service, service
 from app.activities.models import Activity, ActivityPowerCurve, ActivityStream
 from app.activities.parsers import ActivityParseError
-from app.activities.schemas import ActivityRead, UploadResult
+from app.activities.schemas import ActivityRead, ActivityUpdate, PowerCurvePoint, TrainingLoadRead, UploadResult
 from app.activities.storage import delete_originals_after_commit
 from app.athletes.coaching import speaks_for_athlete
 from app.athletes.models import Athlete
@@ -19,6 +19,7 @@ from app.core.rate_limit import limiter
 from app.db.session import get_db
 
 router = APIRouter(prefix="/athletes/{athlete_id}/activities", tags=["activities"])
+analysis_router = APIRouter(prefix="/athletes/{athlete_id}", tags=["activities"])
 
 MAX_FILES_PER_UPLOAD = 20
 
@@ -98,6 +99,24 @@ async def get_activity(
     return await _find(db, athlete, current_user, activity_id)
 
 
+@router.patch("/{activity_id}", response_model=ActivityRead)
+async def update_activity(
+    activity_id: uuid.UUID,
+    payload: ActivityUpdate,
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Activity:
+    """Rename an activity, add notes, rate the effort (the rating is what
+    counts toward training load when there is no power)."""
+    await _require_data_owner(db, current_user, athlete)
+    activity = await _find(db, athlete, current_user, activity_id)
+    for field in payload.model_fields_set:
+        setattr(activity, field, getattr(payload, field))
+    await db.commit()
+    return activity
+
+
 @router.delete("/{activity_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_activity(
     activity_id: uuid.UUID,
@@ -114,3 +133,33 @@ async def delete_activity(
     await db.delete(activity)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@analysis_router.get("/training-load", response_model=TrainingLoadRead)
+async def get_training_load(
+    through: date | None = Query(default=None, description="Last day shown; defaults to today"),
+    days: int = Query(default=180, ge=1, le=730),
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> TrainingLoadRead:
+    """Fitness (CTL), fatigue (ATL) and form (TSB) per day. A day's load is
+    power-based TSS where there is power and an FTP, effort rating (RPE) x
+    duration elsewhere — rated sqorz sessions included."""
+    zone = await metrics_service.athlete_timezone(db, athlete)
+    through = through or datetime.now(zone).date()
+    return await metrics_service.training_load(db, athlete, current_user, through=through, days=days)
+
+
+@analysis_router.get("/power-curve", response_model=list[PowerCurvePoint])
+async def get_power_curve(
+    start: datetime | None = None,
+    end: datetime | None = None,
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[PowerCurvePoint]:
+    """Best power per duration over the range (`start` inclusive, `end`
+    exclusive), each with the activity that set it. Call twice to compare
+    ranges."""
+    return await metrics_service.best_power_curve(db, athlete, current_user, start=start, end=end)

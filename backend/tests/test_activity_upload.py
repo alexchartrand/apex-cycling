@@ -163,8 +163,7 @@ async def test_delete_removes_rows_and_file(client, db_session, uploads_dir):
     activity_id = created[0]["activity"]["id"]
     async with db_session() as session:
         path = (await session.get(Activity, uuid.UUID(activity_id))).file_path
-        session.add(ActivityPowerCurve(activity_id=uuid.UUID(activity_id), duration_s=5, power_w=300))
-        await session.commit()
+        assert (await session.scalars(select(ActivityPowerCurve))).all()  # the import computed a curve
     assert (uploads_dir / path).exists()
 
     assert (await client.delete(f"/athletes/{athlete_id}/activities/{activity_id}")).status_code == 204
