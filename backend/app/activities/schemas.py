@@ -100,3 +100,44 @@ class SessionSuggestion(BaseModel):
     margin: float | None
     laps_used: int | None
     confident: bool
+
+
+class ActivityStreamsRead(BaseModel):
+    """The recording thinned to at most `max_points` samples for charting.
+    Channels the file doesn't carry are null; `null` entries are gaps."""
+
+    sample_count: int
+    point_count: int
+    time_s: list[float | None]
+    power_w: list[float | None] | None
+    heart_rate: list[float | None] | None
+    cadence: list[float | None] | None
+    speed_mps: list[float | None] | None
+    distance_m: list[float | None] | None
+    altitude_m: list[float | None] | None
+
+
+class ZoneDistribution(BaseModel):
+    """Seconds in each zone; `limits` are the upper bounds of all but the last."""
+
+    limits: list[float]
+    seconds: list[int]
+
+
+class CurvePoint(BaseModel):
+    duration_s: int
+    power_w: float
+
+
+class ActivityAnalysis(BaseModel):
+    ftp_w: float | None
+    weight_kg: float | None
+    max_hr: int | None
+    intensity_factor: float | None
+    variability_index: float | None
+    avg_power_w_per_kg: float | None
+    normalized_power_w_per_kg: float | None
+    work_kj: float | None
+    power_zones: ZoneDistribution | None
+    hr_zones: ZoneDistribution | None
+    power_curve: list[CurvePoint]

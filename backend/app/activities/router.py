@@ -5,11 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.activities import fusion_service, metrics_service, service
-from app.activities.models import Activity, ActivitySource
+from app.activities import downsample, fusion_service, metrics_service, service, streams
+from app.activities.models import Activity, ActivitySource, ActivityStream
 from app.activities.parsers import ActivityParseError
 from app.activities.schemas import (
+    ActivityAnalysis,
     ActivityRead,
+    ActivityStreamsRead,
     ActivityUpdate,
     PowerCurvePoint,
     SessionLinkWrite,
@@ -145,6 +147,41 @@ async def update_activity(
         setattr(activity, field, getattr(payload, field))
     await db.commit()
     return (await _reads(db, [activity]))[0]
+
+
+@router.get("/{activity_id}/streams", response_model=ActivityStreamsRead)
+async def get_activity_streams(
+    activity_id: uuid.UUID,
+    max_points: int = Query(default=1200, ge=50, le=5000),
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityStreamsRead:
+    """The recording thinned for a chart: buckets of consecutive samples are
+    averaged (power, heart rate, cadence, speed) or represented by their last
+    reading (time, distance, altitude)."""
+    activity = await _find(db, athlete, current_user, activity_id)
+    stream = await db.get(ActivityStream, activity.id)
+    if stream is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No samples stored for this activity")
+    size = downsample.bucket_size(stream.sample_count, max_points)
+    thinned = {
+        channel: downsample.downsample(channel, streams.unpack(channel, blob), size) if (blob := getattr(stream, channel)) else None
+        for channel in streams.CHANNELS
+    }
+    return ActivityStreamsRead(sample_count=stream.sample_count, point_count=len(thinned["time_s"]), **thinned)
+
+
+@router.get("/{activity_id}/analysis", response_model=ActivityAnalysis)
+async def get_activity_analysis(
+    activity_id: uuid.UUID,
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityAnalysis:
+    """Intensity factor, W/kg, work, time in power and heart-rate zones and the
+    activity's own power curve, using the FTP, weight and max HR in force that day."""
+    return await metrics_service.analyze_activity(db, athlete, await _find(db, athlete, current_user, activity_id))
 
 
 @router.get("/{activity_id}/session/suggestion", response_model=SessionSuggestion)

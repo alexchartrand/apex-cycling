@@ -15,7 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.activities import streams
 from app.activities.models import Activity, ActivityPowerCurve, ActivitySource, ActivityStream
-from app.activities.schemas import PowerCurvePoint, TrainingLoadDay, TrainingLoadRead
+from app.activities.schemas import (
+    ActivityAnalysis,
+    CurvePoint,
+    PowerCurvePoint,
+    TrainingLoadDay,
+    TrainingLoadRead,
+    ZoneDistribution,
+)
 from app.analysis import metrics
 from app.athletes.models import Athlete, AthleteMetric
 from app.athletes.service import DatedValue, metrics_as_of
@@ -198,3 +205,47 @@ async def best_power_curve(
                 duration_s=duration_s, power_w=power_w, activity_id=activity_id, start_time=start_time
             )
     return [best[duration] for duration in sorted(best)]
+
+
+async def analyze_activity(db: AsyncSession, athlete: Athlete, activity: Activity) -> ActivityAnalysis:
+    """Zones, intensity and per-kilogram figures of one activity, from its
+    stored samples and the athlete's FTP / weight / max HR on that day."""
+    day = local_day(activity.start_time, await athlete_timezone(db, athlete))
+    values = metrics_as_of(await _metric_rows(db, athlete.id), day)
+    ftp = float(values["ftp_w"].value) if values["ftp_w"] else None
+    weight = float(values["weight_kg"].value) if values["weight_kg"] else None
+    max_hr = int(values["max_hr"].value) if values["max_hr"] else None
+
+    stream = await db.get(ActivityStream, activity.id)
+    power_zones = hr_zones = None
+    work_kj = None
+    if stream is not None:
+        time_s = streams.unpack("time_s", stream.time_s)
+        if stream.power_w is not None:
+            series = metrics.resample_1hz(time_s, streams.unpack("power_w", stream.power_w), pauses="skip")
+            work_kj = sum(series) / 1000
+            if ftp:
+                limits = metrics.power_zone_limits(ftp)
+                power_zones = ZoneDistribution(limits=limits, seconds=metrics.time_in_zones(series, limits))
+        if stream.heart_rate is not None and max_hr:
+            beats = metrics.resample_1hz(time_s, streams.unpack("heart_rate", stream.heart_rate), pauses="skip")
+            limits = metrics.hr_zone_limits(max_hr)
+            hr_zones = ZoneDistribution(limits=limits, seconds=metrics.time_in_zones(beats, limits))
+
+    normalized, average = activity.normalized_power_w, activity.avg_power_w
+    curve = await db.scalars(
+        select(ActivityPowerCurve).where(ActivityPowerCurve.activity_id == activity.id).order_by(ActivityPowerCurve.duration_s)
+    )
+    return ActivityAnalysis(
+        ftp_w=ftp,
+        weight_kg=weight,
+        max_hr=max_hr,
+        intensity_factor=metrics.intensity_factor(normalized, ftp) if normalized and ftp else None,
+        variability_index=normalized / average if normalized and average else None,
+        avg_power_w_per_kg=average / weight if average and weight else None,
+        normalized_power_w_per_kg=normalized / weight if normalized and weight else None,
+        work_kj=work_kj,
+        power_zones=power_zones,
+        hr_zones=hr_zones,
+        power_curve=[CurvePoint(duration_s=c.duration_s, power_w=c.power_w) for c in curve],
+    )
