@@ -51,7 +51,7 @@ export function useUpdateTrack(trackId: string) {
     mutationFn: (payload: TrackUpdate) => updateTrack(trackId, payload),
     onSuccess: () =>
       Promise.all(
-        ["tracks", "progression", "records", "session-detail"].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
+        ["tracks", "club-tracks", "progression", "records", "session-detail"].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
       ),
   });
 }

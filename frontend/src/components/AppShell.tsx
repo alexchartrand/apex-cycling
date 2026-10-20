@@ -5,7 +5,9 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import { BrandMark } from "../brand/BrandMark";
 import { Wordmark } from "../brand/Wordmark";
 import { useMyAthlete } from "../features/athletes/useAthlete";
+import { useCoachingBadgeCount } from "../features/coaching/useCoaching";
 import { useCurrentUser, useLogout } from "../features/auth/useAuth";
+import { usePreferenceSetters } from "../features/auth/usePreferences";
 import { COMPACT_SHELL_QUERY, useMediaQuery } from "../hooks/useMediaQuery";
 import { SUPPORTED_LANGUAGES, type Language } from "../i18n/language";
 import { useLanguage } from "../i18n/useLanguage";
@@ -14,6 +16,8 @@ import { PwaStatus } from "../pwa/PwaStatus";
 import type { ThemeMode } from "../theme/theme";
 import { useTheme } from "../theme/useTheme";
 import { LanguageSwitcher, ThemeSwitcher } from "./preferences/PreferenceSwitchers";
+import { AthleteSwitcher } from "./shell/AthleteSwitcher";
+import { ViewingBanner } from "./shell/ViewingBanner";
 import {
   activeNavItem,
   MOBILE_TABS,
@@ -21,6 +25,7 @@ import {
   SIDEBAR_FOOTER,
   SIDEBAR_GROUPS,
   type NavItem,
+  type NavKey,
 } from "./shell/navigation";
 import { Avatar, Button, Dialog, IconButton, Menu, MenuItem, MenuLabel, MenuRadioGroup, MenuSeparator, Tooltip } from "./ui";
 import "./shell/AppShell.css";
@@ -42,6 +47,8 @@ export function AppShell() {
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [moreOpen, setMoreOpen] = useState(false);
   const active = activeNavItem(location.pathname);
+  // Requests and comments waiting for the user, shown on their nav item.
+  const badges: Partial<Record<NavKey, number>> = { coach: useCoachingBadgeCount() };
   const sectionTitle = active ? t(`nav.${active.key}`) : t("nav.home");
 
   useEffect(() => {
@@ -75,12 +82,20 @@ export function AppShell() {
           {sidebarCollapsed ? <BrandMark size={36} /> : <Wordmark className="shell__wordmark" />}
         </Link>
 
+        <AthleteSwitcher variant={sidebarCollapsed ? "compact" : "full"} />
+
         <nav className="shell__nav" aria-label={t("mainNavigation")}>
           {SIDEBAR_GROUPS.map((group, index) => (
             <div key={group.key ?? index} className="shell__nav-group">
               {group.key && !sidebarCollapsed && <div className="shell__nav-heading eyebrow">{t(`groups.${group.key}`)}</div>}
               {group.items.map((item) => (
-                <SidebarLink key={item.key} item={item} active={active?.key === item.key} collapsed={sidebarCollapsed} />
+                <SidebarLink
+                  key={item.key}
+                  item={item}
+                  active={active?.key === item.key}
+                  collapsed={sidebarCollapsed}
+                  badge={badges[item.key]}
+                />
               ))}
             </div>
           ))}
@@ -111,8 +126,10 @@ export function AppShell() {
             <BrandMark size={32} />
           </Link>
           <span className="shell__topbar-title">{sectionTitle}</span>
+          <AthleteSwitcher variant="avatar" />
           <AccountMenu variant="avatar" />
         </header>
+        <ViewingBanner />
 
         <main id="main-content" className="shell__main" tabIndex={-1}>
           <div className="shell__content">
@@ -145,16 +162,37 @@ export function AppShell() {
           >
             <MoreHorizontal aria-hidden />
             <span>{t("nav.more")}</span>
+            {MORE_SHEET_ITEMS.some((i) => badges[i.key]) && <span className="shell__dot" aria-hidden />}
           </button>
         </nav>
       </div>
 
-      <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} activeKey={active?.key} />
+      <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} activeKey={active?.key} badges={badges} />
     </div>
   );
 }
 
-function SidebarLink({ item, active, collapsed }: { item: NavItem; active: boolean; collapsed: boolean }) {
+function NavBadge({ count }: { count: number | undefined }) {
+  const { t } = useTranslation("shell");
+  if (!count) return null;
+  return (
+    <span className="shell__badge" aria-label={t("waitingCount", { count })}>
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+}
+
+function SidebarLink({
+  item,
+  active,
+  collapsed,
+  badge,
+}: {
+  item: NavItem;
+  active: boolean;
+  collapsed: boolean;
+  badge?: number;
+}) {
   const { t } = useTranslation("shell");
   const Icon = item.icon;
   const label = t(`nav.${item.key}`);
@@ -167,6 +205,7 @@ function SidebarLink({ item, active, collapsed }: { item: NavItem; active: boole
     >
       <Icon aria-hidden />
       {!collapsed && <span>{label}</span>}
+      {collapsed ? badge ? <span className="shell__dot" aria-hidden /> : null : <NavBadge count={badge} />}
     </NavLink>
   );
   return collapsed ? (
@@ -182,10 +221,12 @@ function MoreSheet({
   open,
   onOpenChange,
   activeKey,
+  badges,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   activeKey: string | undefined;
+  badges: Partial<Record<NavKey, number>>;
 }) {
   const { t } = useTranslation("shell");
   const { install } = useInstallPrompt();
@@ -202,6 +243,7 @@ function MoreSheet({
             >
               <Icon aria-hidden />
               <span>{t(`nav.${item.key}`)}</span>
+              <NavBadge count={badges[item.key]} />
             </Link>
           );
         })}
@@ -234,8 +276,10 @@ function AccountMenu({ variant }: { variant: "full" | "compact" | "avatar" }) {
   const { data: user } = useCurrentUser();
   const athlete = useMyAthlete();
   const logout = useLogout();
-  const { language, setLanguage } = useLanguage();
-  const { mode, setMode } = useTheme();
+  const { language } = useLanguage();
+  const { mode } = useTheme();
+  // The persisting setters: a choice made here also saves to the account, so it survives a reload.
+  const { setLanguage, setTheme } = usePreferenceSetters();
   const { install } = useInstallPrompt();
   const name = athlete.data?.display_name ?? user?.email ?? "";
 
@@ -274,7 +318,7 @@ function AccountMenu({ variant }: { variant: "full" | "compact" | "avatar" }) {
       </MenuLabel>
       <MenuRadioGroup<ThemeMode>
         value={mode}
-        onValueChange={setMode}
+        onValueChange={setTheme}
         options={(["system", "light", "dark"] as const).map((value) => ({
           value,
           label: t(`common:themes.${value}`),

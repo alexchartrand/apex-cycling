@@ -8,6 +8,8 @@ export default {
   close: "Close",
   delete: "Delete",
   edit: "Edit",
+  confirm: "Confirm",
+  copy: "Copy",
   back: "Back",
   none: "None",
   unknownError: "Something went wrong. Please try again.",

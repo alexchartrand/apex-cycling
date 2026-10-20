@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { errorMessage } from "../../api/errors";
 import { Button, Input } from "../../components/ui";
 import { useLanguage } from "../../i18n/useLanguage";
@@ -20,6 +20,8 @@ export function SignupPage() {
   const { language } = useLanguage();
   const { mode } = useTheme();
   const navigate = useNavigate();
+  // The page that bounced us here (e.g. an invite link); signing up should land back on it.
+  const from = (useLocation().state as { from?: string } | null)?.from;
 
   const canSubmit = displayName !== "" && email !== "" && isNewPasswordReady(password, confirmPassword);
 
@@ -28,7 +30,7 @@ export function SignupPage() {
     if (!canSubmit) return;
     try {
       await signup.mutateAsync({ email, password, display_name: displayName, locale: language, theme: mode });
-      navigate("/", { replace: true });
+      navigate(from ?? "/", { replace: true });
     } catch {
       // surfaced via signup.error below
     }
@@ -73,7 +75,9 @@ export function SignupPage() {
         </Button>
       </form>
       <p className="auth__switch">
-        {t("signup.haveAccount")} <Link to="/login">{t("signup.loginLink")}</Link>
+        {t("signup.haveAccount")} <Link to="/login" state={from ? { from } : undefined}>
+          {t("signup.loginLink")}
+        </Link>
       </p>
     </AuthLayout>
   );

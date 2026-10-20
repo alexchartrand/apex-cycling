@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { deleteMetric, fetchCurrentMetrics, fetchMyAthlete, listMetrics, recordMetrics, updateAthlete } from "./api";
+import { deleteMetric, fetchAthlete, fetchCurrentMetrics, fetchMyAthlete, listMetrics, recordMetrics, updateAthlete } from "./api";
 import type { Athlete, AthleteMetricPayload, AthleteUpdate } from "./types";
 
 const MY_ATHLETE_KEY = ["athletes", "me"];
@@ -15,11 +15,21 @@ export function useMyAthlete() {
   });
 }
 
+/** Any athlete I have access to (a coached athlete, a managed one). */
+export function useAthlete(athleteId: string) {
+  return useQuery({
+    queryKey: ["athletes", athleteId],
+    queryFn: () => fetchAthlete(athleteId),
+    enabled: athleteId !== "",
+  });
+}
+
 export function useUpdateAthlete(athleteId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: AthleteUpdate) => updateAthlete(athleteId, payload),
     onSuccess: (athlete) => {
+      queryClient.setQueryData(["athletes", athlete.id], athlete);
       if (queryClient.getQueryData<Athlete>(MY_ATHLETE_KEY)?.id === athlete.id) {
         queryClient.setQueryData(MY_ATHLETE_KEY, athlete);
       }

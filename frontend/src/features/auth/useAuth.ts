@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { ApiError } from "../../api/client";
 import { clearApiCache } from "../../pwa/apiCache";
+import { setViewingAthleteId } from "../athletes/viewing";
 import { changePassword, confirmPasswordReset, deleteAccount, fetchCurrentUser, login, logout, signup } from "./api";
 import type { LoginPayload, SignupPayload } from "./types";
 
@@ -36,6 +37,7 @@ export function useLogin() {
 
 async function forgetSignedInUser(queryClient: QueryClient) {
   await clearApiCache();
+  setViewingAthleteId(null);
   queryClient.setQueryData(CURRENT_USER_KEY, null);
   // Drop every other cached query too: the next user on this device must
   // not see the previous user's sessions. (Not queryClient.clear(): that

@@ -1,0 +1,159 @@
+.coach-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.coach-muted {
+  margin: 0;
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+
+.coach-ask {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.coach-ask > :first-child {
+  flex: 1;
+  min-width: min(100%, 14rem);
+}
+
+.coach-waiting {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.coach-waiting__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.coach-waiting__row:last-child {
+  border-bottom: 0;
+}
+
+.coach-waiting__text {
+  flex: 1;
+  min-width: min(100%, 14rem);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.coach-waiting__excerpt {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.coach-waiting__when {
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+}
+
+.coach-waiting__actions {
+  display: inline-flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.coach-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-4);
+}
+
+.coach-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.coach-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.coach-card__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coach-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  empty-cells: show;
+}
+
+.coach-card__badges:empty {
+  display: none;
+}
+
+.coach-card__facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.coach-card__facts dt {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-3);
+}
+
+.coach-card__facts dd {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+}
+
+.coach-card__sub {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 400;
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}
+
+.coach-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.coach-trend {
+  width: 14px;
+  height: 14px;
+}
+
+.coach-trend--up {
+  color: var(--color-positive);
+}
+
+.coach-trend--down {
+  color: var(--color-negative);
+}

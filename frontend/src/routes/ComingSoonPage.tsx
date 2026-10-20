@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { EmptyState, PageHeader } from "../components/ui";
 import { NAV_ITEMS, type NavKey } from "../components/shell/navigation";
 
-type ComingSoonSection = Exclude<NavKey, "home" | "progress" | "records" | "import">;
+type ComingSoonSection = Exclude<NavKey, "home" | "progress" | "records" | "import" | "coach" | "club">;
 
 /** Placeholder for a roadmap section that isn't built yet (see BACKLOG.md). */
 export function ComingSoonPage({ section }: { section: ComingSoonSection }) {

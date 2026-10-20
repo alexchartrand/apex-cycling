@@ -25,6 +25,18 @@ export default {
   moreTitle: "Plus",
   preferences: "Préférences",
   soloAthlete: "Athlète indépendant",
+  waitingCount_one: "{{count}} élément vous attend",
+  waitingCount_other: "{{count}} éléments vous attendent",
+  switcher: {
+    label: "Changer d'athlète",
+    viewing: "Affichage",
+    me: "Mes données",
+    groups: { me: "Moi", coached: "Athlètes que j'entraîne", club: "Athlètes du club" },
+  },
+  viewing: {
+    banner: "Vous consultez les données de {{name}}.",
+    back: "Revenir à mes données",
+  },
   pwa: {
     offline: "Vous êtes hors ligne — affichage des dernières données chargées.",
     updateAvailable: "Une nouvelle version d'ApexCycling est disponible.",
@@ -38,8 +50,6 @@ export default {
     tools: "Simulations CdA et puissance, planificateur de tableau de marche en poursuite avec affichage bord de piste, calculateurs de braquet et de densité de l'air.",
     aero: "Estimez votre CdA à partir de la puissance et de la vitesse au tour, et comparez positions et équipements d'un essai à l'autre.",
     equipment: "Vos vélos et braquets, liés aux séances pour estimer la cadence à partir de la vitesse au tour.",
-    coach: "Vos athlètes en un coup d'œil : dernières séances, nouveaux records, forme et état de synchronisation.",
-    club: "Créez ou rejoignez un club, invitez athlètes et entraîneurs, et gérez les pistes.",
     settings: "Profil, historique de poids et de FTP, langue, thème et sécurité du compte.",
   },
 } satisfies LocaleNamespace<typeof en>;

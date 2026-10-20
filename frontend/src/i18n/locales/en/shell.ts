@@ -22,6 +22,18 @@ export default {
   moreTitle: "More",
   preferences: "Preferences",
   soloAthlete: "Independent athlete",
+  waitingCount_one: "{{count}} item waiting for you",
+  waitingCount_other: "{{count}} items waiting for you",
+  switcher: {
+    label: "Switch athlete",
+    viewing: "Viewing",
+    me: "My data",
+    groups: { me: "Me", coached: "Athletes I coach", club: "Club athletes" },
+  },
+  viewing: {
+    banner: "You're viewing {{name}}'s data.",
+    back: "Back to my data",
+  },
   pwa: {
     offline: "You're offline — showing what was last loaded.",
     updateAvailable: "A new version of ApexCycling is available.",
@@ -35,8 +47,6 @@ export default {
     tools: "CdA and power what-ifs, a pursuit schedule planner with a trackside board, gearing and air density calculators.",
     aero: "Estimate your CdA from power and lap speed, and compare positions and equipment run by run.",
     equipment: "Your bikes and gear ratios, linked to sessions so cadence can be estimated from lap speed.",
-    coach: "Your athletes at a glance: latest sessions, new records, form and sync status.",
-    club: "Create or join a club, invite athletes and coaches, and manage tracks.",
     settings: "Profile, weight and FTP history, language, theme and account security.",
   },
 };

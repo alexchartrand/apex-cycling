@@ -62,7 +62,9 @@ export function LoginPage() {
         </Button>
       </form>
       <p className="auth__switch">
-        {t("login.noAccount")} <Link to="/signup">{t("login.signupLink")}</Link>
+        {t("login.noAccount")} <Link to="/signup" state={from === "/" ? undefined : { from }}>
+          {t("login.signupLink")}
+        </Link>
       </p>
     </AuthLayout>
   );

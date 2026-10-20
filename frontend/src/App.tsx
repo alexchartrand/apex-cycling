@@ -5,9 +5,13 @@ import { ForgotPasswordPage } from "./features/auth/ForgotPasswordPage";
 import { LoginPage } from "./features/auth/LoginPage";
 import { ResetPasswordPage } from "./features/auth/ResetPasswordPage";
 import { SignupPage } from "./features/auth/SignupPage";
+import { ClubPage } from "./routes/ClubPage";
+import { ClubsPage } from "./routes/ClubsPage";
+import { CoachPage } from "./routes/CoachPage";
 import { ComingSoonPage } from "./routes/ComingSoonPage";
 import { HomePage } from "./routes/HomePage";
 import { ImportPage } from "./routes/ImportPage";
+import { JoinPage } from "./routes/JoinPage";
 import { LogPage } from "./routes/LogPage";
 import { ProgressPage } from "./routes/ProgressPage";
 import { RecordsPage } from "./routes/RecordsPage";
@@ -48,8 +52,10 @@ export function App() {
           <Route path="/tools/*" element={<ComingSoonPage section="tools" />} />
           <Route path="/aero" element={<ComingSoonPage section="aero" />} />
           <Route path="/equipment" element={<ComingSoonPage section="equipment" />} />
-          <Route path="/coach" element={<ComingSoonPage section="coach" />} />
-          <Route path="/club/*" element={<ComingSoonPage section="club" />} />
+          <Route path="/coach" element={<CoachPage />} />
+          <Route path="/club" element={<ClubsPage />} />
+          <Route path="/club/:clubId/*" element={<ClubPage />} />
+          <Route path="/join" element={<JoinPage />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/settings/*" element={<SettingsPage />} />
 

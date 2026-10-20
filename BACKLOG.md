@@ -50,7 +50,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 - [x] T4.1 Clubs backend (create, members, roles, managed athletes, invite links, club↔sqorz account link)
 - [x] T4.2 Coach–athlete links (request/accept/revoke both ways)
 - [x] T4.3 Session comments (coach ↔ athlete)
-- [ ] T4.4 Club pages, athlete switcher, coach dashboard
+- [x] T4.4 Club pages, athlete switcher, coach dashboard — ✋ Phase 4 checkpoint
 
 **Phase 5 — Production on OVH (v1.0 release)**
 - [ ] T5.1 Prod compose for shared host (loopback port, proxy headers, real-IP rate limiting, security headers; `Cache-Control: no-cache` on `sw.js`/`index.html` so PWA updates are picked up)
@@ -93,9 +93,20 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 
 ## ✨ Features
 
-- [ ] 🔴 M4b — Roster management + coach dashboard — *added 7/23*
-  - Why: last remaining v1 milestone. `app/clubs/` currently has only `models.py` — no router/schemas/service exist yet.
-  - Notes: needs club creation (who becomes `club_admin` of a brand-new club — unresolved by the original plan), an invite mechanism for club membership + coach-athlete linking (no email infra in this stack — likely a shareable link/token, not real email sending), club-admin roster screens, and a coach dashboard (roster + recent-session glance).
+- [ ] 🟡 Email notifications for coaching — *added 10/19*
+  - Why: a coach–athlete request, or a new comment on a session, only shows up in the in-app "Waiting for you" list and the nav badge. With SMTP configured (`app/core/mail.py`) it could also email.
+  - Notes: reuse `send_email` the way club invites do; needs a per-user opt-out first.
+
+- [ ] 🟢 Coach dashboard "form" is recent load only — *added 10/19*
+  - Why: the cards show sessions, laps and mean RPE for the last 7 days against the 7 before. A real fitness/fatigue/form model (CTL/ATL/TSB) needs power or HR data, which arrives with the import phases.
+  - Notes: `app/athletes/dashboard.py` is the one place to extend.
+
+- [ ] 🟢 One club per athlete profile — *added 10/19*
+  - Why: `Athlete.club_id` is a single column, so joining a second club as an athlete is refused (coach and admin memberships can be in any number of clubs).
+  - Notes: fine for "the club" audience; revisit if athletes need to ride for two clubs. The roster API also doesn't return the UCI category yet (only the birthdate).
+
+- [x] 🔴 M4b — Roster management + coach dashboard — *added 7/23, resolved 10/19 (Phase 4, T4.1–T4.4)*
+  - Notes: clubs, invites (hashed link tokens), managed athletes, coach–athlete links, session comments, athlete switcher and coach dashboard are built — see CLAUDE.md "Clubs", "Coach–athlete links", "Session comments".
 
 - [ ] 🟡 Refactoring of backend — *added 7/28*
   - Why: Backend business logic is tightly coupled to the database layer. Which make maintenance and testting difficult.

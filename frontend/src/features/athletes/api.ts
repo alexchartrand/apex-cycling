@@ -5,6 +5,10 @@ export function fetchMyAthlete(): Promise<Athlete> {
   return apiFetch<Athlete>("/athletes/me");
 }
 
+export function fetchAthlete(athleteId: string): Promise<Athlete> {
+  return apiFetch<Athlete>(`/athletes/${athleteId}`);
+}
+
 export function updateAthlete(athleteId: string, payload: AthleteUpdate): Promise<Athlete> {
   return apiFetch<Athlete>(`/athletes/${athleteId}`, { method: "PATCH", body: JSON.stringify(payload) });
 }

@@ -11,6 +11,8 @@ export default {
   close: "Fermer",
   delete: "Supprimer",
   edit: "Modifier",
+  confirm: "Confirmer",
+  copy: "Copier",
   back: "Retour",
   none: "Aucun",
   unknownError: "Une erreur est survenue. Veuillez réessayer.",

@@ -4,6 +4,8 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { ButtonLink, EmptyState, PageHeader, SkeletonGroup, TabPanel, Tabs, Tooltip, type TabItem } from "../components/ui";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
+import { CommentsTab } from "../features/comments/CommentsTab";
+import { useComments } from "../features/comments/useComments";
 import { useRecords } from "../features/records/useRecords";
 import { EffortCard } from "../features/training/session/EffortCard";
 import { NotesTab } from "../features/training/session/NotesTab";
@@ -13,7 +15,7 @@ import { useSessionDetail, useSessionEfforts, useSessions, useTracks } from "../
 import { useFormat } from "../i18n/useFormat";
 import "./SessionDetailPage.css";
 
-const TABS = ["overview", "laps", "efforts", "notes"] as const;
+const TABS = ["overview", "laps", "efforts", "notes", "comments"] as const;
 type SessionTab = (typeof TABS)[number];
 
 const isTab = (value: string | null): value is SessionTab => TABS.includes(value as SessionTab);
@@ -32,6 +34,7 @@ export function SessionDetailPage() {
   const tracks = useTracks(athleteId);
   const efforts = useSessionEfforts(athleteId, eventId);
   const records = useRecords(athleteId);
+  const comments = useComments(athleteId, eventId);
 
   // Sessions are listed newest first: "previous" is the older one.
   const index = sessions.data?.findIndex((s) => s.external_event_id === eventId) ?? -1;
@@ -56,6 +59,7 @@ export function SessionDetailPage() {
     { value: "laps", label: t("session.tabs.laps"), count: session?.tracks.reduce((sum, track) => sum + track.laps.length, 0) },
     { value: "efforts", label: t("session.tabs.efforts"), count: efforts.data?.length },
     { value: "notes", label: t("session.tabs.notes") },
+    { value: "comments", label: t("session.tabs.comments"), count: comments.data?.length || undefined },
   ];
 
   function selectTab(next: SessionTab) {
@@ -126,6 +130,10 @@ export function SessionDetailPage() {
           <TabPanel value="notes">
             {/* Re-keyed on the session so an edit made elsewhere (or on another session) never shows stale fields. */}
             <NotesTab key={session.external_event_id} athleteId={athleteId} session={session} />
+          </TabPanel>
+
+          <TabPanel value="comments">
+            <CommentsTab key={session.external_event_id} athleteId={athleteId} eventId={eventId} />
           </TabPanel>
         </Tabs>
       )}

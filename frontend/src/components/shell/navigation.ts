@@ -45,7 +45,7 @@ export const NAV_ITEMS: Record<NavKey, NavItem> = {
   aero: { key: "aero", to: "/aero", icon: Zap },
   equipment: { key: "equipment", to: "/equipment", icon: Bike },
   coach: { key: "coach", to: "/coach", icon: ClipboardList },
-  club: { key: "club", to: "/club", icon: Users },
+  club: { key: "club", to: "/club", icon: Users, alsoMatches: ["/join"] },
   import: { key: "import", to: "/import", icon: CloudDownload },
   settings: { key: "settings", to: "/settings", icon: Settings },
 };
