@@ -137,12 +137,14 @@ async def training_load(
     """Daily load, fitness, fatigue and form for the last `days` days.
 
     A day's load is, per activity, its power-based TSS, else duration x RPE,
-    else nothing; plus duration x RPE for each sqorz session the athlete rated.
+    else nothing; plus duration x RPE for each sqorz session the athlete rated
+    — unless a recording of that session already counted.
     The curves are computed from the first day with load, so the window shows
     the state those days really had."""
     zone = await athlete_timezone(db, athlete)
     daily: dict[date, float] = {}
     unrated_by_day: list[date] = []
+    sessions_with_load: set[uuid.UUID] = set()
 
     for activity in await db.scalars(select(Activity).where(*visible_conditions(athlete, viewer))):
         day = local_day(activity.start_time, zone)
@@ -154,11 +156,15 @@ async def training_load(
             unrated_by_day.append(day)
             continue
         daily[day] = daily.get(day, 0.0) + load
+        if activity.training_event_id is not None:
+            sessions_with_load.add(activity.training_event_id)
 
     rated_sessions = await db.scalars(
         select(TrainingEvent).where(TrainingEvent.athlete_id == athlete.id, TrainingEvent.rpe.is_not(None))
     )
     for event in rated_sessions:
+        if event.id in sessions_with_load:
+            continue  # the recording of this session already carries its load
         seconds = _session_seconds(event)
         if seconds is not None:
             daily[event.event_date] = daily.get(event.event_date, 0.0) + metrics.srpe_training_stress(event.rpe, seconds)

@@ -36,12 +36,27 @@ class LapDetail(BaseModel):
     label: str | None
     segments: list[SegmentDetail]
     views: list[ViewTime]
+    # From a linked activity's samples over this lap, when there is one.
+    avg_power_w: float | None = None
+    avg_heart_rate: float | None = None
+    avg_cadence: float | None = None
 
 
 class TrackSessionDetail(BaseModel):
     track_id: uuid.UUID
     track_name: str
     laps: list[LapDetail]
+
+
+class LinkedActivity(BaseModel):
+    id: uuid.UUID
+    name: str | None
+    start_time: datetime
+    elapsed_s: float
+    clock_offset_s: float
+    has_power: bool
+    has_heart_rate: bool
+    has_cadence: bool
 
 
 class SessionDetail(BaseModel):
@@ -58,6 +73,8 @@ class SessionDetail(BaseModel):
     rpe: int | None
     tags: list[str]
     tracks: list[TrackSessionDetail]
+    # Recordings (head unit, power meter) linked to this session.
+    activities: list[LinkedActivity] = []
 
 
 class SessionSummary(BaseModel):
@@ -149,6 +166,10 @@ class EffortDetail(BaseModel):
     distance_m: float | None
     avg_speed_kmh: float | None
     half_lap_splits: list[HalfLapSplitDetail]
+    # Over the effort's finished laps, from a linked activity.
+    avg_power_w: float | None = None
+    avg_heart_rate: float | None = None
+    avg_cadence: float | None = None
 
 
 class RecordEntry(BaseModel):

@@ -217,6 +217,20 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     data, imported activities, records, metrics, transponder assignments,
     personal connections and coach links. Shared rows stay (sqorz connections and their snapshots,
     tracks). Doesn't commit."""
+    # Imported activities first (they point at sessions): rows now, original files once the deletion commits.
+    activity_ids = select(Activity.id).where(Activity.athlete_id == athlete.id)
+    delete_originals_after_commit(
+        db,
+        list(
+            await db.scalars(
+                select(Activity.file_path).where(Activity.athlete_id == athlete.id, Activity.file_path.is_not(None))
+            )
+        ),
+    )
+    await db.execute(delete(ActivityPowerCurve).where(ActivityPowerCurve.activity_id.in_(activity_ids)))
+    await db.execute(delete(ActivityStream).where(ActivityStream.activity_id.in_(activity_ids)))
+    await db.execute(delete(Activity).where(Activity.athlete_id == athlete.id))
+
     event_ids = select(TrainingEvent.id).where(TrainingEvent.athlete_id == athlete.id)
     lap_ids = select(TrainingLap.id).where(TrainingLap.athlete_id == athlete.id)
     await db.execute(delete(SessionComment).where(SessionComment.training_event_id.in_(event_ids)))
@@ -231,20 +245,6 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     await db.execute(delete(AthleteMetric).where(AthleteMetric.athlete_id == athlete.id))
     await db.execute(delete(TransponderAssignment).where(TransponderAssignment.athlete_id == athlete.id))
     await db.execute(delete(CoachAthlete).where(CoachAthlete.athlete_id == athlete.id))
-
-    # Imported activities: rows now, original files once the deletion commits.
-    activity_ids = select(Activity.id).where(Activity.athlete_id == athlete.id)
-    delete_originals_after_commit(
-        db,
-        list(
-            await db.scalars(
-                select(Activity.file_path).where(Activity.athlete_id == athlete.id, Activity.file_path.is_not(None))
-            )
-        ),
-    )
-    await db.execute(delete(ActivityPowerCurve).where(ActivityPowerCurve.activity_id.in_(activity_ids)))
-    await db.execute(delete(ActivityStream).where(ActivityStream.activity_id.in_(activity_ids)))
-    await db.execute(delete(Activity).where(Activity.athlete_id == athlete.id))
 
     # Personal (non-sqorz) connections belong to the athlete outright.
     connection_ids = select(DataSourceConnection.id).where(DataSourceConnection.athlete_id == athlete.id)

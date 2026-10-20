@@ -35,6 +35,11 @@ class ActivityRead(BaseModel):
     rpe: int | None
     file_format: str | None
     created_at: datetime
+    # The sqorz session this ride contains; `clock_offset_s` is added to the
+    # device's timestamps to get sqorz time. Filled in by the router.
+    external_event_id: str | None = None
+    clock_offset_s: float = 0.0
+    session_link_manual: bool = False
 
 
 class ActivityUpdate(BaseModel):
@@ -73,3 +78,23 @@ class UploadResult(BaseModel):
     # The new activity, or the one already stored when `duplicate`.
     activity: ActivityRead | None = None
     error: str | None = None
+
+
+class SessionLinkWrite(BaseModel):
+    external_event_id: str
+    # Omitted: estimated from the lap times, else 0.
+    clock_offset_s: float | None = Field(default=None, ge=-3600, le=3600)
+
+
+class SessionSuggestion(BaseModel):
+    """What auto-linking would do for this activity. `clock_offset_s` is null
+    when the laps can't pin it down; `confident` says it is safe to apply
+    without asking."""
+
+    external_event_id: str | None
+    event_name: str | None
+    clock_offset_s: float | None
+    correlation: float | None
+    margin: float | None
+    laps_used: int | None
+    confident: bool

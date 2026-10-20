@@ -61,7 +61,8 @@ class SnapshotNormalizerPort(Protocol):
 
 class AthleteRecordsPort(Protocol):
     async def recompute(self, athlete_ids: Collection[uuid.UUID]) -> None:
-        """Refreshes data derived from the athletes' laps (personal records)."""
+        """Refreshes data derived from the athletes' laps (personal records,
+        links to head-unit recordings)."""
         ...
 
 

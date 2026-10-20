@@ -4,6 +4,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.activities.fusion_service import add_activity_metrics_to_efforts, add_activity_metrics_to_session
 from app.athletes.models import Athlete
 from app.auth.deps import get_current_user, require_athlete_access
 from app.auth.models import User
@@ -61,11 +62,13 @@ async def session_detail(
     athlete_id: uuid.UUID,
     event_id: str,
     athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> SessionDetail:
     detail = await get_session_detail(db, athlete.id, event_id)
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    await add_activity_metrics_to_session(db, athlete, current_user, detail)
     return detail
 
 
@@ -117,11 +120,13 @@ async def session_efforts(
     athlete_id: uuid.UUID,
     event_id: str,
     athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[EffortDetail]:
     efforts = await get_session_efforts(db, athlete.id, event_id)
     if efforts is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    await add_activity_metrics_to_efforts(db, athlete, current_user, event_id, efforts)
     return efforts
 
 

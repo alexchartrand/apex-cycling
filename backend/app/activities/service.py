@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
 
 from app.activities import storage, streams
+from app.activities.fusion_service import auto_link_activity
 from app.activities.metrics_service import apply_power_metrics, visible_conditions
 from app.activities.models import Activity, ActivitySource, ActivityStream
 from app.activities.parsers import ActivityParseError, ParsedActivity, parse_activity_file
@@ -139,4 +140,5 @@ async def import_activity_file(
     activity.file_path = await asyncio.to_thread(storage.save_original, athlete_id, sha256, file_format, content)
     if "power_w" in parsed.channels:
         await apply_power_metrics(db, activity, parsed.time_s, parsed.channels["power_w"])
+    await auto_link_activity(db, activity)
     return ImportOutcome("created", activity)

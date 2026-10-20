@@ -15,6 +15,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import false
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
@@ -50,6 +51,17 @@ class Activity(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     data_source_connection_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("data_source_connections.id"), nullable=True, index=True
     )
+
+    # The sqorz session this ride contains (the same track laps), if any.
+    # `clock_offset_s` is added to the device's timestamps to get sqorz time
+    # (the device's clock runs that many seconds behind). `session_link_manual`
+    # means the athlete chose the link or its absence, so auto-linking leaves
+    # it alone.
+    training_event_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("training_events.id"), nullable=True, index=True
+    )
+    clock_offset_s: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    session_link_manual: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     sport: Mapped[str | None] = mapped_column(String(64), nullable=True)

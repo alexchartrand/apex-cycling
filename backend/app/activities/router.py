@@ -2,13 +2,21 @@ import uuid
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, UploadFile, status
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.activities import metrics_service, service
+from app.activities import fusion_service, metrics_service, service
 from app.activities.models import Activity, ActivityPowerCurve, ActivityStream
 from app.activities.parsers import ActivityParseError
-from app.activities.schemas import ActivityRead, ActivityUpdate, PowerCurvePoint, TrainingLoadRead, UploadResult
+from app.activities.schemas import (
+    ActivityRead,
+    ActivityUpdate,
+    PowerCurvePoint,
+    SessionLinkWrite,
+    SessionSuggestion,
+    TrainingLoadRead,
+    UploadResult,
+)
 from app.activities.storage import delete_originals_after_commit
 from app.athletes.coaching import speaks_for_athlete
 from app.athletes.models import Athlete
@@ -17,6 +25,7 @@ from app.auth.models import User
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
 from app.db.session import get_db
+from app.training.models import TrainingEvent
 
 router = APIRouter(prefix="/athletes/{athlete_id}/activities", tags=["activities"])
 analysis_router = APIRouter(prefix="/athletes/{athlete_id}", tags=["activities"])
@@ -29,6 +38,23 @@ async def _require_data_owner(db: AsyncSession, user: User, athlete: Athlete) ->
     of a managed athlete); coaches read what the athlete shares."""
     if not await speaks_for_athlete(db, user, athlete):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the athlete can change their activities")
+
+
+async def _reads(db: AsyncSession, activities: list[Activity]) -> list[ActivityRead]:
+    """API shape of activities, with the linked session's public id."""
+    event_ids = {a.training_event_id for a in activities if a.training_event_id}
+    external_ids: dict[uuid.UUID, str] = {}
+    if event_ids:
+        rows = await db.execute(
+            select(TrainingEvent.id, TrainingEvent.external_event_id).where(TrainingEvent.id.in_(event_ids))
+        )
+        external_ids = {event_id: external_id for event_id, external_id in rows}
+    reads = []
+    for activity in activities:
+        read = ActivityRead.model_validate(activity)
+        read.external_event_id = external_ids.get(activity.training_event_id)
+        reads.append(read)
+    return reads
 
 
 async def _find(db: AsyncSession, athlete: Athlete, viewer: User, activity_id: uuid.UUID) -> Activity:
@@ -63,9 +89,7 @@ async def upload_activities(
         except ActivityParseError as exc:
             results.append(UploadResult(filename=name, status="failed", error=str(exc)))
             continue
-        results.append(
-            UploadResult(filename=name, status=outcome.status, activity=ActivityRead.model_validate(outcome.activity))
-        )
+        results.append(UploadResult(filename=name, status=outcome.status, activity=(await _reads(db, [outcome.activity]))[0]))
     await db.commit()
     return results
 
@@ -79,14 +103,15 @@ async def list_activities(
     athlete: Athlete = Depends(require_athlete_access),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> list[Activity]:
+) -> list[ActivityRead]:
     """Newest first. `start`/`end` bound the activity's start time."""
     query = service.visible_activities(athlete, current_user)
     if start is not None:
         query = query.where(Activity.start_time >= start)
     if end is not None:
         query = query.where(Activity.start_time < end)
-    return list(await db.scalars(query.order_by(Activity.start_time.desc()).limit(limit).offset(offset)))
+    rows = list(await db.scalars(query.order_by(Activity.start_time.desc()).limit(limit).offset(offset)))
+    return await _reads(db, rows)
 
 
 @router.get("/{activity_id}", response_model=ActivityRead)
@@ -95,8 +120,8 @@ async def get_activity(
     athlete: Athlete = Depends(require_athlete_access),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> Activity:
-    return await _find(db, athlete, current_user, activity_id)
+) -> ActivityRead:
+    return (await _reads(db, [await _find(db, athlete, current_user, activity_id)]))[0]
 
 
 @router.patch("/{activity_id}", response_model=ActivityRead)
@@ -106,7 +131,7 @@ async def update_activity(
     athlete: Athlete = Depends(require_athlete_access),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> Activity:
+) -> ActivityRead:
     """Rename an activity, add notes, rate the effort (the rating is what
     counts toward training load when there is no power)."""
     await _require_data_owner(db, current_user, athlete)
@@ -114,7 +139,58 @@ async def update_activity(
     for field in payload.model_fields_set:
         setattr(activity, field, getattr(payload, field))
     await db.commit()
-    return activity
+    return (await _reads(db, [activity]))[0]
+
+
+@router.get("/{activity_id}/session/suggestion", response_model=SessionSuggestion)
+async def session_suggestion(
+    activity_id: uuid.UUID,
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SessionSuggestion:
+    """The sqorz session this ride appears to contain and the device clock
+    offset its lap speeds imply, without changing anything."""
+    return await fusion_service.suggest(db, await _find(db, athlete, current_user, activity_id))
+
+
+@router.put("/{activity_id}/session", response_model=ActivityRead)
+async def link_session(
+    activity_id: uuid.UUID,
+    payload: SessionLinkWrite,
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityRead:
+    """Links the ride to a sqorz session (or adjusts the clock offset of an
+    existing link). A link made here is never undone automatically."""
+    await _require_data_owner(db, current_user, athlete)
+    activity = await _find(db, athlete, current_user, activity_id)
+    event = await db.scalar(
+        select(TrainingEvent).where(
+            TrainingEvent.athlete_id == athlete.id, TrainingEvent.external_event_id == payload.external_event_id
+        )
+    )
+    if event is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    await fusion_service.set_manual_link(db, activity, event, payload.clock_offset_s)
+    await db.commit()
+    return (await _reads(db, [activity]))[0]
+
+
+@router.delete("/{activity_id}/session", response_model=ActivityRead)
+async def unlink_session(
+    activity_id: uuid.UUID,
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityRead:
+    """Detaches the ride from its session; auto-linking won't reattach it."""
+    await _require_data_owner(db, current_user, athlete)
+    activity = await _find(db, athlete, current_user, activity_id)
+    fusion_service.unlink(activity)
+    await db.commit()
+    return (await _reads(db, [activity]))[0]
 
 
 @router.delete("/{activity_id}", status_code=status.HTTP_204_NO_CONTENT)
