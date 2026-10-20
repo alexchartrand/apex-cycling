@@ -71,3 +71,19 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  # The prod stack can't be deployed from CI, but its config can be checked:
+  # compose interpolation, the Caddyfile and the shell scripts' syntax.
+  prod-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          cp .env.prod.example .env.prod
+          sed -i -e 's/^JWT_SECRET=$/JWT_SECRET=ci/' -e 's/^POSTGRES_PASSWORD=$/POSTGRES_PASSWORD=ci/' -e 's/^ACME_EMAIL=$/ACME_EMAIL=ci@example.com/' .env.prod
+          docker compose -f docker-compose.prod.yml --env-file .env.prod config --quiet
+      - run: |
+          docker run --rm -e ACME_EMAIL=ci@example.com -e DOMAIN=example.com \
+            -v "$PWD/docker/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine \
+            caddy validate --config /etc/caddy/Caddyfile
+      - run: for f in scripts/*.sh docker/backup.sh; do bash -n "$f"; done

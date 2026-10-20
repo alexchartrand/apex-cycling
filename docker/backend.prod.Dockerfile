@@ -13,7 +13,8 @@ FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends libpq5 \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --uid 1000 appuser
+    && useradd --create-home --uid 1000 appuser \
+    && mkdir -p /data/uploads && chown appuser:appuser /data/uploads
 
 WORKDIR /app
 
@@ -26,4 +27,7 @@ USER appuser
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips='*'"]
+# --proxy-headers is on by default; which peers it trusts comes from the
+# FORWARDED_ALLOW_IPS env var (set in docker-compose.prod.yml to the edge's
+# network). Unset, uvicorn trusts only 127.0.0.1.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers"]

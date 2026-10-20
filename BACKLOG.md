@@ -14,7 +14,7 @@ Full detail (scope, decisions, verification) lives in the approved plan;
 this is the task checklist. Product decisions: mixed power-meter usage
 (data-driven + model-based CdA), import = FIT/TCX/GPX + Strava + Intervals.icu,
 audience = the club (athletes/coaches/admins), FR+EN UI, deployed on a shared
-OVH VPS behind an existing reverse proxy, optional SMTP with copy-link
+dedicated OVH VPS for `apex-cycling.net` (changed 10/20 from a shared VPS behind an existing proxy: Caddy now owns 80/443 and gets its own certificate), optional SMTP with copy-link
 fallback, mobile-first installable PWA, evolved brand + dark theme.
 
 **Phase 0 — Foundation**
@@ -52,12 +52,13 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 - [x] T4.3 Session comments (coach ↔ athlete)
 - [x] T4.4 Club pages, athlete switcher, coach dashboard — ✋ Phase 4 checkpoint
 
-**Phase 5 — Production on OVH (v1.0 release)**
-- [ ] T5.1 Prod compose for shared host (loopback port, proxy headers, real-IP rate limiting, security headers; `Cache-Control: no-cache` on `sw.js`/`index.html` so PWA updates are picked up)
-- [ ] T5.2 Backups (daily pg_dump + uploads, rotation, restore drill)
-- [ ] T5.3 Deploy script, log rotation, healthchecks, full `.env.prod.example`, `create-admin` CLI, OVH guide
-- [ ] T5.4 Structured logs, deep health, worker heartbeat, platform-admin page
-- [ ] T5.5 Playwright e2e smoke suite — ✋ first deploy with user
+**Phase 5 — Production on OVH VPS (v1.0 release)**
+Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling.net`; an AWS EC2 variant was built first and the scripts work on any Ubuntu host), so the stack is self-contained (Caddy publishes 80/443 with Let's Encrypt) and Phase 5 includes server installation (`scripts/server-setup.sh`, README guide).
+- [x] T5.1 Prod compose for a single host: Caddy on 80/443, uvicorn trusts `X-Forwarded-*` only from the edge network so rate limits key on the real client IP, CSP + security headers, 25 MB `/api` body limit, `no-cache` on `index.html`/`sw.js`/manifest and immutable `/assets` (404s not cached)
+- [x] T5.2 Backups: `backup` service (daily `pg_dump` + uploads tarball, 14 daily / 8 weekly, optional sync to any S3-compatible store such as OVH Object Storage), `scripts/restore.sh`, restore drill run for real
+- [x] T5.3 `scripts/server-setup.sh` (Docker, ufw + fail2ban, swap, unattended upgrades, log caps), `init-env.sh`, `deploy.sh` (build → pre-deploy backup → `up --wait` → health check → automatic rollback; `--rollback`), `compose.sh`, healthchecks on every service, full `.env.prod.example`, `create-admin` CLI (`python -m app.auth.cli`), README AWS guide, CI `prod-config` job
+- [x] T5.4 JSON logs with request id (`X-Request-ID`), deep `/api/health` (503 when DB down), worker heartbeat (`worker_heartbeats` table + file for the container healthcheck), platform-admin page `/admin` (worker status, failed syncs, newest accounts)
+- [ ] T5.5 Playwright e2e smoke suite — ✋ first real deploy with the user (OVH VPS, DNS A record, Let's Encrypt, SMTP, S3 backup target)
 
 **Phase 6 — Performance tools**
 - [ ] T6.1 Physics core (Python + TS, shared test vectors)
@@ -90,6 +91,10 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 - [ ] 🟢 Prod Let's Encrypt issuance never verified against a real domain — *added 7/27*
   - Repro: `docker-compose.prod.yml` + Caddy has only been run with `localhost` (self-signed cert). A real public DNS record pointed at a host, confirming Caddy actually obtains a Let's Encrypt cert, hasn't been done.
   - Notes: see README.md "Not yet exercised for real"; low risk until an actual prod domain is in play.
+
+- [ ] 🟡 Production runs without off-host backups or SMTP — *added 10/20*
+  - Why: decided at first-deploy planning to start with neither. Backups exist only on the VPS disk (`/var/backups/apex-cycling`), so losing the server loses them; password resets and club invites go through admin-copied links.
+  - Notes: off-host = OVH VPS backup option or `BACKUP_S3_*` in `.env.prod` (README "Backups and restore"); email = `SMTP_*` in `.env.prod`. Revisit once real club data is in.
 
 ## ✨ Features
 

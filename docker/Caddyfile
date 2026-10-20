@@ -1,14 +1,61 @@
+# Edge for the prod stack: terminates TLS (Let's Encrypt, automatic), serves
+# the SPA and proxies /api to the backend. Nothing sits in front of it, so it
+# alone decides the client address the backend sees (X-Forwarded-For).
+{
+	email {$ACME_EMAIL}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age={$HSTS_MAX_AGE:31536000}"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		# The SPA is fully self-hosted (bundled JS, fonts and icons, no CDNs).
+		# style-src keeps 'unsafe-inline' for React style attributes and
+		# Recharts; scripts stay strictly same-origin.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		-Server
+	}
+}
+
 {$DOMAIN:localhost} {
-	encode gzip
+	encode zstd gzip
+	import security_headers
 
 	# Every backend route lives under /api (see backend/app/main.py).
 	handle /api/* {
-		reverse_proxy backend:8000
+		# Uploads (activity files) are the only large bodies.
+		request_body {
+			max_size 25MB
+		}
+		# One id per request, shared with the backend's JSON logs.
+		reverse_proxy backend:8000 {
+			header_up X-Request-ID {http.request.uuid}
+		}
 	}
 
+	# Hashed build output never changes under the same name.
+	handle /assets/* {
+		root * /srv
+		# Only real files: a cached 404 for a not-yet-deployed chunk would stick.
+		@exists file
+		header @exists Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Everything else (index.html, sw.js, manifest, icons) must revalidate on
+	# every load, otherwise a PWA update is never picked up.
 	handle {
 		root * /srv
+		header Cache-Control "no-cache"
 		try_files {path} /index.html
 		file_server
 	}
+}
+
+# Internal liveness probe for the container healthcheck (not published).
+http://:8081 {
+	respond /ping "ok" 200
 }

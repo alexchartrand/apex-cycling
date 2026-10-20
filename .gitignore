@@ -12,3 +12,7 @@ dist/
 
 db_data/
 *.db
+.env.prod
+.deployed-tag
+.previous-tag
+backups/

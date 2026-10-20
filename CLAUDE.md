@@ -35,6 +35,16 @@ npm run lint       # oxlint
 npm test           # vitest (jsdom + Testing Library, setup in src/test/setup.ts)
 ```
 
+Production (single VPS, see README "Production deployment"; scripts in `scripts/`):
+```bash
+sudo scripts/server-setup.sh                      # once, bare Ubuntu 24.04 (Docker, ufw, fail2ban, swap)
+scripts/init-env.sh <domain> <email>              # writes .env.prod with fresh secrets
+scripts/deploy.sh [--no-pull|--rollback]          # build, back up, up --wait, health check, auto-rollback
+scripts/compose.sh <compose args>                 # docker compose against the deployed image tag
+sudo scripts/restore.sh latest                    # replaces ALL data from the newest backup
+scripts/compose.sh exec backend python -m app.auth.cli create-admin <email> "<name>"
+```
+
 Full stack via Docker (recommended for manual/e2e testing):
 ```bash
 cp .env.example .env
@@ -48,6 +58,8 @@ The backend `.venv` console scripts have stale shebangs from the Track Trainer r
 For a SQLite dev DB (skipping Postgres/Alembic entirely), see `backend/tests/conftest.py::db_session` for the pattern: `create_async_engine("sqlite+aiosqlite:///:memory:")` + `Base.metadata.create_all`, then override the `get_db` FastAPI dependency.
 
 ## Backend architecture
+
+**Ops & prod** (`docker-compose.prod.yml`, `docker/Caddyfile`, `app/ops/`, `app/admin/`, `app/core/logging.py`): Caddy is the only published service (80/443, automatic Let's Encrypt; `DOMAIN=localhost` gives a private-CA cert for smoke tests) and ports are published on IPv4 only (Docker's IPv6 proxy would hide client IPs — publish an A record, never AAAA) and the compose network is pinned to `172.28.0.0/24` so uvicorn's `FORWARDED_ALLOW_IPS` trusts only Caddy — that is what makes slowapi's `get_remote_address` see the real client (`tests/test_rate_limit_proxy.py`). Images are tagged `APP_TAG` = git commit (+ `-dirty-<diffhash>`), kept in `.deployed-tag`; always use `scripts/compose.sh` instead of bare `docker compose` or you get the `latest` tag. CSP is `script-src 'self'`, so no inline scripts in `frontend/index.html` (the theme pre-paint script is `public/theme-init.js`). The worker writes `/tmp/worker-heartbeat` (container healthcheck) and a `worker_heartbeats` row (admin page) every minute; `/api/health` does `SELECT 1`; logs are JSON when `LOG_FORMAT=json`, each request carrying `request_id` (Caddy sets `X-Request-ID`). Backups live in `/var/backups/apex-cycling` (root-owned) from `docker/backup.sh`; a new uploads directory the backend writes to must be created and chowned in `backend.prod.Dockerfile` (`/data/uploads` is) or the named volume comes up root-only. Platform-admin API: `GET /api/admin/overview` (`require_platform_admin`), page at `/admin` linked from the account menu.
 
 Every router is mounted under `/api` (`API_PREFIX` in `app/core/config.py`, applied in `app/main.py`); route modules declare their prefixes without it. Tests' `AsyncClient` uses `base_url="http://test/api"` so test paths omit it too. In dev the Vite server proxies `/api` to the backend (`API_PROXY_TARGET`), in prod the edge Caddy does — the SPA always calls same-origin.
 

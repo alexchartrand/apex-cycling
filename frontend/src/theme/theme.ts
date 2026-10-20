@@ -1,7 +1,7 @@
 export type ThemeMode = "system" | "light" | "dark";
 export type ResolvedTheme = "light" | "dark";
 
-// Also read by the inline pre-paint script in index.html — keep in sync.
+// Also read by the pre-paint script public/theme-init.js — keep in sync.
 export const THEME_STORAGE_KEY = "apex-theme";
 
 export function isThemeMode(value: unknown): value is ThemeMode {

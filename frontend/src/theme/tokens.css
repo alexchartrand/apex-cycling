@@ -2,7 +2,7 @@
   Semantic design tokens. Two themes: "paper" (light, the original brand
   ground) and "night session" (dark, ink ground). The active theme is set
   as data-theme on <html> by theme/ThemeProvider.tsx (and by the inline
-  script in index.html before first paint, to avoid a flash). Every
+  script public/theme-init.js before first paint, to avoid a flash). Every
   component styles itself from these tokens only — never raw --apex-* —
   so both themes stay correct by construction.
 */

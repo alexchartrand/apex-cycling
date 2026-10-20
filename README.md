@@ -6,9 +6,8 @@ See `docs/plan.md`-equivalent context in the original architecture plan for the
 full design; this file just covers running what's built so far — auth +
 club/athlete data model foundation, sqorz raw ingestion (report a
 transponder + date range, pull its training history, background polling),
-normalization into per-lap/per-segment training data, and an SPA with
-session detail + progression charts. Club-admin roster management and a
-coach dashboard are not built yet.
+normalization into per-lap/per-segment training data, clubs and coaching,
+and an SPA with session detail, records and progression charts.
 
 ## Run with Docker (recommended)
 
@@ -81,42 +80,176 @@ source .venv/bin/activate
 python -m app.ingestion.runner
 ```
 
-## Production deployment
+## Production deployment (OVH VPS)
 
-`docker-compose.prod.yml` builds multi-stage, non-dev images (no bind mounts,
-no `--reload`, no dev dependencies) and fronts the whole stack with a single
-[Caddy](https://caddyserver.com/) container that serves the built frontend
-and reverse-proxies every backend route (all under `/api` — see
-`docker/Caddyfile`) on the same origin, so the browser never makes a
-cross-origin request and no CORS configuration is needed in production.
-Caddy also handles TLS automatically: point a real domain's DNS at the host
-and it gets a Let's Encrypt certificate on first request, no manual
-cert/reverse-proxy setup required. Hosting provider is still an open
-choice — this compose file works unchanged on any host that can run Docker
-and reach the internet on ports 80/443.
+The prod stack (`docker-compose.prod.yml`) is meant for **one bare Linux
+server with nothing else on it** — here an OVH VPS serving
+`apex-cycling.net` — running five containers.
+
+| Service | Role |
+| --- | --- |
+| `frontend` | [Caddy](https://caddyserver.com/): owns ports 80/443, gets and renews its own Let's Encrypt certificate, serves the built SPA, proxies `/api` to the backend, sets the security headers |
+| `backend` | FastAPI behind Caddy (private network only), runs migrations on start |
+| `worker` | background sqorz poller |
+| `db` | Postgres 16 (named volume) |
+| `backup` | daily `pg_dump` + uploads archive with rotation |
+
+Only Caddy is reachable from outside. Everything is operated with the scripts
+in `scripts/`. The same steps work on any Ubuntu VPS or cloud instance.
+
+### 1. Order the server and point the domain at it
+
+1. **Order the VPS** in the OVH manager: pick a datacenter close to the club
+   (Beauharnois, Québec for CNCB) and **Ubuntu 24.04** as the image. Add your
+   SSH public key at order time if offered. OVH emails the server's IPv4 address
+   and the login user (usually `ubuntu`, with `sudo`).
+2. **DNS**: create an **`A` record** for `apex-cycling.net` pointing at the
+   server's IPv4 address (OVH manager → Web Cloud → Domain names → DNS zone, or
+   at your registrar if the zone is elsewhere). **Do not create an `AAAA`
+   record**: the stack only listens on IPv4 (Docker's IPv6 proxy hides client
+   addresses, which would break per-user rate limiting), and Let's Encrypt
+   prefers IPv6 when a record exists. Wait until `dig +short apex-cycling.net`
+   returns the IP before the first deploy.
+3. OVH's optional network firewall is not needed; the server runs its own
+   (`ufw`, set up below).
+
+### 2. Prepare the server (once)
 
 ```bash
-cp .env.prod.example .env.prod   # fill in DOMAIN, JWT_SECRET, POSTGRES_PASSWORD
-docker compose -f docker-compose.prod.yml --env-file .env.prod up --build -d
+ssh ubuntu@apex-cycling.net
+sudo apt-get update && sudo apt-get install -y git
+git clone https://github.com/alexchartrand/apex-cycling.git
+cd apex-cycling                  # a private repo needs a deploy key or token for the clone
+sudo scripts/server-setup.sh     # Docker, firewall, fail2ban, swap, updates, log rotation
+exit                             # log back in so the docker group applies
 ```
 
-Every secret in `.env.prod` (`JWT_SECRET`, `POSTGRES_PASSWORD`) has no
-fallback default — compose refuses to start until they're set. Run
-migrations happen automatically on backend startup, same as dev.
+`server-setup.sh` is idempotent: Docker Engine + Compose plugin from Docker's
+apt repo, `ufw` (SSH, 80, 443 only) and `fail2ban`, unattended security
+upgrades, a 2 GB swap file if there is none, a 10 MB × 5 log cap for every
+container, and `/var/backups/apex-cycling` for backups. SSH stays open to any address (your home IP changes), guarded by `fail2ban`.
+Once you have confirmed that logging in with your SSH key works, run
+`sudo scripts/server-setup.sh --ssh-key-only` to turn off password logins
+(it refuses if no key is installed); keep your first session open until a
+second one connects.
 
-This exact compose file has been built and run end-to-end in this
-repository (own project name `apex-cycling-prod` so it never shares a
-network or volume with the dev stack): db/backend/worker/frontend all come
-up healthy, `GET /api/health` and the SPA both serve correctly through Caddy's
-TLS (self-signed for `localhost`, real Let's Encrypt for a real domain), and
-a full signup → cookie-authenticated request round-trip works through the
-proxy.
+### 3. Configure and deploy
 
-**Not yet exercised for real**: actually pointing a public DNS record at a
-host and confirming Let's Encrypt issues a real certificate (the local
-verification above only confirms Caddy *would* request one — `localhost`
-gets Caddy's internal/self-signed cert instead since it isn't a public
-domain).
+```bash
+ssh ubuntu@apex-cycling.net
+cd apex-cycling
+scripts/init-env.sh apex-cycling.net alexchartrand91@gmail.com   # writes .env.prod with fresh secrets
+$EDITOR .env.prod        # optional: SMTP, timezone, backup settings (documented inline)
+scripts/deploy.sh
+```
+
+`deploy.sh` builds the images (tagged with the git commit), takes a backup if
+a database already exists, starts everything, waits for every container's
+healthcheck, then checks `https://<domain>/api/health` through Caddy. If the
+new version doesn't come up healthy it puts the previous images back by
+itself. First start takes a few minutes (image builds on a small instance,
+then the certificate).
+
+Create the first platform admin (can edit any track's settings and open the
+Administration page from the account menu):
+
+```bash
+scripts/compose.sh exec backend python -m app.auth.cli create-admin you@example.com "Your Name"
+```
+
+Open `https://apex-cycling.net` and sign up the club's people, or create a club
+and send invite links.
+
+### 4. Day to day
+
+| Task | Command |
+| --- | --- |
+| Deploy the latest `master` | `scripts/deploy.sh` |
+| Go back to the previous version | `scripts/deploy.sh --rollback` (migrations are not undone) |
+| Status / logs | `scripts/compose.sh ps` · `scripts/compose.sh logs -f backend` |
+| Password-reset link (no SMTP) | `scripts/compose.sh exec backend python -m app.auth.cli reset-link <email>` |
+| Make someone platform admin | `scripts/compose.sh exec backend python -m app.auth.cli grant-admin <email>` |
+| Worker / failed syncs / new accounts | Administration page in the app |
+
+Use `scripts/compose.sh` rather than plain `docker compose`: it points at the
+images `deploy.sh` last deployed. Backend and worker logs are JSON, one object
+per line, each request tagged with a `request_id` that is also returned in the
+`X-Request-ID` response header.
+
+### 5. Backups and restore
+
+The `backup` service writes to `/var/backups/apex-cycling` at 03:00
+(`BACKUP_HOUR`, container `TZ`): `daily/` keeps 14 days, `weekly/` the Sunday
+backup for 8 weeks; each is a `pg_dump` custom-format file plus a tarball of
+the uploads volume. The directory is root-owned, so use `sudo` to look at it.
+
+Restore (replaces **all** current data):
+
+```bash
+sudo ls /var/backups/apex-cycling/daily
+sudo scripts/restore.sh latest                                    # newest daily backup
+sudo scripts/restore.sh /var/backups/apex-cycling/weekly/apex-20261018-030000.dump \
+                        /var/backups/apex-cycling/weekly/uploads-20261018-030000.tar.gz
+```
+
+This was drilled for real: back up, change data, restore, confirm the old data
+is back and the newer changes are gone. Repeat the drill after changing the
+backup setup.
+
+**Off-host copy.** Backups on the server's own disk don't survive losing the
+server, so keep a second copy elsewhere. Either enable OVH's VPS backup option,
+or let the backup service sync to any S3-compatible store. With OVH Object
+Storage: create a container (bucket) and an S3 user with read/write access, then
+add to `.env.prod` (endpoint and region as shown for your container in the OVH
+manager):
+
+```
+BACKUP_S3_URI=s3://<bucket>/apex-cycling
+BACKUP_S3_ENDPOINT=https://s3.<region>.io.cloud.ovh.net
+BACKUP_S3_REGION=<region>
+BACKUP_S3_ACCESS_KEY=…
+BACKUP_S3_SECRET_KEY=…
+```
+
+then `scripts/deploy.sh`. Backblaze B2 or AWS S3 work the same way (leave the
+endpoint empty for AWS S3). The sync mirrors the local rotation, so the remote
+copy keeps the same 14 daily / 8 weekly set. Check the first night's run with
+`sudo ls /var/backups/apex-cycling` and the bucket's contents.
+
+### 6. Troubleshooting
+
+- **No certificate / browser shows a TLS error**: `scripts/compose.sh logs frontend`.
+  Almost always DNS not pointing at the server yet, a stray `AAAA` record, or
+  ports 80/443 blocked (check `sudo ufw status` and OVH's firewall, if enabled).
+- **Locked out of SSH**: use the OVH manager's KVM/VNC console to log in and
+  fix `ufw`/`fail2ban` (`sudo fail2ban-client status sshd`, `sudo ufw status`).
+- **Build killed or very slow**: out of memory; check `free -h` shows swap, or
+  choose a larger VPS.
+- **A deploy says unhealthy**: `scripts/compose.sh ps` and
+  `scripts/compose.sh logs backend`; the previous version was already restored.
+- **Rate limits seem shared between users**: the `client_ip` field in the
+  backend's logs should be each visitor's real address, not `172.28.0.1`.
+- **Moving to a new server**: set it up as above, copy a backup over, and run
+  `scripts/restore.sh` before pointing DNS at it.
+
+### Smoke-testing the prod stack on your own machine
+
+```bash
+scripts/init-env.sh localhost you@example.com
+printf 'HSTS_MAX_AGE=0\nHTTP_PORT=8080\nHTTPS_PORT=8443\nBACKUP_DIR=/tmp/apex-backups\n' >> .env.prod
+mkdir -p /tmp/apex-backups
+scripts/deploy.sh --no-pull        # https://localhost:8443, self-signed certificate
+```
+
+`DOMAIN=localhost` makes Caddy use its own private CA, so the browser warns.
+Tear down with `scripts/compose.sh down -v`.
+
+### Not yet exercised
+
+Issuing a real Let's Encrypt certificate for a public domain, sending real
+SMTP mail, and the S3 sync against OVH Object Storage itself (it is verified
+against a local S3-compatible server) have only been verified on paper. The
+first real deploy (roadmap T5.5) is where all three get confirmed.
 
 ## Continuous integration
 
