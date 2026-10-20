@@ -17,12 +17,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.activities.fusion_service import Recording, _ts, linked_recordings
+from app.aero.models import AeroTest
 from app.aero.schemas import (
     AeroConditionsRead,
     AeroEstimateRead,
     AeroFitRead,
     AeroInputs,
     AeroPointRead,
+    AeroTestCreate,
+    AeroTestDetail,
+    AeroTestRead,
+    AeroTestUpdate,
     AeroTrackChoice,
 )
 from app.analysis import aero, physics
@@ -214,3 +219,106 @@ def estimate(
         fit=fit,
         problem=problem,
     )
+
+
+# --- saved tests ---------------------------------------------------------------
+
+_INPUT_FIELDS = tuple(AeroInputs.model_fields)
+_SETUP_FIELDS = ("label", "position", "helmet", "skinsuit", "bike", "notes")
+
+
+def _inputs(test: AeroTest) -> AeroInputs:
+    return AeroInputs.model_validate({field: getattr(test, field) for field in _INPUT_FIELDS})
+
+
+def _lap_ids(test: AeroTest) -> list[uuid.UUID] | None:
+    return [uuid.UUID(lap_id) for lap_id in test.lap_ids] if test.lap_ids is not None else None
+
+
+def _test_read(test: AeroTest, data: SessionData, *, detail: bool) -> AeroTestRead:
+    result = estimate(data, _inputs(test), track_id=test.track_id, lap_ids=_lap_ids(test))
+    fields = dict(
+        id=test.id,
+        external_event_id=result.external_event_id,
+        event_name=result.event_name,
+        event_date=result.event_date,
+        track_id=result.track_id,
+        track_name=result.track_name,
+        lap_ids=_lap_ids(test),
+        inputs=_inputs(test),
+        created_at=test.created_at,
+        conditions=result.conditions,
+        fit=result.fit,
+        problem=result.problem,
+        **{field: getattr(test, field) for field in _SETUP_FIELDS},
+    )
+    return AeroTestDetail(**fields, points=result.points) if detail else AeroTestRead(**fields)
+
+
+async def _session_of(db: AsyncSession, athlete: Athlete, viewer: User, test: AeroTest) -> SessionData:
+    event = await db.get(TrainingEvent, test.training_event_id)
+    data = await load_session(db, athlete, viewer, event.external_event_id)
+    assert data is not None  # tests belong to the athlete's own sessions
+    return data
+
+
+async def list_tests(db: AsyncSession, athlete: Athlete, viewer: User) -> list[AeroTestRead]:
+    """Newest session first; each session is loaded once for all its tests."""
+    rows = await db.execute(
+        select(AeroTest, TrainingEvent.external_event_id)
+        .join(TrainingEvent, TrainingEvent.id == AeroTest.training_event_id)
+        .where(AeroTest.athlete_id == athlete.id)
+        .order_by(TrainingEvent.event_date.desc(), AeroTest.created_at)
+    )
+    sessions: dict[str, SessionData] = {}
+    reads = []
+    for test, external_event_id in rows:
+        if external_event_id not in sessions:
+            loaded = await load_session(db, athlete, viewer, external_event_id)
+            assert loaded is not None
+            sessions[external_event_id] = loaded
+        reads.append(_test_read(test, sessions[external_event_id], detail=False))
+    return reads
+
+
+async def get_test(db: AsyncSession, athlete: Athlete, test_id: uuid.UUID) -> AeroTest | None:
+    return await db.scalar(select(AeroTest).where(AeroTest.id == test_id, AeroTest.athlete_id == athlete.id))
+
+
+async def read_test(db: AsyncSession, athlete: Athlete, viewer: User, test: AeroTest) -> AeroTestDetail:
+    return _test_read(test, await _session_of(db, athlete, viewer, test), detail=True)
+
+
+async def create_test(
+    db: AsyncSession, athlete: Athlete, viewer: User, payload: AeroTestCreate
+) -> AeroTestDetail | None:
+    """None when the athlete has no such session; raises `TrackNotInSession`.
+    Commits."""
+    data = await load_session(db, athlete, viewer, payload.external_event_id)
+    if data is None:
+        return None
+    track_id = estimate(data, payload, track_id=payload.track_id).track_id  # resolves the default track
+    test = AeroTest(
+        athlete_id=athlete.id,
+        training_event_id=data.event.id,
+        track_id=track_id,
+        lap_ids=[str(lap_id) for lap_id in payload.lap_ids] if payload.lap_ids is not None else None,
+        **{field: getattr(payload, field) for field in (*_INPUT_FIELDS, *_SETUP_FIELDS)},
+    )
+    db.add(test)
+    await db.commit()
+    return _test_read(test, data, detail=True)
+
+
+async def update_test(
+    db: AsyncSession, athlete: Athlete, viewer: User, test: AeroTest, payload: AeroTestUpdate
+) -> AeroTestDetail:
+    """Commits."""
+    changes = payload.model_dump(exclude_unset=True)
+    if "lap_ids" in changes:
+        lap_ids = changes.pop("lap_ids")
+        test.lap_ids = [str(lap_id) for lap_id in lap_ids] if lap_ids is not None else None
+    for field, value in changes.items():
+        setattr(test, field, value)
+    await db.commit()
+    return await read_test(db, athlete, viewer, test)

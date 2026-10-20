@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.activities import streams
 from app.activities.models import Activity, ActivityPowerCurve, ActivityStream
 from app.activities.storage import delete_originals_after_commit
+from app.aero.models import AeroTest
 from app.athletes.models import Athlete, AthleteMetric, CoachAthlete
 from app.auth.models import PasswordResetToken, User
 from app.clubs.models import ClubInvite, ClubMembership
@@ -154,6 +155,15 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
                 ClubMembership,
                 list(await db.scalars(select(ClubMembership).where(ClubMembership.user_id == user.id))),
             ),
+            (
+                "aero_tests.csv",
+                AeroTest,
+                list(
+                    await db.scalars(
+                        select(AeroTest).where(AeroTest.athlete_id == athlete.id).order_by(AeroTest.created_at)
+                    )
+                ),
+            ),
             ("tracks.csv", Track, list(await db.scalars(select(Track).where(Track.id.in_(track_ids))))),
             (
                 "track_loops.csv",
@@ -231,6 +241,7 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     await db.execute(delete(ActivityStream).where(ActivityStream.activity_id.in_(activity_ids)))
     await db.execute(delete(Activity).where(Activity.athlete_id == athlete.id))
 
+    await db.execute(delete(AeroTest).where(AeroTest.athlete_id == athlete.id))  # they point at sessions too
     event_ids = select(TrainingEvent.id).where(TrainingEvent.athlete_id == athlete.id)
     lap_ids = select(TrainingLap.id).where(TrainingLap.athlete_id == athlete.id)
     await db.execute(delete(SessionComment).where(SessionComment.training_event_id.in_(event_ids)))

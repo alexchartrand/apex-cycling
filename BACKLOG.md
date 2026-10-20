@@ -75,7 +75,7 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 
 **Phase 8 — Aero lab**
 - [x] T8.1 CdA/Crr estimation from power + sqorz lap speed (`analysis/aero.py`: per-lap energy balance with the speed change taken from the neighbouring laps, automatic steady-lap pick, CdA+Crr least squares when the laps span ≥ 10 % of speed, else Crr held at the default or a given value; `POST /athletes/{id}/sessions/{event}/aero`, inputs default to the track's air and the profile weight). Checked on synthetic laps and a synthetic FIT recording, **not on a real power file yet**
-- [ ] T8.2 Aero tests (setup A/B comparison)
+- [x] T8.2 Aero tests (setup A/B comparison): `aero_tests` (migration 0006) keeps a session, its track, a hand-picked lap list or the automatic pick, the setup (label, position, helmet, skinsuit, bike, notes) and input overrides; CRUD under `/athletes/{id}/aero-tests`, results recomputed on every read (follows lap edits/offsets/weigh-ins, never shows a coach Strava-derived numbers); covered by account export/delete. Plan deviation: results aren't stored
 - [ ] T8.3 Aero lab UI
 
 **Phase 9 — Equipment, goals, engagement**

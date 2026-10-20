@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # Why there is no estimate, most fundamental first.
 AeroProblem = Literal["no_track_length", "no_weight", "no_power", "too_few_laps"]
@@ -93,3 +93,60 @@ class AeroEstimateRead(BaseModel):
     points: list[AeroPointRead]
     fit: AeroFitRead | None
     problem: AeroProblem | None
+
+
+class AeroTestCreate(AeroInputs):
+    external_event_id: str = Field(min_length=1, max_length=255)
+    track_id: uuid.UUID | None = None
+    lap_ids: list[uuid.UUID] | None = Field(default=None, max_length=2000)
+    label: str = Field(min_length=1, max_length=100)
+    position: str | None = Field(default=None, max_length=100)
+    helmet: str | None = Field(default=None, max_length=100)
+    skinsuit: str | None = Field(default=None, max_length=100)
+    bike: str | None = Field(default=None, max_length=100)
+    notes: str | None = Field(default=None, max_length=5000)
+
+
+class AeroTestUpdate(AeroInputs):
+    """Only the fields sent change; null clears one (back to its default, or
+    to the automatic lap pick). The label can be changed but not cleared."""
+
+    lap_ids: list[uuid.UUID] | None = Field(default=None, max_length=2000)
+    label: str | None = Field(default=None, min_length=1, max_length=100)
+    position: str | None = Field(default=None, max_length=100)
+    helmet: str | None = Field(default=None, max_length=100)
+    skinsuit: str | None = Field(default=None, max_length=100)
+    bike: str | None = Field(default=None, max_length=100)
+    notes: str | None = Field(default=None, max_length=5000)
+
+    @model_validator(mode="after")
+    def _label_kept(self) -> "AeroTestUpdate":
+        if "label" in self.model_fields_set and self.label is None:
+            raise ValueError("label can't be cleared")
+        return self
+
+
+class AeroTestRead(BaseModel):
+    id: uuid.UUID
+    external_event_id: str
+    event_name: str
+    event_date: date
+    track_id: uuid.UUID
+    track_name: str
+    label: str
+    position: str | None
+    helmet: str | None
+    skinsuit: str | None
+    bike: str | None
+    notes: str | None
+    lap_ids: list[uuid.UUID] | None
+    # What was set; `conditions` is what that came to with the defaults.
+    inputs: AeroInputs
+    created_at: datetime
+    conditions: AeroConditionsRead
+    fit: AeroFitRead | None
+    problem: AeroProblem | None
+
+
+class AeroTestDetail(AeroTestRead):
+    points: list[AeroPointRead]
