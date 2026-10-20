@@ -1,5 +1,5 @@
 // Keep in sync with backend/app/auth/schemas.py's SignupRequest password validator.
-export const MIN_PASSWORD_LENGTH = 12;
+export const MIN_PASSWORD_LENGTH = 8;
 export const MIN_CHARACTER_CLASSES = 3;
 
 const CLASS_PATTERNS = [/[a-z]/, /[A-Z]/, /\d/, /[^a-zA-Z0-9]/];

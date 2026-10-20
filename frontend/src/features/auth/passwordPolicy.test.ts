@@ -10,9 +10,11 @@ describe("failedPasswordRules", () => {
     expect(failedPasswordRules("alllowercaseletters")).toEqual(["classes"]);
   });
 
-  it("accepts 12+ chars with 3 classes", () => {
+  it("accepts 8+ chars with 3 classes", () => {
     expect(failedPasswordRules("Correcthorse123")).toEqual([]);
     expect(isPasswordStrong("Correcthorse123")).toBe(true);
+    expect(failedPasswordRules("Abcdef1!")).toEqual([]);
+    expect(failedPasswordRules("Abcde1!")).toEqual(["length"]);
   });
 });
 

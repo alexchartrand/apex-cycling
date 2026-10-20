@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr
 
 # Keep in sync with frontend/src/features/auth/passwordPolicy.ts
-MIN_PASSWORD_LENGTH = 12
+MIN_PASSWORD_LENGTH = 8
 MIN_CHARACTER_CLASSES = 3
 _PASSWORD_CLASS_PATTERNS = (
     re.compile(r"[a-z]"),
