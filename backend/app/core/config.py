@@ -9,7 +9,8 @@ API_PREFIX = "/api"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # An empty variable (compose passes `X: ${X:-}` through) counts as not set.
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
 
     database_url: str = "postgresql+asyncpg://apex_cycling:apex_cycling@localhost:5432/apex_cycling"
 
@@ -60,6 +61,22 @@ class Settings(BaseSettings):
     intervals_poll_interval_minutes: int = 30
     intervals_backfill_days: int = 90
     intervals_max_downloads_per_run: int = 25
+
+    # Strava (app/ingestion/strava). Register an API application at
+    # strava.com/settings/api with the authorization callback domain of this
+    # deployment; without client id and secret the Strava connection is off.
+    # Strava limits the whole application to 100 requests / 15 min and 1000 /
+    # day, so polling is sparse (webhooks, when set up, do the quick part).
+    strava_client_id: str | None = None
+    strava_client_secret: str | None = None
+    strava_base_url: str = "https://www.strava.com"
+    strava_poll_interval_minutes: int = 180
+    strava_backfill_days: int = 90
+    strava_max_downloads_per_run: int = 15
+    # Optional push events: the token Strava echoes when the subscription is
+    # created (`python -m app.ingestion.strava.cli subscribe`) and its id.
+    strava_webhook_verify_token: str | None = None
+    strava_webhook_subscription_id: int | None = None
 
     sqorz_base_url: str = "https://my.sqorz.com/json/training/transponder"
     sqorz_poll_interval_minutes: int = 20

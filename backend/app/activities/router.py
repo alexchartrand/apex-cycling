@@ -2,11 +2,11 @@ import uuid
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, UploadFile, status
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.activities import fusion_service, metrics_service, service
-from app.activities.models import Activity, ActivityPowerCurve, ActivityStream
+from app.activities.models import Activity, ActivitySource
 from app.activities.parsers import ActivityParseError
 from app.activities.schemas import (
     ActivityRead,
@@ -17,7 +17,6 @@ from app.activities.schemas import (
     TrainingLoadRead,
     UploadResult,
 )
-from app.activities.storage import delete_originals_after_commit
 from app.athletes.coaching import speaks_for_athlete
 from app.athletes.models import Athlete
 from app.auth.deps import get_current_user, require_athlete_access
@@ -31,6 +30,10 @@ router = APIRouter(prefix="/athletes/{athlete_id}/activities", tags=["activities
 analysis_router = APIRouter(prefix="/athletes/{athlete_id}", tags=["activities"])
 
 MAX_FILES_PER_UPLOAD = 20
+_SOURCE_URLS = {
+    ActivitySource.STRAVA: "https://www.strava.com/activities/{id}",
+    ActivitySource.INTERVALS_ICU: "https://intervals.icu/activities/{id}",
+}
 
 
 async def _require_data_owner(db: AsyncSession, user: User, athlete: Athlete) -> None:
@@ -53,6 +56,8 @@ async def _reads(db: AsyncSession, activities: list[Activity]) -> list[ActivityR
     for activity in activities:
         read = ActivityRead.model_validate(activity)
         read.external_event_id = external_ids.get(activity.training_event_id)
+        template = _SOURCE_URLS.get(activity.source)
+        read.external_url = template.format(id=activity.external_id) if template and activity.external_id else None
         reads.append(read)
     return reads
 
@@ -202,11 +207,7 @@ async def delete_activity(
 ) -> Response:
     await _require_data_owner(db, current_user, athlete)
     activity = await _find(db, athlete, current_user, activity_id)
-    if activity.file_path:
-        delete_originals_after_commit(db, [activity.file_path])
-    await db.execute(delete(ActivityPowerCurve).where(ActivityPowerCurve.activity_id == activity.id))
-    await db.execute(delete(ActivityStream).where(ActivityStream.activity_id == activity.id))
-    await db.delete(activity)
+    await service.delete_activities(db, [activity])
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

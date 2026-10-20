@@ -58,3 +58,16 @@ async def test_connection_credentials_are_encrypted_in_the_database(db_session):
         assert "s3cret" not in raw
         connection = await session.scalar(select(DataSourceConnection))
         assert connection.credentials == {"refresh_token": "s3cret"}
+
+
+def test_empty_environment_variables_count_as_unset(monkeypatch):
+    """docker-compose passes `X: ${X:-}` through, so unset optional settings arrive as ""."""
+    from app.core.config import Settings
+
+    monkeypatch.setenv("STRAVA_WEBHOOK_SUBSCRIPTION_ID", "")
+    monkeypatch.setenv("SMTP_PORT", "")
+    monkeypatch.setenv("STRAVA_CLIENT_ID", "")
+    settings = Settings()
+    assert settings.strava_webhook_subscription_id is None
+    assert settings.smtp_port == 587
+    assert settings.strava_client_id is None

@@ -8,7 +8,7 @@ import app.db.models  # noqa: F401 -- registers all models on Base.metadata befo
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.session import AsyncSessionLocal
-from app.ingestion.jobs import poll_active_connections, poll_intervals_connections
+from app.ingestion.jobs import poll_active_connections, poll_intervals_connections, poll_strava_connections
 from app.ops.heartbeat import record_beat, touch_heartbeat_file
 
 logger = logging.getLogger("ingestion.runner")
@@ -58,6 +58,15 @@ async def sync_intervals() -> None:
         logger.exception("Intervals.icu sync run failed")
 
 
+async def sync_strava() -> None:
+    if not (get_settings().strava_client_id and get_settings().strava_client_secret):
+        return
+    try:
+        await poll_strava_connections()
+    except Exception:
+        logger.exception("Strava sync run failed")
+
+
 async def main() -> None:
     configure_logging()
     settings = get_settings()
@@ -76,6 +85,14 @@ async def main() -> None:
         "interval",
         minutes=settings.intervals_poll_interval_minutes,
         jitter=120,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        sync_strava,
+        "interval",
+        minutes=settings.strava_poll_interval_minutes,
+        jitter=300,
         max_instances=1,
         coalesce=True,
     )

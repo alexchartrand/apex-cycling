@@ -38,6 +38,8 @@ class ActivityRead(BaseModel):
     # The sqorz session this ride contains; `clock_offset_s` is added to the
     # device's timestamps to get sqorz time. Filled in by the router.
     external_event_id: str | None = None
+    # Where the ride lives on its source (Strava requires linking back to it).
+    external_url: str | None = None
     clock_offset_s: float = 0.0
     session_link_manual: bool = False
 

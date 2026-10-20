@@ -17,6 +17,8 @@ from app.clubs.router import invites_router
 from app.clubs.router import router as clubs_router
 from app.connections.intervals_router import router as intervals_router
 from app.connections.router import ingestion_runs_router
+from app.connections.strava_router import public_router as strava_public_router
+from app.connections.strava_router import router as strava_router
 from app.connections.router import router as connections_router
 from app.core.config import API_PREFIX, get_settings
 from app.core.logging import RequestLogMiddleware, configure_logging
@@ -65,6 +67,8 @@ api_router.include_router(invites_router)
 api_router.include_router(connections_router)
 api_router.include_router(ingestion_runs_router)
 api_router.include_router(intervals_router)
+api_router.include_router(strava_router)
+api_router.include_router(strava_public_router)
 api_router.include_router(training_router)
 api_router.include_router(records_router)
 api_router.include_router(comments_router)

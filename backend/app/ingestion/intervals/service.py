@@ -4,13 +4,12 @@ from datetime import timedelta
 from app.db.base import utcnow
 from app.ingestion.intervals.client import IntervalsAuthError, IntervalsClientError, IntervalsRateLimited
 from app.ingestion.intervals.dtos import IntervalsConnectionRecord, SyncResult
+from app.ingestion.common import SyncRunRepositoryPort, UnitOfWorkPort
 from app.ingestion.intervals.ports import (
     ActivityImporterPort,
     ActivityRejected,
     IntervalsClientPort,
     IntervalsConnectionRepositoryPort,
-    SyncRunRepositoryPort,
-    UnitOfWorkPort,
 )
 
 logger = logging.getLogger("ingestion.intervals")

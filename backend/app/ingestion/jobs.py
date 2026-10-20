@@ -14,6 +14,7 @@ from app.connections.models import (
 from app.db.session import AsyncSessionLocal
 from app.ingestion.intervals.factory import build_intervals_sync_service
 from app.ingestion.sqorz.factory import build_sqorz_ingestion_service
+from app.ingestion.strava.factory import build_strava_sync_service
 
 logger = logging.getLogger("ingestion.jobs")
 
@@ -89,4 +90,37 @@ async def poll_intervals_connections() -> PollResult:
             logger.exception("Intervals.icu sync failed for connection %s", connection_id)
             result.failures += 1
             result.last_error = f"{connection_id}: {type(exc).__name__}: {exc}"[:500]
+    return result
+
+
+async def poll_strava_connections() -> PollResult:
+    """Syncs every athlete's active Strava connection. Strava limits the whole
+    application, so the first rate-limit answer ends the round."""
+    async with AsyncSessionLocal() as db:
+        connection_ids = list(
+            await db.scalars(
+                select(DataSourceConnection.id).where(
+                    DataSourceConnection.provider == DataSourceProvider.STRAVA,
+                    DataSourceConnection.status == DataSourceConnectionStatus.ACTIVE,
+                    DataSourceConnection.athlete_id.is_not(None),
+                )
+            )
+        )
+    logger.info("Syncing %d Strava connection(s)", len(connection_ids))
+    result = PollResult(connections=len(connection_ids))
+    for connection_id in connection_ids:
+        try:
+            async with AsyncSessionLocal() as db:
+                outcome = await build_strava_sync_service(db).sync_by_id(connection_id)
+        except Exception as exc:
+            logger.exception("Strava sync failed for connection %s", connection_id)
+            result.failures += 1
+            result.last_error = f"{connection_id}: {type(exc).__name__}: {exc}"[:500]
+            continue
+        if outcome is not None and outcome.status == "failed":
+            result.failures += 1
+            result.last_error = f"{connection_id}: {outcome.error}"[:500]
+        if outcome is not None and outcome.rate_limited:
+            logger.warning("Strava rate limit reached; the remaining connections wait for the next round")
+            break
     return result

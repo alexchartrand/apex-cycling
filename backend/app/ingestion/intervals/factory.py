@@ -5,12 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.ingestion.intervals.client import IntervalsHttpClient
 from app.ingestion.intervals.ports import IntervalsClientPort
-from app.ingestion.intervals.repositories import (
-    SqlAlchemyActivityImporter,
-    SqlAlchemyIntervalsConnectionRepository,
-    SqlAlchemySessionCommitter,
-    SqlAlchemySyncRunRepository,
-)
+from app.ingestion.intervals.repositories import SqlAlchemyActivityImporter, SqlAlchemyIntervalsConnectionRepository
+from app.ingestion.repositories import SqlAlchemySessionCommitter, SqlAlchemySyncRunRepository
 from app.ingestion.intervals.service import IntervalsSyncService
 
 

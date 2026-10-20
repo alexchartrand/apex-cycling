@@ -31,6 +31,9 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID:-}
+      STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:-}
+      STRAVA_WEBHOOK_VERIFY_TOKEN: ${STRAVA_WEBHOOK_VERIFY_TOKEN:-}
     volumes:
       - ./backend:/app
       - uploads:/data/uploads
@@ -45,6 +48,8 @@ services:
       context: .
       dockerfile: docker/worker.Dockerfile
     environment:
+      STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID:-}
+      STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:-}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-apex_cycling}:${POSTGRES_PASSWORD:-apex_cycling}@db:5432/${POSTGRES_DB:-apex_cycling}
     volumes:
       - ./backend:/app
