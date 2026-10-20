@@ -4,7 +4,7 @@ Alembic autogenerate and by `Base.metadata.create_all` in tests/dev seeding.
 
 from app.athletes.models import Athlete, AthleteMetric, CoachAthlete  # noqa: F401
 from app.auth.models import PasswordResetToken, User  # noqa: F401
-from app.clubs.models import Club, ClubMembership  # noqa: F401
+from app.clubs.models import Club, ClubInvite, ClubMembership, ClubSqorzAccount  # noqa: F401
 from app.connections.models import (  # noqa: F401
     DataSourceConnection,
     IngestionRun,

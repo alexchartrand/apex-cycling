@@ -15,12 +15,13 @@ from collections.abc import Sequence
 from datetime import date, datetime, timezone
 from typing import Any
 
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.athletes.models import Athlete, AthleteMetric, CoachAthlete
 from app.auth.models import PasswordResetToken, User
-from app.clubs.models import ClubMembership
+from app.clubs.models import ClubInvite, ClubMembership
+from app.clubs.service import delete_empty_clubs_of
 from app.connections.models import DataSourceConnection, IngestionRun, RawSnapshot, TransponderAssignment
 from app.db.base import Base
 from app.training.models import (
@@ -132,6 +133,11 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
                     )
                 ),
             ),
+            (
+                "club_memberships.csv",
+                ClubMembership,
+                list(await db.scalars(select(ClubMembership).where(ClubMembership.user_id == user.id))),
+            ),
             ("tracks.csv", Track, list(await db.scalars(select(Track).where(Track.id.in_(track_ids))))),
             (
                 "track_loops.csv",
@@ -158,40 +164,52 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
     return buffer.getvalue()
 
 
+async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
+    """Deletes an athlete profile and everything hanging off it: training
+    data, records, metrics, transponder assignments, personal connections and
+    coach links. Shared rows stay (sqorz connections and their snapshots,
+    tracks). Doesn't commit."""
+    event_ids = select(TrainingEvent.id).where(TrainingEvent.athlete_id == athlete.id)
+    lap_ids = select(TrainingLap.id).where(TrainingLap.athlete_id == athlete.id)
+    await db.execute(delete(PersonalRecord).where(PersonalRecord.athlete_id == athlete.id))
+    await db.execute(delete(ManualResult).where(ManualResult.athlete_id == athlete.id))
+    await db.execute(delete(LapSegmentTime).where(LapSegmentTime.training_lap_id.in_(lap_ids)))
+    await db.execute(delete(TrainingLap).where(TrainingLap.athlete_id == athlete.id))
+    await db.execute(delete(EventTrack).where(EventTrack.training_event_id.in_(event_ids)))
+    await db.execute(delete(EventClass).where(EventClass.training_event_id.in_(event_ids)))
+    await db.execute(delete(TrainingEvent).where(TrainingEvent.athlete_id == athlete.id))
+    await db.execute(delete(AthleteMetric).where(AthleteMetric.athlete_id == athlete.id))
+    await db.execute(delete(TransponderAssignment).where(TransponderAssignment.athlete_id == athlete.id))
+    await db.execute(delete(CoachAthlete).where(CoachAthlete.athlete_id == athlete.id))
+
+    # Personal (non-sqorz) connections belong to the athlete outright.
+    connection_ids = select(DataSourceConnection.id).where(DataSourceConnection.athlete_id == athlete.id)
+    run_ids = select(IngestionRun.id).where(IngestionRun.data_source_connection_id.in_(connection_ids))
+    await db.execute(delete(RawSnapshot).where(RawSnapshot.ingestion_run_id.in_(run_ids)))
+    await db.execute(delete(IngestionRun).where(IngestionRun.data_source_connection_id.in_(connection_ids)))
+    await db.execute(delete(DataSourceConnection).where(DataSourceConnection.athlete_id == athlete.id))
+    await db.execute(delete(Athlete).where(Athlete.id == athlete.id))
+
+
 async def delete_account(db: AsyncSession, user: User) -> None:
     """Deletes the user, their own athlete profile and all of its data.
     Shared rows stay (sqorz transponder connections and their snapshots,
     tracks); rows other people own that merely reference this user lose
     that reference instead (e.g. a transponder assignment this user entered
-    for another athlete). Doesn't commit."""
+    for another athlete). Doesn't commit. Callers first make sure the user
+    isn't the last admin of a club that still has people in it
+    (`clubs.service.clubs_left_without_admin`); clubs they alone made up are
+    deleted here.
+    """
     athlete = await _self_athlete(db, user)
 
-    if athlete is not None:
-        event_ids = select(TrainingEvent.id).where(TrainingEvent.athlete_id == athlete.id)
-        lap_ids = select(TrainingLap.id).where(TrainingLap.athlete_id == athlete.id)
-        await db.execute(delete(PersonalRecord).where(PersonalRecord.athlete_id == athlete.id))
-        await db.execute(delete(ManualResult).where(ManualResult.athlete_id == athlete.id))
-        await db.execute(delete(LapSegmentTime).where(LapSegmentTime.training_lap_id.in_(lap_ids)))
-        await db.execute(delete(TrainingLap).where(TrainingLap.athlete_id == athlete.id))
-        await db.execute(delete(EventTrack).where(EventTrack.training_event_id.in_(event_ids)))
-        await db.execute(delete(EventClass).where(EventClass.training_event_id.in_(event_ids)))
-        await db.execute(delete(TrainingEvent).where(TrainingEvent.athlete_id == athlete.id))
-        await db.execute(delete(AthleteMetric).where(AthleteMetric.athlete_id == athlete.id))
-        await db.execute(delete(TransponderAssignment).where(TransponderAssignment.athlete_id == athlete.id))
-
-        # Personal (non-sqorz) connections belong to the athlete outright.
-        connection_ids = select(DataSourceConnection.id).where(DataSourceConnection.athlete_id == athlete.id)
-        run_ids = select(IngestionRun.id).where(IngestionRun.data_source_connection_id.in_(connection_ids))
-        await db.execute(delete(RawSnapshot).where(RawSnapshot.ingestion_run_id.in_(run_ids)))
-        await db.execute(delete(IngestionRun).where(IngestionRun.data_source_connection_id.in_(connection_ids)))
-        await db.execute(delete(DataSourceConnection).where(DataSourceConnection.athlete_id == athlete.id))
-
-    athlete_filter = [CoachAthlete.athlete_id == athlete.id] if athlete is not None else []
-    await db.execute(delete(CoachAthlete).where(or_(CoachAthlete.coach_user_id == user.id, *athlete_filter)))
+    await db.execute(delete(CoachAthlete).where(CoachAthlete.coach_user_id == user.id))
     await db.execute(
         update(CoachAthlete).where(CoachAthlete.initiated_by_user_id == user.id).values(initiated_by_user_id=None)
     )
+    await delete_empty_clubs_of(db, user)
     await db.execute(delete(ClubMembership).where(ClubMembership.user_id == user.id))
+    await db.execute(update(ClubInvite).where(ClubInvite.created_by_user_id == user.id).values(created_by_user_id=None))
     await db.execute(
         update(TransponderAssignment)
         .where(TransponderAssignment.created_by_user_id == user.id)
@@ -204,5 +222,5 @@ async def delete_account(db: AsyncSession, user: User) -> None:
         .values(created_by_user_id=None)
     )
     if athlete is not None:
-        await db.execute(delete(Athlete).where(Athlete.id == athlete.id))
+        await delete_athlete(db, athlete)
     await db.execute(delete(User).where(User.id == user.id))

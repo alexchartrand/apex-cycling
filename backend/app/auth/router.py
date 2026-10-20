@@ -31,6 +31,7 @@ from app.auth.service import (
     set_password,
 )
 from app.clubs.models import ClubMembership, ClubRole
+from app.clubs.service import clubs_left_without_admin
 from app.core.config import API_PREFIX, get_settings
 from app.core.mail import mail_enabled, send_email
 from app.core.rate_limit import limiter
@@ -342,6 +343,12 @@ async def delete_my_account(
 ) -> None:
     if not verify_password(payload.password, current_user.hashed_password):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Password is incorrect")
+    if stuck := await clubs_left_without_admin(db, current_user):
+        names = ", ".join(club.name for club in stuck)
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"You are the only admin of {names}: make someone else an admin or remove its members first",
+        )
     await delete_account(db, current_user)
     await db.commit()
     _clear_auth_cookies(response)

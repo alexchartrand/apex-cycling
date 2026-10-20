@@ -92,3 +92,18 @@ async def require_club_admin(
     if membership is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Club admin access required")
     return membership
+
+
+async def require_club_member(
+    club_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ClubMembership:
+    """Any role. A club you're not in answers 404, not 403, so ids of other
+    clubs can't be probed."""
+    membership = await db.scalar(
+        select(ClubMembership).where(ClubMembership.user_id == current_user.id, ClubMembership.club_id == club_id)
+    )
+    if membership is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Club not found")
+    return membership

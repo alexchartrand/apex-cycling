@@ -1,28 +1,48 @@
 """Editing a track's settings: the facts about the facility (length, indoor,
 elevation, usual temperature) and which of its checkpoints and views are
 displayed. Tracks are shared by everyone who rides there, so editing is
-limited — see `can_edit_track`.
+limited — see `TrackEditRights`.
 """
 
 import uuid
+from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.models import User
+from app.clubs.models import ClubMembership, ClubRole, ClubSqorzAccount
 from app.training.models import EventTrack, Track, TrainingLap
 from app.training.records_service import recompute_many
 from app.training.schemas import TrackSummary, TrackUpdate
 from app.training.service import track_summary
 
 
-def can_edit_track(user: User, track: Track) -> bool:
-    """Platform admins only for now. Club admins of a club linked to the
-    track's sqorz account join them with the club↔sqorz link (T4.1) — this is
-    the one place that rule lives.
+@dataclass(frozen=True)
+class TrackEditRights:
+    """Who may edit which tracks: platform admins any, club admins the tracks
+    of the sqorz accounts their clubs are linked to (`ClubSqorzAccount`).
+    Looked up once per request (`track_edit_rights`) so a track list can ask
+    per track without a query each. This is the one place the rule lives.
     """
-    return user.is_platform_admin
+
+    everything: bool = False
+    sqorz_account_ids: frozenset[str] = frozenset()
+
+    def can_edit(self, track: Track) -> bool:
+        return self.everything or track.sqorz_account_id in self.sqorz_account_ids
+
+
+async def track_edit_rights(db: AsyncSession, user: User) -> TrackEditRights:
+    if user.is_platform_admin:
+        return TrackEditRights(everything=True)
+    account_ids = await db.scalars(
+        select(ClubSqorzAccount.sqorz_account_id)
+        .join(ClubMembership, ClubMembership.club_id == ClubSqorzAccount.club_id)
+        .where(ClubMembership.user_id == user.id, ClubMembership.role == ClubRole.CLUB_ADMIN)
+    )
+    return TrackEditRights(sqorz_account_ids=frozenset(account_ids))
 
 
 class InvalidTrackSettings(Exception):

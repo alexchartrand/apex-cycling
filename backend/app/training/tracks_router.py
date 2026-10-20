@@ -7,7 +7,7 @@ from app.auth.deps import get_current_user
 from app.auth.models import User
 from app.db.session import get_db
 from app.training.schemas import TrackSummary, TrackUpdate
-from app.training.tracks_service import InvalidTrackSettings, can_edit_track, get_track, update_track
+from app.training.tracks_service import InvalidTrackSettings, get_track, track_edit_rights, update_track
 
 router = APIRouter(prefix="/tracks", tags=["tracks"])
 
@@ -22,7 +22,7 @@ async def edit_track(
     track = await get_track(db, track_id)
     if track is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Track not found")
-    if not can_edit_track(current_user, track):
+    if not (await track_edit_rights(db, current_user)).can_edit(track):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not allowed to edit this track")
     try:
         return await update_track(db, track, payload, can_edit=True)

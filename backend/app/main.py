@@ -5,6 +5,8 @@ from slowapi.errors import RateLimitExceeded
 
 from app.athletes.router import router as athletes_router
 from app.auth.router import router as auth_router
+from app.clubs.router import invites_router
+from app.clubs.router import router as clubs_router
 from app.connections.router import ingestion_runs_router
 from app.connections.router import router as connections_router
 from app.core.config import API_PREFIX, get_settings
@@ -37,6 +39,8 @@ app.add_middleware(
 api_router = APIRouter(prefix=API_PREFIX)
 api_router.include_router(auth_router)
 api_router.include_router(athletes_router)
+api_router.include_router(clubs_router)
+api_router.include_router(invites_router)
 api_router.include_router(connections_router)
 api_router.include_router(ingestion_runs_router)
 api_router.include_router(training_router)

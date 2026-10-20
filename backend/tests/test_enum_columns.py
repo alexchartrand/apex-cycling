@@ -6,7 +6,7 @@ must set `values_callable` so SQLAlchemy emits `.value`, not `.name`.
 """
 
 from app.athletes.models import CoachAthlete, CoachAthleteStatus
-from app.clubs.models import ClubMembership, ClubRole
+from app.clubs.models import ClubInvite, ClubMembership, ClubRole
 from app.connections.models import (
     DataSourceConnection,
     DataSourceConnectionStatus,
@@ -18,6 +18,7 @@ from app.connections.models import (
 
 CASES = [
     (ClubMembership, "role", ClubRole),
+    (ClubInvite, "role", ClubRole),
     (CoachAthlete, "status", CoachAthleteStatus),
     (DataSourceConnection, "provider", DataSourceProvider),
     (DataSourceConnection, "status", DataSourceConnectionStatus),

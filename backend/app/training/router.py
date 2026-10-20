@@ -24,7 +24,7 @@ from app.training.schemas import (
     SessionUpdate,
     TrackSummary,
 )
-from app.training.tracks_service import can_edit_track
+from app.training.tracks_service import track_edit_rights
 from app.training.service import (
     get_progression,
     get_session_detail,
@@ -52,7 +52,8 @@ async def tracks(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[TrackSummary]:
-    return await list_athlete_tracks(db, athlete.id, can_edit=lambda track: can_edit_track(current_user, track))
+    rights = await track_edit_rights(db, current_user)
+    return await list_athlete_tracks(db, athlete.id, can_edit=rights.can_edit)
 
 
 @router.get("/sessions/{event_id}", response_model=SessionDetail)
