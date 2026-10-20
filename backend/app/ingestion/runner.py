@@ -8,7 +8,7 @@ import app.db.models  # noqa: F401 -- registers all models on Base.metadata befo
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.session import AsyncSessionLocal
-from app.ingestion.jobs import poll_active_connections
+from app.ingestion.jobs import poll_active_connections, poll_intervals_connections
 from app.ops.heartbeat import record_beat, touch_heartbeat_file
 
 logger = logging.getLogger("ingestion.runner")
@@ -51,6 +51,13 @@ async def poll_and_record() -> None:
     )
 
 
+async def sync_intervals() -> None:
+    try:
+        await poll_intervals_connections()
+    except Exception:
+        logger.exception("Intervals.icu sync run failed")
+
+
 async def main() -> None:
     configure_logging()
     settings = get_settings()
@@ -61,6 +68,14 @@ async def main() -> None:
         minutes=settings.sqorz_poll_interval_minutes,
         jitter=60,
         # A slow poll must not pile up behind itself.
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        sync_intervals,
+        "interval",
+        minutes=settings.intervals_poll_interval_minutes,
+        jitter=120,
         max_instances=1,
         coalesce=True,
     )

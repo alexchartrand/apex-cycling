@@ -75,8 +75,12 @@ services:
     environment:
       DATABASE_URL: *db-url
       SQORZ_POLL_INTERVAL_MINUTES: ${SQORZ_POLL_INTERVAL_MINUTES:-20}
+      INTERVALS_POLL_INTERVAL_MINUTES: ${INTERVALS_POLL_INTERVAL_MINUTES:-30}
       DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY in .env.prod (python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" or openssl rand -base64 32 | tr + - | tr / _)}
       LOG_FORMAT: json
+    volumes:
+      # Original files downloaded by the Intervals.icu sync, shared with the backend.
+      - uploads:/data/uploads
     depends_on:
       db:
         condition: service_healthy

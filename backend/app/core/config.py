@@ -52,6 +52,15 @@ class Settings(BaseSettings):
     # Largest single FIT/TCX/GPX file accepted (a 10-hour ride is ~2 MB).
     max_activity_file_bytes: int = 15 * 1024 * 1024
 
+    # Intervals.icu sync (app/ingestion/intervals): the worker looks for new
+    # activities this often; a first sync reaches back `backfill_days`, and a
+    # run downloads at most `max_downloads_per_run` files so a long history
+    # arrives over several runs instead of hammering the API.
+    intervals_base_url: str = "https://intervals.icu/api/v1"
+    intervals_poll_interval_minutes: int = 30
+    intervals_backfill_days: int = 90
+    intervals_max_downloads_per_run: int = 25
+
     sqorz_base_url: str = "https://my.sqorz.com/json/training/transponder"
     sqorz_poll_interval_minutes: int = 20
 

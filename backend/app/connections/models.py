@@ -13,6 +13,7 @@ class DataSourceProvider(str, enum.Enum):
     SQORZ = "sqorz"
     STRAVA = "strava"
     GARMIN = "garmin"
+    INTERVALS_ICU = "intervals_icu"
 
 
 class DataSourceConnectionStatus(str, enum.Enum):
@@ -108,6 +109,8 @@ class IngestionRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Activities a sync run brought in (personal sources; null for sqorz).
+    imported_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class RawSnapshot(UUIDPrimaryKeyMixin, TimestampMixin, Base):

@@ -91,6 +91,7 @@ async def import_activity_file(
     source: ActivitySource = ActivitySource.UPLOAD,
     external_id: str | None = None,
     data_source_connection_id: uuid.UUID | None = None,
+    name: str | None = None,
 ) -> ImportOutcome:
     """Parses a FIT/TCX/GPX file and stores the activity, its samples and the
     original file. A file already imported, or another recording of the same
@@ -110,6 +111,7 @@ async def import_activity_file(
     if same_ride is not None:
         return ImportOutcome("duplicate", same_ride)
 
+    parsed.name = parsed.name or name
     file_format = parsed.extra["format"]
     activity, stream = _build_rows(
         athlete_id,

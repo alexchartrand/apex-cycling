@@ -48,6 +48,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-apex_cycling}:${POSTGRES_PASSWORD:-apex_cycling}@db:5432/${POSTGRES_DB:-apex_cycling}
     volumes:
       - ./backend:/app
+      - uploads:/data/uploads
     depends_on:
       db:
         condition: service_healthy

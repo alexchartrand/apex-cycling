@@ -13,7 +13,8 @@ FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends libpq5 \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --uid 1000 appuser
+    && useradd --create-home --uid 1000 appuser \
+    && mkdir -p /data/uploads && chown appuser:appuser /data/uploads
 
 WORKDIR /app
 
