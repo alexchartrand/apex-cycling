@@ -30,6 +30,7 @@ export function getProgression(athleteId: string, params: ProgressionParams): Pr
   if (params.track_id) query.set("track_id", params.track_id);
   if (params.track_view_id) query.set("track_view_id", params.track_view_id);
   if (params.distance_m != null) query.set("distance_m", String(params.distance_m));
+  if (params.start_type) query.set("start_type", params.start_type);
   if (params.from) query.set("from", params.from);
   if (params.to) query.set("to", params.to);
   return apiFetch<ProgressionPoint[]>(`/athletes/${athleteId}/progression?${query.toString()}`);

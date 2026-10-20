@@ -152,5 +152,12 @@ export default {
     loadError: "Impossible de charger les données de progression.",
     seriesLabel: "Meilleur de la séance",
     chartCaption: "Glissez les poignées sous le graphique pour zoomer sur une période.",
+    standardEvents: "Épreuves standard",
+    views: "Vues",
+    start: "Départ",
+    startAny: "Tous les départs",
+    eventsNeedLength: "Les distances standard apparaissent quand la longueur du tour de cette piste est réglée (réglages de la piste, sur la page d'une séance).",
+    personalBest: "Meilleur temps",
+    recordDot: "Les points rouges sont les séances qui ont établi un nouveau meilleur temps.",
   },
 } satisfies LocaleNamespace<typeof en>;

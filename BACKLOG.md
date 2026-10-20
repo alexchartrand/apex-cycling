@@ -44,7 +44,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 - [x] T3.4 Session editing (exclude laps, labels, notes, RPE, tags)
 - [x] T3.5 Data-driven track settings (length, indoor, elevation, hidden loops/views)
 - [x] T3.6 Session detail rework (overview/laps/efforts/notes tabs, checkpoint click → split column) — supersedes "Wire up a click action…" below
-- [ ] T3.7 Records page + reworked Progress page
+- [x] T3.7 Records page + reworked Progress page — ✋ Phase 3 checkpoint
 
 **Phase 4 — Clubs & coaching (M4b)**
 - [ ] T4.1 Clubs backend (create, members, roles, managed athletes, invite links, club↔sqorz account link)
@@ -112,6 +112,14 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 - [x] 🟢 Wire up a click action for track-diagram checkpoint flags — *added 7/24, resolved 10/19 (T3.6: highlights the split column)*
   - Why: `TrackSchema.tsx` flags already highlight on hover and toggle a local "selected" visual state on click, but no action is wired to that click yet.
   - Notes: explicitly deferred by the user as future work when the diagram was built.
+
+- [ ] 🟢 Long lap tables on phones — *added 10/19*
+  - Why: the Laps tab turns every lap into a card on a phone, so a 69-lap session is a very long page.
+  - Notes: collapse after N laps / "show more", or a compact single-line row mode.
+
+- [ ] 🟢 Same-named tracks on the records board — *added 10/19*
+  - Why: sqorz re-creates the Bromont track under new ids (the LS-03407 export has several "Tour complet"), so the board can list the same place name twice, and records don't carry over between the copies.
+  - Notes: needs a way to merge tracks (T3.5 track settings is the natural home); distinct ids are kept apart on purpose until then.
 
 ## 🗺️ Deferred to v2+
 

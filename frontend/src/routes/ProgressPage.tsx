@@ -5,16 +5,25 @@ import { Brush, CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from "re
 import { axisProps, ChartFrame, ChartTooltip, cursorProps, gridProps, secondsDomain } from "../components/charts";
 import { Card, EmptyState, Input, PageHeader, Select, SkeletonGroup } from "../components/ui";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
-import type { ProgressionParams } from "../features/training/types";
+import {
+  availableEvents,
+  buildProgressionParams,
+  defaultStart,
+  EVENT_PREFIX,
+  personalBestLine,
+  recordSessions,
+  startTypeApplies,
+  VIEW_PREFIX,
+  type StartChoice,
+} from "../features/training/progression";
 import { useProgression, useTracks } from "../features/training/useTraining";
 import { parseLocalDate } from "../i18n/format";
 import { useFormat } from "../i18n/useFormat";
 import "./ProgressPage.css";
 
-const VIEW_PREFIX = "view:";
-
 export function ProgressPage() {
   const { t } = useTranslation(["training", "shell", "common"]);
+  const { t: tr } = useTranslation("records");
   const fmt = useFormat();
   const athleteId = useActiveAthlete().data?.id ?? "";
   const tracks = useTracks(athleteId);
@@ -22,33 +31,34 @@ export function ProgressPage() {
   const [trackId, setTrackId] = useState("");
   const [metricKey, setMetricKey] = useState("lap_time");
   const [distanceM, setDistanceM] = useState("");
+  const [start, setStart] = useState<StartChoice>("any");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
   const selectedTrack = tracks.data?.find((track) => track.id === trackId);
 
-  const params: ProgressionParams | null = useMemo(() => {
-    if (!trackId) return null;
-    const base = { from: fromDate || undefined, to: toDate || undefined };
-    if (metricKey === "lap_time") return { ...base, metric: "lap_time", track_id: trackId };
-    if (metricKey === "custom_distance") {
-      const distance = Number(distanceM);
-      if (!distanceM || Number.isNaN(distance) || distance <= 0) return null;
-      return { ...base, metric: "custom_distance", track_id: trackId, distance_m: distance };
-    }
-    if (metricKey.startsWith(VIEW_PREFIX)) {
-      return { ...base, metric: "view", track_view_id: metricKey.slice(VIEW_PREFIX.length) };
-    }
-    return null;
-  }, [trackId, metricKey, distanceM, fromDate, toDate]);
+  const params = useMemo(
+    () => buildProgressionParams({ track: selectedTrack, metricKey, distance: distanceM, start, from: fromDate, to: toDate }),
+    [selectedTrack, metricKey, distanceM, start, fromDate, toDate],
+  );
+  const events = availableEvents(selectedTrack);
+  const visibleViews = selectedTrack?.views.filter((view) => !view.hidden) ?? [];
+
+  function chooseMetric(next: string) {
+    setMetricKey(next);
+    setStart(defaultStart(next));
+  }
 
   const progression = useProgression(athleteId, params);
   // Numeric x (epoch ms) so the axis is a true time scale: a three-week
   // break looks like one, instead of sitting as close as consecutive days.
-  const chartData = (progression.data ?? []).map((point) => ({
-    t: parseLocalDate(point.event_date).getTime(),
-    timeMs: point.time_ms,
-  }));
+  const points = progression.data ?? [];
+  const records = recordSessions(points);
+  const pbByTime = new Map(personalBestLine(points.map((p) => ({ t: parseLocalDate(p.event_date).getTime(), timeMs: p.time_ms }))).map((p) => [p.t, p.pbMs]));
+  const chartData = points.map((point) => {
+    const time = parseLocalDate(point.event_date).getTime();
+    return { t: time, timeMs: point.time_ms, pbMs: pbByTime.get(time), isRecord: records.has(point.external_event_id) };
+  });
 
   return (
     <>
@@ -68,7 +78,7 @@ export function ProgressPage() {
               value={trackId}
               onChange={(e) => {
                 setTrackId(e.target.value);
-                setMetricKey("lap_time");
+                chooseMetric("lap_time");
               }}
             >
               <option value="">{t("progress.selectTrack")}</option>
@@ -81,17 +91,38 @@ export function ProgressPage() {
             <Select
               label={t("progress.metric")}
               value={metricKey}
-              onChange={(e) => setMetricKey(e.target.value)}
+              onChange={(e) => chooseMetric(e.target.value)}
               disabled={!trackId}
+              hint={trackId && events.length === 0 ? t("progress.eventsNeedLength") : undefined}
             >
               <option value="lap_time">{t("progress.metrics.lapTime")}</option>
               <option value="custom_distance">{t("progress.metrics.customDistance")}</option>
-              {selectedTrack?.views.filter((view) => !view.hidden).map((view) => (
-                <option key={view.id} value={`${VIEW_PREFIX}${view.id}`}>
-                  {view.name}
-                </option>
-              ))}
+              {events.length > 0 && (
+                <optgroup label={t("progress.standardEvents")}>
+                  {events.map((key) => (
+                    <option key={key} value={`${EVENT_PREFIX}${key}`}>
+                      {tr(`events.${key}`)}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {visibleViews.length > 0 && (
+                <optgroup label={t("progress.views")}>
+                  {visibleViews.map((view) => (
+                    <option key={view.id} value={`${VIEW_PREFIX}${view.id}`}>
+                      {view.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </Select>
+            {startTypeApplies(metricKey, selectedTrack) && (
+              <Select label={t("progress.start")} value={start} onChange={(e) => setStart(e.target.value as StartChoice)}>
+                <option value="any">{t("progress.startAny")}</option>
+                <option value="standing">{tr("startTypes.standing")}</option>
+                <option value="flying">{tr("startTypes.flying")}</option>
+              </Select>
+            )}
             {metricKey === "custom_distance" && (
               <Input
                 label={t("progress.distance")}
@@ -117,8 +148,15 @@ export function ProgressPage() {
                 height={340}
                 isEmpty={chartData.length === 0}
                 emptyMessage={t("progress.noData")}
-                legend={[{ label: t("progress.seriesLabel"), color: "var(--chart-1)" }]}
-                caption={chartData.length > 1 ? t("progress.chartCaption") : undefined}
+                legend={[
+                  { label: t("progress.seriesLabel"), color: "var(--chart-1)" },
+                  { label: t("progress.personalBest"), color: "var(--chart-3)", dashed: true },
+                ]}
+                caption={
+                  chartData.length > 1
+                    ? `${t("progress.chartCaption")}${records.size > 0 ? ` ${t("progress.recordDot")}` : ""}`
+                    : undefined
+                }
               >
                 <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid {...gridProps} />
@@ -142,13 +180,31 @@ export function ProgressPage() {
                     content={<ChartTooltip formatValue={(ms) => fmt.lapTime(ms)} formatLabel={(t) => fmt.date(new Date(Number(t)), "medium")} />}
                   />
                   <Line
+                    type="stepAfter"
+                    dataKey="pbMs"
+                    name={t("progress.personalBest")}
+                    stroke="var(--chart-3)"
+                    strokeWidth={2}
+                    strokeDasharray="6 4"
+                    dot={false}
+                    activeDot={false}
+                    isAnimationActive={false}
+                  />
+                  <Line
                     type="linear"
                     dataKey="timeMs"
                     name={t("progress.seriesLabel")}
                     stroke="var(--chart-1)"
                     strokeWidth={2}
-                    dot={{ r: 3, fill: "var(--chart-1)", strokeWidth: 0 }}
+                    dot={(props: { cx?: number; cy?: number; index?: number; payload?: { isRecord: boolean } }) =>
+                      props.cx == null || props.cy == null ? <g key={props.index} /> : props.payload?.isRecord ? (
+                        <circle key={props.index} cx={props.cx} cy={props.cy} r={5} fill="var(--color-marker)" stroke="var(--color-surface)" strokeWidth={1.5} />
+                      ) : (
+                        <circle key={props.index} cx={props.cx} cy={props.cy} r={3} fill="var(--chart-1)" />
+                      )
+                    }
                     activeDot={{ r: 5 }}
+                    isAnimationActive={false}
                   />
                   {chartData.length > 1 && (
                     <Brush

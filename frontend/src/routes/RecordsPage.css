@@ -1,0 +1,29 @@
+.records-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.records-page__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.records-page__note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}
+
+@media (min-width: 1200px) {
+  .records-page__main {
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .records-page__main > :last-child {
+    position: sticky;
+    top: var(--space-4);
+  }
+}

@@ -16,6 +16,18 @@ export const EVENT_START_TYPES: Record<StandardEventKey, ("standing" | "flying")
   "4km": ["standing", "flying"],
 };
 
+/** Distance of each event in metres; null = one lap of whatever track it's ridden on. */
+export const EVENT_DISTANCE_M: Record<StandardEventKey, number | null> = {
+  f200: 200,
+  lap: null,
+  "500m": 500,
+  "750m": 750,
+  "1km": 1000,
+  "2km": 2000,
+  "3km": 3000,
+  "4km": 4000,
+};
+
 /** One line of the records board or of a record's history. */
 export interface RecordEntry {
   /** The track's name, or the venue text of a manual result with no track. */
@@ -30,4 +42,37 @@ export interface RecordEntry {
   external_event_id: string | null;
   lap_id: string | null;
   manual_result_id: string | null;
+}
+
+export interface ManualResult {
+  id: string;
+  event_key: string;
+  start_type: "standing" | "flying";
+  time_ms: number;
+  achieved_on: string;
+  track_id: string | null;
+  venue: string | null;
+  place: string;
+  is_competition: boolean;
+  notes: string | null;
+}
+
+/** Either `track_id` or `venue` says where. */
+export interface ManualResultPayload {
+  event_key: StandardEventKey;
+  start_type: "standing" | "flying";
+  time_ms: number;
+  achieved_on: string;
+  track_id?: string | null;
+  venue?: string | null;
+  is_competition: boolean;
+  notes?: string | null;
+}
+
+/** Which record's history to show: a track, or the venue text of a manual result. */
+export interface RecordSelection {
+  track_id: string | null;
+  place: string;
+  event_key: string;
+  start_type: "standing" | "flying";
 }

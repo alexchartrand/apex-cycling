@@ -161,6 +161,8 @@ export interface ProgressionParams {
   track_id?: string;
   track_view_id?: string;
   distance_m?: number;
+  /** Only for whole-lap distances on a track with a known length. */
+  start_type?: "standing" | "flying";
   from?: string;
   to?: string;
 }

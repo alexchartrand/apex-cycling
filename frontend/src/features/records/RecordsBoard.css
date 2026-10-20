@@ -1,0 +1,32 @@
+.records-board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.records-board__time {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+.records-board__link {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.records-board__link:hover {
+  text-decoration: underline;
+}
+
+.records-board__manual {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.records-board__hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}

@@ -10,6 +10,7 @@ import { HomePage } from "./routes/HomePage";
 import { ImportPage } from "./routes/ImportPage";
 import { LogPage } from "./routes/LogPage";
 import { ProgressPage } from "./routes/ProgressPage";
+import { RecordsPage } from "./routes/RecordsPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { SessionDetailPage } from "./routes/SessionDetailPage";
 import { SettingsPage } from "./routes/SettingsPage";
@@ -42,7 +43,7 @@ export function App() {
           <Route path="/log" element={<LogPage />} />
           <Route path="/sessions/:eventId" element={<SessionDetailPage />} />
           <Route path="/activities/:activityId" element={<ComingSoonPage section="log" />} />
-          <Route path="/records" element={<ComingSoonPage section="records" />} />
+          <Route path="/records" element={<RecordsPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/tools/*" element={<ComingSoonPage section="tools" />} />
           <Route path="/aero" element={<ComingSoonPage section="aero" />} />

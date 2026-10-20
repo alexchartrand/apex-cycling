@@ -3,6 +3,7 @@ import { Flag, Gauge, ListOrdered, Route, SlidersHorizontal, Timer, Trophy, Hour
 import { useTranslation } from "react-i18next";
 import { Badge, Button, Card, IconButton, Select, StatTile, Tooltip } from "../../../components/ui";
 import { useFormat } from "../../../i18n/useFormat";
+import { formatRecordTime } from "../../records/timeInput";
 import type { RecordEntry } from "../../records/types";
 import { LapChart, type LapChartMetric } from "../LapChart";
 import {
@@ -116,7 +117,7 @@ export function TrackOverview({
               <li key={`${record.event_key}-${record.start_type}`}>
                 <Badge tone="marker" icon={<Trophy aria-hidden />}>
                   {tr("badge")} · {tr(`events.${record.event_key as "f200"}`)} · {tr(`startTypes.${record.start_type}`)} ·{" "}
-                  {record.time_ms < 60_000 ? `${fmt.seconds(record.time_ms)} s` : fmt.lapTime(record.time_ms)}
+                  {formatRecordTime(record.time_ms, fmt)}
                 </Badge>
               </li>
             ))}

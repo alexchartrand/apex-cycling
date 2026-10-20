@@ -149,5 +149,12 @@ export default {
     loadError: "Couldn't load progression data.",
     seriesLabel: "Best of session",
     chartCaption: "Drag the handles below the chart to zoom into a date range.",
+    standardEvents: "Standard events",
+    views: "Views",
+    start: "Start",
+    startAny: "Any start",
+    eventsNeedLength: "Standard distances appear once this track's lap length is set (track settings, on a session page).",
+    personalBest: "Personal best",
+    recordDot: "Red dots are sessions that set a new best.",
   },
 };
