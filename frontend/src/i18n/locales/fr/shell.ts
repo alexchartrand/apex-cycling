@@ -48,7 +48,6 @@ export default {
   comingSoon: {
     badge: "Bientôt disponible",
     log: "Toutes vos séances et activités dans une liste et un calendrier — tours sqorz, fichiers FIT, Strava et Intervals.icu.",
-    tools: "Simulations CdA et puissance, planificateur de tableau de marche en poursuite avec affichage bord de piste, calculateurs de braquet et de densité de l'air.",
     aero: "Estimez votre CdA à partir de la puissance et de la vitesse au tour, et comparez positions et équipements d'un essai à l'autre.",
     equipment: "Vos vélos et braquets, liés aux séances pour estimer la cadence à partir de la vitesse au tour.",
     settings: "Profil, historique de poids et de FTP, langue, thème et sécurité du compte.",

@@ -45,7 +45,6 @@ export default {
   comingSoon: {
     badge: "Coming soon",
     log: "Every session and activity in one list and calendar — sqorz laps, FIT files, Strava and Intervals.icu.",
-    tools: "CdA and power what-ifs, a pursuit schedule planner with a trackside board, gearing and air density calculators.",
     aero: "Estimate your CdA from power and lap speed, and compare positions and equipment run by run.",
     equipment: "Your bikes and gear ratios, linked to sessions so cadence can be estimated from lap speed.",
     settings: "Profile, weight and FTP history, language, theme and account security.",

@@ -17,8 +17,10 @@ import { LogPage } from "./routes/LogPage";
 import { ProgressPage } from "./routes/ProgressPage";
 import { RecordsPage } from "./routes/RecordsPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
+import { PursuitBoardPage } from "./routes/PursuitBoardPage";
 import { SessionDetailPage } from "./routes/SessionDetailPage";
 import { SettingsPage } from "./routes/SettingsPage";
+import { ToolsPage } from "./routes/ToolsPage";
 
 // Dev-only living style guide; the lazy import keeps it out of prod bundles.
 const StyleguidePage = import.meta.env.DEV
@@ -43,6 +45,8 @@ export function App() {
         />
       )}
       <Route element={<ProtectedRoute />}>
+        {/* Full screen at the track side, without the app chrome. */}
+        <Route path="/tools/pursuit/board" element={<PursuitBoardPage />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/log" element={<LogPage />} />
@@ -50,7 +54,7 @@ export function App() {
           <Route path="/activities/:activityId" element={<ComingSoonPage section="log" />} />
           <Route path="/records" element={<RecordsPage />} />
           <Route path="/progress" element={<ProgressPage />} />
-          <Route path="/tools/*" element={<ComingSoonPage section="tools" />} />
+          <Route path="/tools/*" element={<ToolsPage />} />
           <Route path="/aero" element={<ComingSoonPage section="aero" />} />
           <Route path="/equipment" element={<ComingSoonPage section="equipment" />} />
           <Route path="/coach" element={<CoachPage />} />

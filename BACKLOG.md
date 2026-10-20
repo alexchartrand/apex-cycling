@@ -62,7 +62,7 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 
 **Phase 6 — Performance tools**
 - [x] T6.1 Physics core (Python + TS, shared test vectors) — standing starts model a start-power surge (2× race power until race pace, force-capped), calibrated on real pursuit/kilo first laps
-- [ ] T6.2 Tools: air density, CdA/power what-if, pursuit planner + trackside board, gear calculator
+- [x] T6.2 Tools (`/tools`): CdA & power what-if with a sensitivity table, pursuit planner (half-lap schedule, ridden-effort overlay lap by lap, full-screen trackside board at `/tools/pursuit/board` with tap-per-line gaps), gearing, air density; inputs live in the URL ("Copy link"), weight and track pre-filled from the profile — ✋ Phase 6 checkpoint
 
 **Phase 7 — External activities (power/HR/cadence)**
 - [ ] T7.1 Activities data model, compressed streams, encrypted credentials
@@ -95,6 +95,10 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 - [ ] 🟡 Production runs without off-host backups or SMTP — *added 10/20*
   - Why: decided at first-deploy planning to start with neither. Backups exist only on the VPS disk (`/var/backups/apex-cycling`), so losing the server loses them; password resets and club invites go through admin-copied links.
   - Notes: off-host = OVH VPS backup option or `BACKUP_S3_*` in `.env.prod` (README "Backups and restore"); email = `SMTP_*` in `.env.prod`. Revisit once real club data is in.
+
+- [ ] 🟢 Frontend test suite times out under CPU load — *added 10/20*
+  - Repro: with the machine busy, `npm test` fails 9–14 jsdom component tests on the 5 s timeout (a different set each run, HEAD included); `npx vitest run --maxWorkers=6` passes all of them.
+  - Notes: vitest suggests `pool: 'vmThreads'` or `isolate: false` (jsdom is created once per file, ~340 s total). CI hasn't hit it yet.
 
 ## ✨ Features
 
