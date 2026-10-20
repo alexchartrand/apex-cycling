@@ -18,6 +18,7 @@ def _session_meta(event: TrainingEvent) -> SessionMeta:
     return SessionMeta(
         external_event_id=event.external_event_id,
         event_name=event.title_override or event.name,
+        original_name=event.name,
         title_override=event.title_override,
         notes=event.notes,
         rpe=event.rpe,

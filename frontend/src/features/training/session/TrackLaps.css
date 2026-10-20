@@ -1,0 +1,22 @@
+.track-laps__hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}
+
+.track-laps__lap {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.track-laps__label {
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}
+
+.track-laps__actions {
+  display: inline-flex;
+  gap: var(--space-1);
+}

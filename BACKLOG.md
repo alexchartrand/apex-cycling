@@ -43,7 +43,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
 - [x] T3.3 Personal records (computed) + manual results
 - [x] T3.4 Session editing (exclude laps, labels, notes, RPE, tags)
 - [x] T3.5 Data-driven track settings (length, indoor, elevation, hidden loops/views)
-- [ ] T3.6 Session detail rework (overview/laps/efforts/notes tabs, checkpoint click → split column) — supersedes "Wire up a click action…" below
+- [x] T3.6 Session detail rework (overview/laps/efforts/notes tabs, checkpoint click → split column) — supersedes "Wire up a click action…" below
 - [ ] T3.7 Records page + reworked Progress page
 
 **Phase 4 — Clubs & coaching (M4b)**
@@ -109,7 +109,7 @@ fallback, mobile-first installable PWA, evolved brand + dark theme.
   - Why: `find_best_distance_window` in `app/training/service.py` is deliberately scoped to a single lap's segments — sqorz never reports a track's total circuit length, so there's no reliable way to carry cumulative distance across a lap boundary.
   - Notes: revisit if per-checkpoint `distance_m` data turns out to be reliably populated for a target track. Deliberate scope call, not an oversight.
 
-- [ ] 🟢 Wire up a click action for track-diagram checkpoint flags — *added 7/24*
+- [x] 🟢 Wire up a click action for track-diagram checkpoint flags — *added 7/24, resolved 10/19 (T3.6: highlights the split column)*
   - Why: `TrackSchema.tsx` flags already highlight on hover and toggle a local "selected" visual state on click, but no action is wired to that click yet.
   - Notes: explicitly deferred by the user as future work when the diagram was built.
 

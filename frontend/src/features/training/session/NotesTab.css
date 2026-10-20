@@ -1,0 +1,17 @@
+.notes-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 640px;
+}
+
+.notes-tab__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.notes-tab__error {
+  margin: 0;
+  color: var(--color-negative);
+  font-size: var(--text-sm);
+}

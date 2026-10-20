@@ -15,6 +15,7 @@ class SegmentDetail(BaseModel):
     """
 
     sequence_index: int
+    loop_id: uuid.UUID
     loop_name: str
     time_ms: int | None
 
@@ -50,6 +51,7 @@ class SessionDetail(BaseModel):
 
     external_event_id: str
     event_name: str
+    original_name: str
     title_override: str | None
     event_date: date
     notes: str | None
@@ -250,6 +252,7 @@ class SessionUpdate(BaseModel):
 class SessionMeta(BaseModel):
     external_event_id: str
     event_name: str
+    original_name: str
     title_override: str | None
     notes: str | None
     rpe: int | None

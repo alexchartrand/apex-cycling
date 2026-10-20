@@ -120,6 +120,7 @@ async def test_session_edits_show_up_in_detail_and_list(client, db_session):
     detail = (await client.get(f"/athletes/{athlete_id}/sessions/{_EVENT_ID}")).json()
     sqorz_name = detail["event_name"]
     assert detail["title_override"] is None and detail["tags"] == [] and detail["rpe"] is None
+    assert detail["original_name"] == sqorz_name
 
     resp = await client.patch(
         f"/athletes/{athlete_id}/sessions/{_EVENT_ID}",
@@ -129,6 +130,7 @@ async def test_session_edits_show_up_in_detail_and_list(client, db_session):
     assert resp.json() == {
         "external_event_id": _EVENT_ID,
         "event_name": "Openers",
+        "original_name": sqorz_name,
         "title_override": "Openers",
         "notes": "Felt flat early",
         "rpe": 7,
@@ -136,6 +138,7 @@ async def test_session_edits_show_up_in_detail_and_list(client, db_session):
     }
 
     detail = (await client.get(f"/athletes/{athlete_id}/sessions/{_EVENT_ID}")).json()
+    assert detail["original_name"] == sqorz_name  # still there for a "reset to original"
     assert (detail["event_name"], detail["notes"], detail["rpe"], detail["tags"]) == (
         "Openers",
         "Felt flat early",

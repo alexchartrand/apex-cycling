@@ -252,7 +252,12 @@ async def get_session_detail(db: AsyncSession, athlete_id: uuid.UUID, external_e
                 excluded=lap.excluded,
                 label=lap.label,
                 segments=[
-                    SegmentDetail(sequence_index=s.sequence_index, loop_name=s.track_loop.name, time_ms=d.time_ms)
+                    SegmentDetail(
+                        sequence_index=s.sequence_index,
+                        loop_id=s.track_loop_id,
+                        loop_name=s.track_loop.name,
+                        time_ms=d.time_ms,
+                    )
                     for s, d in zip(ordered_segments, deltas)
                 ],
                 views=views,
@@ -262,6 +267,7 @@ async def get_session_detail(db: AsyncSession, athlete_id: uuid.UUID, external_e
     return SessionDetail(
         external_event_id=event.external_event_id,
         event_name=event.title_override or event.name,
+        original_name=event.name,
         title_override=event.title_override,
         event_date=event.event_date,
         notes=event.notes,

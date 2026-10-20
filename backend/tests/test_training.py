@@ -464,6 +464,11 @@ async def test_session_detail_and_progression_endpoints(client, db_session):
     view = next(v for v in lap["views"] if v["name"] == "Flying A")
     assert view["time_ms"] == 5000
 
+    # Each split names its checkpoint by the same id the tracks endpoint uses.
+    track_loops = (await client.get(f"/athletes/{athlete_id}/tracks")).json()[0]["loops"]
+    loop_names_by_id = {loop["id"]: loop["name"] for loop in track_loops}
+    assert [loop_names_by_id[s["loop_id"]] for s in lap["segments"]] == ["Loop A", "Loop B", "Finish"]
+
     track_id = track_detail["track_id"]
     view_id = view["track_view_id"]
 

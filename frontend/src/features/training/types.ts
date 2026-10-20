@@ -1,16 +1,21 @@
 export interface SessionSummary {
   external_event_id: string;
+  /** The title to show: the athlete's own, else sqorz's. */
   event_name: string;
   event_date: string;
   lap_count: number;
   track_names: string[];
+  rpe: number | null;
+  tags: string[];
   first_lap_at: string | null;
   last_lap_at: string | null;
 }
 
 export interface SegmentDetail {
   sequence_index: number;
+  loop_id: string;
   loop_name: string;
+  /** This split's own duration (not cumulative). */
   time_ms: number | null;
 }
 
@@ -26,6 +31,9 @@ export interface LapDetail {
   class_code: string | null;
   start_number: number | null;
   whole_lap_time_ms: number | null;
+  /** Left out of bests, records and charts (the athlete's choice). */
+  excluded: boolean;
+  label: string | null;
   segments: SegmentDetail[];
   views: ViewTime[];
 }
@@ -38,9 +46,66 @@ export interface TrackSessionDetail {
 
 export interface SessionDetail {
   external_event_id: string;
+  /** The title to show: `title_override` if set, else `original_name`. */
   event_name: string;
+  original_name: string;
+  title_override: string | null;
   event_date: string;
+  notes: string | null;
+  rpe: number | null;
+  tags: string[];
   tracks: TrackSessionDetail[];
+}
+
+/** PATCH body: fields left out are unchanged; null (or blank) clears one. */
+export interface SessionUpdate {
+  title_override?: string | null;
+  notes?: string | null;
+  rpe?: number | null;
+  tags?: string[] | null;
+}
+
+export interface SessionMeta {
+  external_event_id: string;
+  event_name: string;
+  original_name: string;
+  title_override: string | null;
+  notes: string | null;
+  rpe: number | null;
+  tags: string[];
+}
+
+export interface LapUpdate {
+  excluded?: boolean;
+  label?: string | null;
+}
+
+export type StartType = "standing" | "flying" | "unknown";
+
+export interface HalfLapSplit {
+  index: number;
+  from_line: string;
+  to_line: string;
+  time_ms: number | null;
+}
+
+/** One continuous block of laps (see backend `efforts.py`). */
+export interface Effort {
+  index: number;
+  track_id: string;
+  track_name: string;
+  label: string | null;
+  start_time: string;
+  start_type: StartType;
+  lap_ids: string[];
+  completed_lap_count: number;
+  /** One per lap in `lap_ids`; null for an unfinished lap. */
+  lap_times_ms: (number | null)[];
+  total_time_ms: number | null;
+  best_lap_ms: number | null;
+  distance_m: number | null;
+  avg_speed_kmh: number | null;
+  half_lap_splits: HalfLapSplit[];
 }
 
 export interface TrackViewSummary {

@@ -1,6 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getProgression, getSessionDetail, listSessions, listTracks, updateTrack } from "./api";
-import type { ProgressionParams, TrackUpdate } from "./types";
+import {
+  getProgression,
+  getSessionDetail,
+  labelEffort,
+  listEfforts,
+  listSessions,
+  listTracks,
+  updateLap,
+  updateSession,
+  updateTrack,
+} from "./api";
+import type { LapUpdate, ProgressionParams, SessionUpdate, TrackUpdate } from "./types";
 
 export function useSessions(athleteId: string) {
   return useQuery({
@@ -43,5 +53,50 @@ export function useUpdateTrack(trackId: string) {
       Promise.all(
         ["tracks", "progression", "records", "session-detail"].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
       ),
+  });
+}
+
+export function useSessionEfforts(athleteId: string, eventId: string) {
+  return useQuery({
+    queryKey: ["session-efforts", athleteId, eventId],
+    queryFn: () => listEfforts(athleteId, eventId),
+    enabled: athleteId !== "" && eventId !== "",
+  });
+}
+
+export function useUpdateSession(athleteId: string, eventId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SessionUpdate) => updateSession(athleteId, eventId, payload),
+    // The title shows in the list and the header too.
+    onSuccess: () =>
+      Promise.all(
+        [["session-detail", athleteId, eventId], ["sessions", athleteId]].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      ),
+  });
+}
+
+/** Excluding a lap changes bests, records, efforts and progression, so all of those refetch. */
+export function useUpdateLap(athleteId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ lapId, ...payload }: LapUpdate & { lapId: string }) => updateLap(athleteId, lapId, payload),
+    onSuccess: () =>
+      Promise.all(
+        ["session-detail", "session-efforts", "records", "progression"].map((key) =>
+          queryClient.invalidateQueries({ queryKey: [key] }),
+        ),
+      ),
+  });
+}
+
+export function useLabelEffort(athleteId: string, eventId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ firstLapId, label }: { firstLapId: string; label: string | null }) =>
+      labelEffort(athleteId, eventId, firstLapId, label),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["session-efforts", athleteId, eventId] }),
   });
 }

@@ -1,9 +1,11 @@
 import { parseLocalDate } from "../../i18n/format";
 import type { LapDetail, SessionSummary } from "./types";
 
-// "For now" assumptions carried over from the original session page; both
-// become per-track settings in T3.5.
+// The flying 200 is the track view sqorz names "200m" (the backend's F200
+// standard event uses the same name); 250 m is assumed until a track's own
+// length is set (track settings).
 export const FLYING_200_VIEW_NAME = "200m";
+export const FLYING_200_DISTANCE_M = 200;
 export const DEFAULT_LAP_DISTANCE_M = 250;
 
 export function flying200Ms(lap: LapDetail): number | null {
@@ -12,15 +14,47 @@ export function flying200Ms(lap: LapDetail): number | null {
 
 export type BestLap = { lap: LapDetail; index: number; value: number };
 
-/** Lowest non-null value of `getValue` across laps (first one wins ties). */
+/**
+ * Lowest non-null value of `getValue` across laps (first one wins ties).
+ * Excluded laps never count; `index` is still the lap's position in `laps`.
+ */
 export function bestLap(laps: LapDetail[], getValue: (lap: LapDetail) => number | null | undefined): BestLap | null {
   let best: BestLap | null = null;
   laps.forEach((lap, index) => {
+    if (lap.excluded) return;
     const value = getValue(lap);
     if (value == null) return;
     if (best == null || value < best.value) best = { lap, index, value };
   });
   return best;
+}
+
+const finishedLaps = (laps: LapDetail[]) => laps.filter((lap) => lap.whole_lap_time_ms != null);
+
+/** Distance ridden: finished laps only (a lap the rider abandoned isn't a full lap). Null while the lap length is unknown. */
+export function distanceRiddenM(laps: LapDetail[], lapLengthM: number | null | undefined): number | null {
+  return lapLengthM ? finishedLaps(laps).length * lapLengthM : null;
+}
+
+/** Time spent riding finished laps, in ms. */
+export function ridingTimeMs(laps: LapDetail[]): number {
+  return finishedLaps(laps).reduce((sum, lap) => sum + (lap.whole_lap_time_ms ?? 0), 0);
+}
+
+const kmh = (distanceM: number, ms: number) => (distanceM / (ms / 1000)) * 3.6;
+
+/**
+ * Fastest speed of the session in km/h: the better of the quickest lap and
+ * the flying 200 (excluded laps ignored). A lap needs the lap length; the
+ * flying 200 is always 200 m. Null when neither can be computed.
+ */
+export function topSpeedKmh(laps: LapDetail[], lapLengthM: number | null | undefined): number | null {
+  const candidates: number[] = [];
+  const lap = bestLap(laps, (l) => l.whole_lap_time_ms);
+  if (lap && lapLengthM) candidates.push(kmh(lapLengthM, lap.value));
+  const f200 = bestLap(laps, flying200Ms);
+  if (f200) candidates.push(kmh(FLYING_200_DISTANCE_M, f200.value));
+  return candidates.length > 0 ? Math.max(...candidates) : null;
 }
 
 /** sqorz start number when present, else 1-based position in the session. */
