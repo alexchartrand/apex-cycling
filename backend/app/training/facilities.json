@@ -1,0 +1,69 @@
+{
+  "_readme": [
+    "The velodromes the app knows. Applied to the database every time the backend starts, and to any track sqorz creates for one of these accounts, so editing this file and deploying is all it takes.",
+    "One entry per sqorz account (facility). Every sqorz track of that account takes these values.",
+    "sqorz_account_id is the match key; sqorz_tracks is only a note of what sqorz sends for the account.",
+    "track_name is the name the app shows instead of the sqorz track names.",
+    "null = unknown: it leaves the value in the database alone. A value here wins over an edit made in the app's track settings.",
+    "wall_angles are the banking in degrees: straight_deg on the straights, curve_deg at the steepest point of the curves.",
+    "latitude/longitude are decimal degrees (west and south negative).",
+    "A mistake in this file stops the backend from starting (the error is in its log); the backend tests check it too."
+  ],
+  "tracks": [
+    {
+      "sqorz_account_id": "68ee5442f9df317afcb99baf",
+      "sqorz_account_name": "CNCB",
+      "sqorz_tracks": [
+        {
+          "id": "mll61fq6",
+          "name": "Tour complet",
+          "type": "circuit"
+        },
+        {
+          "id": "mina6amn",
+          "name": "Tour complet",
+          "type": "circuit"
+        },
+        {
+          "id": "mr16xc70",
+          "name": "Avec gate",
+          "type": "line"
+        },
+        {
+          "id": "mguzg7z6",
+          "name": "Vélodrome Sylvan Adams",
+          "type": "circuit"
+        },
+        {
+          "id": "miex1y1v",
+          "name": "Vélodrome Sylvan Adams - public",
+          "type": "circuit"
+        },
+        {
+          "id": "miexx5pa",
+          "name": "Vélodrome Sylvan Adams - tour",
+          "type": "circuit"
+        }
+      ],
+      "track_name": "Bromont - CNCB",
+      "localisation": {
+        "city": "Bromont",
+        "region": "Québec",
+        "country": "Canada",
+        "latitude": 45.3121,
+        "longitude": -72.6953
+      },
+      "length_m": 250,
+      "width_m": 7,
+      "indoor": true,
+      "surface": "Wood",
+      "elevation_m": 121,
+      "default_temp_c": 21,
+      "wall_angles": {
+        "straight_deg": 13,
+        "curve_deg": 42
+      },
+      "notes": null
+    }
+  ]
+}

@@ -19,7 +19,13 @@ class Track(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     sqorz_account_id: Mapped[str] = mapped_column(String(255), index=True)
     external_track_id: Mapped[str] = mapped_column(String(255), index=True)
+    # What the app shows. Follows `sqorz_name` on every sync until someone sets
+    # a name by hand (`name_is_custom`), which sync then leaves alone.
     name: Mapped[str] = mapped_column(String(255))
+    # The track's name as sqorz reports it (e.g. "Tour complet" — the same for
+    # every venue), refreshed by sync.
+    sqorz_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    name_is_custom: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     track_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     validation_method: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # Sqorz never reports a track's total circuit length (only sparse
@@ -32,6 +38,18 @@ class Track(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     indoor: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     elevation_m: Mapped[float | None] = mapped_column(Float, nullable=True)
     default_temp_c: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # The facility's location and build, also manual (see `facility_profile`).
+    city: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    region: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    width_m: Mapped[float | None] = mapped_column(Float, nullable=True)
+    surface: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Banking in degrees, on the straights and at the steepest point of the curves.
+    bank_straight_deg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    bank_curve_deg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     loops: Mapped[list["TrackLoop"]] = relationship(back_populates="track")
     views: Mapped[list["TrackView"]] = relationship(back_populates="track")

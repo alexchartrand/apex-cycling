@@ -5,6 +5,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connections.models import DataSourceConnection, DataSourceProvider, TransponderAssignment
+from app.training.facility import apply_known_profile
 from app.training.models import (
     EventClass,
     EventTrack,
@@ -103,10 +104,13 @@ async def _upsert_track(db: AsyncSession, cache: dict, account_id: str, track_pa
         )
         if track is None:
             track = Track(sqorz_account_id=account_id, external_track_id=external_track_id, name="")
+            apply_known_profile(track)
             db.add(track)
         cache[key] = track
 
-    track.name = track_payload.get("trackName", external_track_id)
+    track.sqorz_name = track_payload.get("trackName", external_track_id)
+    if not track.name_is_custom:
+        track.name = track.sqorz_name
     track.track_type = track_payload.get("trackType")
     track.validation_method = track_payload.get("validationMethod")
     await db.flush()

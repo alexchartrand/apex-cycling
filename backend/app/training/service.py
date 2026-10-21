@@ -397,11 +397,22 @@ def track_summary(track: Track, *, can_edit: bool) -> TrackSummary:
     return TrackSummary(
         id=track.id,
         name=track.name,
+        sqorz_name=track.sqorz_name if track.name_is_custom else None,
         views=[TrackViewSummary(id=v.id, name=v.name, hidden=v.hidden) for v in track.views],
         length_m=track.length_m,
         indoor=track.indoor,
         elevation_m=track.elevation_m,
         default_temp_c=track.default_temp_c,
+        city=track.city,
+        region=track.region,
+        country=track.country,
+        latitude=track.latitude,
+        longitude=track.longitude,
+        width_m=track.width_m,
+        surface=track.surface,
+        bank_straight_deg=track.bank_straight_deg,
+        bank_curve_deg=track.bank_curve_deg,
+        notes=track.notes,
         can_edit=can_edit,
         loops=sorted(
             (

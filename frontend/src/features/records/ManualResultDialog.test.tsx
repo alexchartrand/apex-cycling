@@ -7,7 +7,7 @@ import type { TrackSummary } from "../training/types";
 import { ManualResultDialog } from "./ManualResultDialog";
 
 const tracks: TrackSummary[] = [
-  { id: "t1", name: "Tour complet", length_m: 250, indoor: true, elevation_m: null, default_temp_c: null, can_edit: false, loops: [], views: [] },
+  { id: "t1", name: "Tour complet", length_m: 250, indoor: true, elevation_m: null, default_temp_c: null, sqorz_name: null, city: null, region: null, country: null, latitude: null, longitude: null, width_m: null, surface: null, bank_straight_deg: null, bank_curve_deg: null, notes: null, can_edit: false, loops: [], views: [] },
 ];
 
 function renderDialog(onClose = vi.fn(), trackList = tracks) {

@@ -25,6 +25,14 @@ def _reset_rate_limiter():
     app.state.limiter.reset()
 
 
+@pytest.fixture(autouse=True)
+def _no_known_facilities(monkeypatch):
+    # The real facilities.json names the account of the LS-03407 fixture, which
+    # would rename its "Tour complet" tracks under every test. Tests of the
+    # profile itself patch in their own (`test_facility_profile.py`).
+    monkeypatch.setattr("app.training.facility.known_profiles", lambda: {})
+
+
 @pytest.fixture
 async def db_session():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")

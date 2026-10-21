@@ -115,12 +115,24 @@ class TrackSummary(BaseModel):
 
     id: uuid.UUID
     name: str
+    # What sqorz calls it, when `name` was set by hand.
+    sqorz_name: str | None
     views: list[TrackViewSummary]
     loops: list[TrackLoopSummary]
     length_m: float | None
     indoor: bool | None
     elevation_m: float | None
     default_temp_c: float | None
+    city: str | None
+    region: str | None
+    country: str | None
+    latitude: float | None
+    longitude: float | None
+    width_m: float | None
+    surface: str | None
+    bank_straight_deg: float | None
+    bank_curve_deg: float | None
+    notes: str | None
     can_edit: bool
 
 
@@ -338,6 +350,16 @@ class TrackUpdate(BaseModel):
     indoor: bool | None = None
     elevation_m: float | None = Field(default=None, ge=-500, le=6000)
     default_temp_c: float | None = Field(default=None, ge=-40, le=60)
+    city: str | None = Field(default=None, max_length=255)
+    region: str | None = Field(default=None, max_length=255)
+    country: str | None = Field(default=None, max_length=255)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    width_m: float | None = Field(default=None, gt=0, le=100)
+    surface: str | None = Field(default=None, max_length=255)
+    bank_straight_deg: float | None = Field(default=None, ge=0, le=90)
+    bank_curve_deg: float | None = Field(default=None, ge=0, le=90)
+    notes: str | None = Field(default=None, max_length=4000)
     hidden_loop_ids: list[uuid.UUID] | None = None
     hidden_view_ids: list[uuid.UUID] | None = None
 

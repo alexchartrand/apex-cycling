@@ -30,4 +30,4 @@ EXPOSE 8000
 # --proxy-headers is on by default; which peers it trusts comes from the
 # FORWARDED_ALLOW_IPS env var (set in docker-compose.prod.yml to the edge's
 # network). Unset, uvicorn trusts only 127.0.0.1.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers"]
+CMD ["sh", "-c", "alembic upgrade head && python -m app.training.cli apply-facilities && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers"]

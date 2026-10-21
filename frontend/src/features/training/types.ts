@@ -152,13 +152,27 @@ export interface TrackLoopSummary {
 
 export interface TrackSummary {
   id: string;
+  /** What the app shows: the name set for the facility, else sqorz's. */
   name: string;
+  /** What sqorz calls the track, when `name` was set by hand. */
+  sqorz_name: string | null;
   views: TrackViewSummary[];
   loops: TrackLoopSummary[];
   length_m: number | null;
   indoor: boolean | null;
   elevation_m: number | null;
   default_temp_c: number | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  width_m: number | null;
+  surface: string | null;
+  /** Banking in degrees, on the straights and at the steepest point of the curves. */
+  bank_straight_deg: number | null;
+  bank_curve_deg: number | null;
+  notes: string | null;
   /** Whether the signed-in user may change these settings. */
   can_edit: boolean;
 }
@@ -169,6 +183,16 @@ export interface TrackUpdate {
   indoor?: boolean | null;
   elevation_m?: number | null;
   default_temp_c?: number | null;
+  city?: string | null;
+  region?: string | null;
+  country?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  width_m?: number | null;
+  surface?: string | null;
+  bank_straight_deg?: number | null;
+  bank_curve_deg?: number | null;
+  notes?: string | null;
   hidden_loop_ids?: string[];
   hidden_view_ids?: string[];
 }
