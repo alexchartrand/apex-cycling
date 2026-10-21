@@ -71,6 +71,9 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],
       css: false,
+      // Every jsdom file is CPU-heavy; with one worker per core the 5 s test
+      // timeout trips under load, so cap the pool.
+      maxWorkers: 4,
     },
   }
 })
