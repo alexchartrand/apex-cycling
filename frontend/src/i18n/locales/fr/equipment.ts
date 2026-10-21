@@ -1,0 +1,53 @@
+import type { LocaleNamespace } from "../types";
+import type en from "../en/equipment";
+
+export default {
+  title: "Équipement",
+  description:
+    "Vos vélos et vos braquets. Choisissez le braquet utilisé pendant une séance ou un effort et les tours affichent la cadence qui en découle : sur un pignon fixe, la vitesse et la cadence vont de pair.",
+  empty: "Aucun vélo pour l'instant",
+  emptyHint: "Ajoutez votre vélo de piste, puis un braquet (plateau, pignon et la distance que la roue parcourt en un tour).",
+  addBike: "Ajouter un vélo",
+  editBike: "Modifier {{name}}",
+  deleteBike: "Supprimer {{name}}",
+  bike: {
+    name: "Nom",
+    namePlaceholder: "p. ex. Vélo de piste",
+    weight: "Poids du vélo",
+    weightHint: "Sans coureur ni vêtements. Le labo aéro s'en sert pour les séances roulées sur ce vélo.",
+    notes: "Notes",
+    saved: "Vélo enregistré",
+    deleted: "Vélo supprimé",
+    deleteTitle: "Supprimer ce vélo ?",
+    deleteBody: "« {{name}} » et ses braquets sont supprimés. Les séances et efforts qui les utilisaient gardent leurs tours mais perdent le braquet.",
+  },
+  gear: {
+    add: "Ajouter un braquet",
+    none: "Aucun braquet",
+    chainring: "Plateau",
+    cog: "Pignon",
+    teeth: "dents",
+    rollout: "Développement mesuré",
+    rolloutHint:
+      "La distance parcourue par la roue en un tour, en millimètres. Faites rouler le vélo d'un tour avec votre poids dessus et mesurez. Environ 2100 pour un pneu 700×25c.",
+    tire: "Pneu",
+    tirePlaceholder: "p. ex. Veloflex Record 25",
+    saved: "Braquet enregistré",
+    deleted: "Braquet supprimé",
+    edit: "Modifier {{name}}",
+    delete: "Supprimer {{name}}",
+    deleteTitle: "Supprimer ce braquet ?",
+    deleteBody: "Les séances et efforts qui utilisaient {{name}} perdent leur braquet.",
+    development: "{{value}} m par tour",
+    gearInches: "{{value}} po",
+  },
+  picker: {
+    session: "Braquet",
+    effort: "Braquet",
+    none: "Aucun braquet",
+    sameAsSession: "Comme la séance",
+    saved: "Braquet enregistré",
+    addBike: "Ajoutez un vélo pour voir votre cadence.",
+    estimate: "La cadence est estimée d'après la vitesse au tour et suppose que vous ne roulez jamais en roue libre.",
+  },
+} satisfies LocaleNamespace<typeof en>;

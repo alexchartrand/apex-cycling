@@ -79,7 +79,7 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 - [x] T8.3 Aero lab UI (`/aero`): session/track pick (sessions with a powered recording; `?session=`, also linked from the session page), CdA/Crr/R²/laps/speed/power tiles, force-vs-speed² scatter with the fit line, lap table with the automatic pick and hand-picking, assumptions form (blank = the default shown), save/edit/delete aero tests, comparison table with a baseline, ΔCdA ("within noise" when inside the combined error) and what it's worth in seconds at a chosen power over 1–4 km (standing start, T6.1 physics) — ✋ Phase 8 checkpoint. Checked in a browser (light/dark, EN/FR, phone) on the real LS-03407 laps with a **synthetic** power recording (CdA 0.245 → estimated 0.238 ± 0.004; 0.241 with Crr fixed at the true value)
 
 **Phase 9 — Equipment, goals, engagement**
-- [ ] T9.1 Bikes & gears (estimated cadence) — supersedes "Gear/bike setup tracking" below
+- [x] T9.1 Bikes & gears (migration 0007; `bikes` + `gear_setups` (chainring, cog, measured rollout, tire) under `/athletes/{id}/bikes|gears`, a gear assigned to a session (`PUT …/sessions/{event}/gear`) or to one effort (`…/efforts/{first_lap}/gear`, overriding the session's); laps and efforts then carry `est_cadence_rpm` = lap speed ÷ development, the aero lab takes the session bike's weight as its default; `/equipment` page replaces the "coming soon" placeholder; covered by account export/delete). Cadence assumes no coasting (fine on a fixed gear) and needs the track length. Checked in a browser on real LS-03407 laps (EN/FR, light/dark, phone); 50×15 on 2100 mm gives 84 rpm at 25.4 s/250 m, as computed by hand
 - [ ] T9.2 Goals
 - [ ] T9.3 Coach planned sessions
 - [ ] T9.4 Opt-in club leaderboard
@@ -148,9 +148,6 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 
 - [ ] 🟢 Training-plan recommendations — *added 7/23*
   - Notes: additive module over existing fact tables.
-
-- [ ] 🟢 Gear/bike setup tracking — *added 7/23*
-  - Notes: future `gears` table, nullable FK from laps later.
 
 - [ ] 🟢 Celery/Redis for background jobs — *added 7/23*
   - Notes: only if APScheduler's simplicity stops being enough.

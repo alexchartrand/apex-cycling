@@ -40,6 +40,8 @@ export interface LapDetail {
   avg_power_w?: number | null;
   avg_heart_rate?: number | null;
   avg_cadence?: number | null;
+  /** What the session's gear implies at this lap's speed. */
+  est_cadence_rpm?: number | null;
 }
 
 export interface LinkedActivity {
@@ -72,6 +74,8 @@ export interface SessionDetail {
   tracks: TrackSessionDetail[];
   /** Recordings linked to this session. */
   activities?: LinkedActivity[];
+  /** The gear ridden by default in this session. */
+  gear_setup_id?: string | null;
 }
 
 /** PATCH body: fields left out are unchanged; null (or blank) clears one. */
@@ -126,6 +130,9 @@ export interface Effort {
   avg_power_w?: number | null;
   avg_heart_rate?: number | null;
   avg_cadence?: number | null;
+  /** This effort's own gear; null = the session's. */
+  gear_setup_id?: string | null;
+  est_cadence_rpm?: number | null;
 }
 
 export interface TrackViewSummary {

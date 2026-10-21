@@ -9,6 +9,7 @@ from app.athletes.models import Athlete
 from app.auth.deps import get_current_user, require_athlete_access
 from app.auth.models import User
 from app.db.session import get_db
+from app.equipment.service import add_gear_to_efforts, add_gear_to_session
 from app.training.edit_service import set_effort_label, update_lap, update_session
 from app.training.efforts import StartType
 from app.training.schemas import (
@@ -69,6 +70,8 @@ async def session_detail(
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
     await add_activity_metrics_to_session(db, athlete, current_user, detail)
+    efforts = await get_session_efforts(db, athlete.id, event_id) or []
+    await add_gear_to_session(db, athlete.id, detail, efforts)
     return detail
 
 
@@ -127,6 +130,7 @@ async def session_efforts(
     if efforts is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
     await add_activity_metrics_to_efforts(db, athlete, current_user, event_id, efforts)
+    await add_gear_to_efforts(db, athlete.id, event_id, efforts)
     return efforts
 
 

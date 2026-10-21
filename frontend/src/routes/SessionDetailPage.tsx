@@ -5,6 +5,8 @@ import { ApiError } from "../api/client";
 import { ButtonLink, EmptyState, PageHeader, SkeletonGroup, TabPanel, Tabs, Tooltip, type TabItem } from "../components/ui";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { CommentsTab } from "../features/comments/CommentsTab";
+import { GearPicker } from "../features/equipment/GearPicker";
+import { useBikes, useSessionGear } from "../features/equipment/useEquipment";
 import { useComments } from "../features/comments/useComments";
 import { useRecords } from "../features/records/useRecords";
 import { EffortCard } from "../features/training/session/EffortCard";
@@ -22,6 +24,7 @@ const isTab = (value: string | null): value is SessionTab => TABS.includes(value
 
 export function SessionDetailPage() {
   const { t } = useTranslation("training");
+  const { t: tg } = useTranslation("equipment");
   const fmt = useFormat();
   const { eventId = "" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,6 +38,8 @@ export function SessionDetailPage() {
   const efforts = useSessionEfforts(athleteId, eventId);
   const records = useRecords(athleteId);
   const comments = useComments(athleteId, eventId);
+  const bikes = useBikes(athleteId);
+  const sessionGear = useSessionGear(athleteId, eventId);
 
   // Sessions are listed newest first: "previous" is the older one.
   const index = sessions.data?.findIndex((s) => s.external_event_id === eventId) ?? -1;
@@ -100,6 +105,20 @@ export function SessionDetailPage() {
         </p>
       )}
 
+      {session && bikes.data && (
+        <div className="session-detail__gear">
+          <GearPicker
+            bikes={bikes.data}
+            value={session.gear_setup_id ?? null}
+            onChange={sessionGear.mutateAsync}
+            label={tg("picker.session")}
+            emptyLabel={tg("picker.none")}
+            pending={sessionGear.isPending}
+            error={sessionGear.error}
+          />
+        </div>
+      )}
+
       {session && (
         <Tabs items={items} value={tab} onValueChange={selectTab} aria-label={t("session.tabs.label")}>
           <TabPanel value="overview">
@@ -138,7 +157,7 @@ export function SessionDetailPage() {
               {efforts.data && efforts.data.length === 0 && <EmptyState compact icon={<SearchX aria-hidden />} title={t("efforts.empty")} />}
               {efforts.data && efforts.data.length > 0 && <p className="session-detail__note">{t("efforts.description")}</p>}
               {efforts.data?.map((effort) => (
-                <EffortCard key={effort.lap_ids[0]} athleteId={athleteId} eventId={eventId} effort={effort} />
+                <EffortCard key={effort.lap_ids[0]} athleteId={athleteId} eventId={eventId} effort={effort} bikes={bikes.data ?? []} />
               ))}
             </div>
           </TabPanel>

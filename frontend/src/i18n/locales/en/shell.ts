@@ -43,9 +43,4 @@ export default {
     later: "Later",
     install: "Install app",
   },
-  comingSoon: {
-    badge: "Coming soon",
-    equipment: "Your bikes and gear ratios, linked to sessions so cadence can be estimated from lap speed.",
-    settings: "Profile, weight and FTP history, language, theme and account security.",
-  },
 };

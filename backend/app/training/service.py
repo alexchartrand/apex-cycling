@@ -310,6 +310,7 @@ async def get_session_efforts(db: AsyncSession, athlete_id: uuid.UUID, external_
             detected.append((track, effort))
     detected.sort(key=lambda pair: pair[1].start_time)
     labels = {lap.id: lap.effort_label for lap in laps if lap.effort_label}
+    gear_ids = {lap.id: lap.effort_gear_setup_id for lap in laps if lap.effort_gear_setup_id}
 
     return [
         EffortDetail(
@@ -317,6 +318,7 @@ async def get_session_efforts(db: AsyncSession, athlete_id: uuid.UUID, external_
             track_id=track.id,
             track_name=track.name,
             label=labels.get(effort.laps[0].lap_id),
+            gear_setup_id=gear_ids.get(effort.laps[0].lap_id),
             start_time=effort.start_time,
             start_type=effort.start_type,
             lap_ids=[lap.lap_id for lap in effort.laps],

@@ -11,7 +11,7 @@ AeroProblem = Literal["no_track_length", "no_weight", "no_power", "too_few_laps"
 class AeroInputs(BaseModel):
     """What an estimate assumes. A null field takes its default: the track's
     temperature and elevation, the athlete's weight on the day, the physics
-    defaults (bike 8 kg, 50 % humidity, pressure from the elevation, Crr fitted
+    defaults (bike 8 kg, or the weight of the bike in the session's gear; 50 % humidity, pressure from the elevation, Crr fitted
     when the laps allow)."""
 
     temp_c: float | None = Field(default=None, ge=-30, le=50)

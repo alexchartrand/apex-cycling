@@ -46,9 +46,4 @@ export default {
     later: "Plus tard",
     install: "Installer l'application",
   },
-  comingSoon: {
-    badge: "Bientôt disponible",
-    equipment: "Vos vélos et braquets, liés aux séances pour estimer la cadence à partir de la vitesse au tour.",
-    settings: "Profil, historique de poids et de FTP, langue, thème et sécurité du compte.",
-  },
 } satisfies LocaleNamespace<typeof en>;

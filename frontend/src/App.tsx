@@ -9,9 +9,9 @@ import { AdminPage } from "./routes/AdminPage";
 import { ClubPage } from "./routes/ClubPage";
 import { ClubsPage } from "./routes/ClubsPage";
 import { CoachPage } from "./routes/CoachPage";
-import { ComingSoonPage } from "./routes/ComingSoonPage";
 import { HomePage } from "./routes/HomePage";
 import { ActivityPage } from "./routes/ActivityPage";
+import { EquipmentPage } from "./routes/EquipmentPage";
 import { AeroPage } from "./routes/AeroPage";
 import { ImportPage } from "./routes/ImportPage";
 import { PowerCurvePage } from "./routes/PowerCurvePage";
@@ -60,7 +60,7 @@ export function App() {
           <Route path="/power" element={<PowerCurvePage />} />
           <Route path="/tools/*" element={<ToolsPage />} />
           <Route path="/aero" element={<AeroPage />} />
-          <Route path="/equipment" element={<ComingSoonPage section="equipment" />} />
+          <Route path="/equipment" element={<EquipmentPage />} />
           <Route path="/coach" element={<CoachPage />} />
           <Route path="/club" element={<ClubsPage />} />
           <Route path="/club/:clubId/*" element={<ClubPage />} />

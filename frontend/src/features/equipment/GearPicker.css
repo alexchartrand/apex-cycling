@@ -1,0 +1,9 @@
+.gear-picker {
+  max-width: 22rem;
+}
+
+.gear-picker__empty {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}

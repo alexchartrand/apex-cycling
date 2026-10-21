@@ -40,6 +40,8 @@ class LapDetail(BaseModel):
     avg_power_w: float | None = None
     avg_heart_rate: float | None = None
     avg_cadence: float | None = None
+    # What the session's gear implies at this lap's speed (`equipment/service.py`).
+    est_cadence_rpm: float | None = None
 
 
 class TrackSessionDetail(BaseModel):
@@ -75,6 +77,8 @@ class SessionDetail(BaseModel):
     tracks: list[TrackSessionDetail]
     # Recordings (head unit, power meter) linked to this session.
     activities: list[LinkedActivity] = []
+    # The gear ridden by default in this session.
+    gear_setup_id: uuid.UUID | None = None
 
 
 class SessionSummary(BaseModel):
@@ -170,6 +174,10 @@ class EffortDetail(BaseModel):
     avg_power_w: float | None = None
     avg_heart_rate: float | None = None
     avg_cadence: float | None = None
+    # `gear_setup_id` is this effort's own gear (null = the session's);
+    # the estimate follows from whichever applies.
+    gear_setup_id: uuid.UUID | None = None
+    est_cadence_rpm: float | None = None
 
 
 class RecordEntry(BaseModel):

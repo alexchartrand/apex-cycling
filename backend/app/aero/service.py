@@ -33,6 +33,7 @@ from app.aero.schemas import (
 from app.analysis import aero, physics
 from app.athletes.models import Athlete, AthleteMetric
 from app.athletes.service import metrics_as_of
+from app.equipment.models import Bike, GearSetup
 from app.auth.models import User
 from app.training.efforts import group_continuous_laps
 from app.training.models import Track, TrainingEvent, TrainingLap
@@ -59,6 +60,8 @@ class SessionData:
     tracks: dict[uuid.UUID, Track]
     recordings: list[Recording]
     metric_rows: list[AthleteMetric]
+    # Weight of the bike in the session's gear, when it has one and the bike's weight is known.
+    session_bike_kg: float | None = None
 
 
 async def load_session(
@@ -75,7 +78,14 @@ async def load_session(
         tracks[track.id] = track
         laps_by_track.setdefault(track.id, []).append(lap)
     metric_rows = list(await db.scalars(select(AthleteMetric).where(AthleteMetric.athlete_id == athlete.id)))
-    return SessionData(event, laps_by_track, tracks, await linked_recordings(db, athlete, viewer, event), metric_rows)
+    bike_kg = None
+    if event.gear_setup_id is not None:
+        gear = await db.get(GearSetup, event.gear_setup_id)
+        bike = await db.get(Bike, gear.bike_id) if gear is not None else None
+        bike_kg = bike.weight_kg if bike is not None else None
+    return SessionData(
+        event, laps_by_track, tracks, await linked_recordings(db, athlete, viewer, event), metric_rows, bike_kg
+    )
 
 
 def _rider_weight(rows: list[AthleteMetric], day: date) -> tuple[float, date] | None:
@@ -152,7 +162,13 @@ def estimate(
         humidity_pct=humidity_pct,
     )
     weight = (inputs.rider_kg, None) if inputs.rider_kg is not None else _rider_weight(data.metric_rows, data.event.event_date)
-    bike_kg = inputs.bike_kg if inputs.bike_kg is not None else DEFAULT_BIKE_KG
+    bike_kg = (
+        inputs.bike_kg
+        if inputs.bike_kg is not None
+        else data.session_bike_kg
+        if data.session_bike_kg is not None
+        else DEFAULT_BIKE_KG
+    )
     conditions = AeroConditionsRead(
         temp_c=temp_c,
         elevation_m=elevation_m,

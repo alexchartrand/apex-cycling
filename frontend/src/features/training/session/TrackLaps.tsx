@@ -185,6 +185,18 @@ export function TrackLaps({
           },
         ]
       : []),
+    ...(recorded.estCadence
+      ? [
+          {
+            id: "estCadence",
+            header: `${t("laps.estCadence")} (rpm)`,
+            align: "right" as const,
+            cell: ({ lap }: LapRow) => fmt.number(lap.est_cadence_rpm, 0),
+            sortValue: ({ lap }: LapRow) => lap.est_cadence_rpm,
+            hideOnMobile: true,
+          },
+        ]
+      : []),
     ...columns.map((column): DataTableColumn<LapRow> => ({
       id: `${SPLIT_PREFIX}${column.loopId}`,
       header: `${column.name} (s)`,

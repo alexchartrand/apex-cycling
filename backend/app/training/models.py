@@ -133,6 +133,8 @@ class TrainingEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     rpe: Mapped[int | None] = mapped_column(Integer, nullable=True)  # rate of perceived exertion, 1-10
     tags: Mapped[list[str]] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    # Gear ridden by default in this session (an effort may override it).
+    gear_setup_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("gear_setups.id"), nullable=True)
 
     classes: Mapped[list["EventClass"]] = relationship(back_populates="training_event")
     event_tracks: Mapped[list["EventTrack"]] = relationship(back_populates="training_event")
@@ -197,6 +199,8 @@ class TrainingLap(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     excluded: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     label: Mapped[str | None] = mapped_column(String(100), nullable=True)
     effort_label: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Same for the gear this effort was ridden in, when it differs from the session's.
+    effort_gear_setup_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("gear_setups.id"), nullable=True)
 
     event_track: Mapped["EventTrack"] = relationship(back_populates="laps")
     segment_times: Mapped[list["LapSegmentTime"]] = relationship(

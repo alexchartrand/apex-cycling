@@ -38,12 +38,18 @@ export function lapSpeedKmh(lap: LapDetail, lapLengthM: number | null | undefine
   return lapLengthM && ms ? (lapLengthM / (ms / 1000)) * 3.6 : null;
 }
 
-/** Which recorded channels any lap of the table has, so empty columns stay out. */
-export function recordingColumns(laps: LapDetail[]): { power: boolean; heartRate: boolean; cadence: boolean } {
+/** Which recorded channels (and the gear-based cadence estimate) any lap of the table has, so empty columns stay out. */
+export function recordingColumns(laps: LapDetail[]): {
+  power: boolean;
+  heartRate: boolean;
+  cadence: boolean;
+  estCadence: boolean;
+} {
   return {
     power: laps.some((lap) => lap.avg_power_w != null),
     heartRate: laps.some((lap) => lap.avg_heart_rate != null),
     cadence: laps.some((lap) => lap.avg_cadence != null),
+    estCadence: laps.some((lap) => lap.est_cadence_rpm != null),
   };
 }
 
@@ -71,6 +77,7 @@ export function lapsToCsv(laps: LapDetail[], columns: SplitColumn[], lapLengthM:
     ...(recorded.power ? ["avg_power_w"] : []),
     ...(recorded.heartRate ? ["avg_heart_rate_bpm"] : []),
     ...(recorded.cadence ? ["avg_cadence_rpm"] : []),
+    ...(recorded.estCadence ? ["est_cadence_rpm"] : []),
     ...columns.map((c) => `${c.name}_s`),
     "excluded",
     "label",
@@ -86,6 +93,7 @@ export function lapsToCsv(laps: LapDetail[], columns: SplitColumn[], lapLengthM:
       ...(recorded.power ? [rounded(lap.avg_power_w)] : []),
       ...(recorded.heartRate ? [rounded(lap.avg_heart_rate)] : []),
       ...(recorded.cadence ? [rounded(lap.avg_cadence)] : []),
+      ...(recorded.estCadence ? [rounded(lap.est_cadence_rpm)] : []),
       ...columns.map((c) => seconds(splitMs(lap, c.loopId))),
       lap.excluded ? "yes" : "no",
       lap.label,

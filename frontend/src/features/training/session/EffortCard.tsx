@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 import { errorMessage } from "../../../api/errors";
 import { Badge, Button, Card, Dialog, IconButton, Input, StatTile, Tooltip, useToast, type BadgeTone } from "../../../components/ui";
 import { useFormat } from "../../../i18n/useFormat";
+import { GearPicker } from "../../equipment/GearPicker";
+import { useEffortGear } from "../../equipment/useEquipment";
+import type { Bike } from "../../equipment/types";
 import type { Effort, StartType } from "../types";
 import { useLabelEffort } from "../useTraining";
 import { HalfLapSplitChart } from "./HalfLapSplitChart";
@@ -11,8 +14,10 @@ import "./EffortCard.css";
 
 const START_TONES: Record<StartType, BadgeTone> = { standing: "highlight", flying: "accent", unknown: "neutral" };
 
-export function EffortCard({ athleteId, eventId, effort }: { athleteId: string; eventId: string; effort: Effort }) {
+export function EffortCard({ athleteId, eventId, effort, bikes }: { athleteId: string; eventId: string; effort: Effort; bikes: Bike[] }) {
   const { t } = useTranslation("training");
+  const { t: tg } = useTranslation("equipment");
+  const effortGear = useEffortGear(athleteId, eventId);
   const { t: tr } = useTranslation("records");
   const fmt = useFormat();
   const [renaming, setRenaming] = useState(false);
@@ -53,7 +58,21 @@ export function EffortCard({ athleteId, eventId, effort }: { athleteId: string; 
         {effort.avg_heart_rate != null && (
           <StatTile label={t("efforts.avgHeartRate")} value={fmt.number(effort.avg_heart_rate, 0)} unit="bpm" />
         )}
+        {effort.est_cadence_rpm != null && (
+          <StatTile label={t("efforts.estCadence")} value={fmt.number(effort.est_cadence_rpm, 0)} unit="rpm" />
+        )}
       </div>
+      {bikes.some((bike) => bike.gears.length > 0) && (
+        <GearPicker
+          bikes={bikes}
+          value={effort.gear_setup_id ?? null}
+          onChange={(gearId) => effortGear.mutateAsync({ firstLapId: effort.lap_ids[0], gearId })}
+          label={tg("picker.effort")}
+          emptyLabel={tg("picker.sameAsSession")}
+          pending={effortGear.isPending}
+          error={effortGear.error}
+        />
+      )}
       {hasUnfinishedLap && <p className="effort-card__note">{t("efforts.unfinishedNote")}</p>}
 
       {effort.half_lap_splits.length > 0 && (

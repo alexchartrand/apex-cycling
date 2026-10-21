@@ -92,12 +92,26 @@ describe("recorded channels in the lap table", () => {
   const recorded = (id: string, extra: Partial<LapDetail>) => lap(id, 25000, full, extra);
 
   it("knows which channels any lap has", () => {
-    expect(recordingColumns([lap("1", 25000, full)])).toEqual({ power: false, heartRate: false, cadence: false });
+    expect(recordingColumns([lap("1", 25000, full)])).toEqual({
+      power: false,
+      heartRate: false,
+      cadence: false,
+      estCadence: false,
+    });
     expect(recordingColumns([recorded("1", { avg_power_w: 300 }), recorded("2", { avg_cadence: 110 })])).toEqual({
       power: true,
       heartRate: false,
       cadence: true,
+      estCadence: false,
     });
+  });
+
+  it("adds a column for the gear-based cadence estimate", () => {
+    const estimated = recorded("1", { est_cadence_rpm: 107.14 });
+    expect(recordingColumns([estimated]).estCadence).toBe(true);
+    const csv = lapsToCsv([estimated], [], 250).split("\r\n");
+    expect(csv[0]).toContain("est_cadence_rpm");
+    expect(csv[1]).toContain(",107,");
   });
 
   it("adds power, heart rate and cadence to the CSV only when recorded", () => {

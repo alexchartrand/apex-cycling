@@ -28,6 +28,7 @@ from app.clubs.models import ClubInvite, ClubMembership
 from app.clubs.service import delete_empty_clubs_of
 from app.connections.models import DataSourceConnection, IngestionRun, RawSnapshot, TransponderAssignment
 from app.db.base import Base
+from app.equipment.models import Bike, GearSetup
 from app.training.models import (
     EventClass,
     EventTrack,
@@ -164,6 +165,20 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
                     )
                 ),
             ),
+            (
+                "bikes.csv",
+                Bike,
+                list(await db.scalars(select(Bike).where(Bike.athlete_id == athlete.id).order_by(Bike.created_at))),
+            ),
+            (
+                "gear_setups.csv",
+                GearSetup,
+                list(
+                    await db.scalars(
+                        select(GearSetup).where(GearSetup.athlete_id == athlete.id).order_by(GearSetup.created_at)
+                    )
+                ),
+            ),
             ("tracks.csv", Track, list(await db.scalars(select(Track).where(Track.id.in_(track_ids))))),
             (
                 "track_loops.csv",
@@ -253,6 +268,8 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     await db.execute(delete(EventTrack).where(EventTrack.training_event_id.in_(event_ids)))
     await db.execute(delete(EventClass).where(EventClass.training_event_id.in_(event_ids)))
     await db.execute(delete(TrainingEvent).where(TrainingEvent.athlete_id == athlete.id))
+    await db.execute(delete(GearSetup).where(GearSetup.athlete_id == athlete.id))  # sessions and laps pointed at them
+    await db.execute(delete(Bike).where(Bike.athlete_id == athlete.id))
     await db.execute(delete(AthleteMetric).where(AthleteMetric.athlete_id == athlete.id))
     await db.execute(delete(TransponderAssignment).where(TransponderAssignment.athlete_id == athlete.id))
     await db.execute(delete(CoachAthlete).where(CoachAthlete.athlete_id == athlete.id))
