@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider, TooltipProvider } from "../../components/ui";
 import { EquipmentPanel } from "./EquipmentPanel";
+import { STANDARD_TIRES } from "./gear";
 import { GearPicker } from "./GearPicker";
 import type { Bike } from "./types";
 
@@ -14,7 +15,7 @@ const bike: Bike = {
   weight_kg: 7.4,
   notes: null,
   gears: [
-    { id: "g1", bike_id: "b1", chainring_teeth: 50, cog_teeth: 15, rollout_mm: 2100, tire: "Veloflex", ratio: 3.33, development_m: 7, gear_inches: 104.9 },
+    { id: "g1", bike_id: "b1", chainring_teeth: 50, cog_teeth: 15, rollout_mm: 2100, tire: "Veloflex", crr: null, ratio: 3.33, development_m: 7, gear_inches: 104.9 },
   ],
 };
 
@@ -72,7 +73,34 @@ describe("EquipmentPanel", () => {
     await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
     const [url, init] = fetchMock.mock.calls.find(([, i]) => i?.method === "POST")!;
     expect(url).toBe("/api/athletes/a1/bikes/b1/gears");
-    expect(JSON.parse(init.body)).toEqual({ chainring_teeth: 52, cog_teeth: 14, rollout_mm: 2096, tire: null });
+    expect(JSON.parse(init.body)).toEqual({ chainring_teeth: 52, cog_teeth: 14, rollout_mm: 2096, tire: null, crr: null });
+  });
+
+  it("fills the tire and its Crr from the list, and still takes a tire that isn't listed", async () => {
+    render(wrap(<EquipmentPanel athleteId="a1" />));
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Add a gear" }));
+    await user.type(screen.getByLabelText("Chainring"), "52");
+    await user.type(screen.getByLabelText("Cog"), "14");
+
+    const listed = STANDARD_TIRES[0];
+    await user.selectOptions(screen.getByLabelText("Tire from the list"), listed.label);
+    expect(screen.getByLabelText("Tire")).toHaveValue(listed.label);
+    expect(screen.getByLabelText(/^Crr/)).toHaveValue(listed.crr);
+
+    await user.clear(screen.getByLabelText("Tire"));
+    await user.type(screen.getByLabelText("Tire"), "Home-made 22");
+    expect(screen.getByLabelText("Tire from the list")).toHaveValue("");
+    await user.clear(screen.getByLabelText(/^Crr/));
+    await user.type(screen.getByLabelText(/^Crr/), "0.5");
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled(); // Crr out of range
+    await user.clear(screen.getByLabelText(/^Crr/));
+    await user.type(screen.getByLabelText(/^Crr/), "0.0035");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
+    const [, init] = fetchMock.mock.calls.find(([, i]) => i?.method === "POST")!;
+    expect(JSON.parse(init.body)).toMatchObject({ tire: "Home-made 22", crr: 0.0035 });
   });
 
   it("refuses a chainring outside the allowed range", async () => {

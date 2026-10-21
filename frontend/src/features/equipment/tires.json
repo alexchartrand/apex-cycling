@@ -1,0 +1,7 @@
+[
+  { "brand": "Vittoria", "name": "Pista Control", "type": "tubular", "size": 23, "crr": 0.001579 },
+  { "brand": "Vittoria", "name": "Pista Speed", "type": "tubular", "size": 23, "crr": 0.001406 },
+  { "brand": "Vittoria", "name": "Pista Oro", "type": "tubular", "size": 23, "crr": 0.001390 },
+  { "brand": "Vittoria", "name": "Pista Oro - TPU", "type": "tubular", "size": 23, "crr": 0.001260 },
+  { "brand": "Continental", "name": "Sprinter", "type": "tubular", "size": 23, "crr": 0.0061 }
+]

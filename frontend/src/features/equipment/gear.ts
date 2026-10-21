@@ -1,4 +1,25 @@
-import { ROLLOUT_PRESETS, type Bike, type Gear } from "./types";
+import tires from "./tires.json";
+import { ROLLOUT_PRESETS, type Bike, type Gear, type StandardTire, type TireEntry } from "./types";
+
+/** "Vittoria Pista Control tubular 23 mm". */
+export function tireLabel(tire: Omit<TireEntry, "crr">): string {
+  return [tire.brand, tire.name, tire.type, `${tire.size} mm`].map((part) => part.trim()).filter(Boolean).join(" ");
+}
+
+/** The tires offered in the gear dialog, maintained by hand in `tires.json`, sorted by brand, name, type, then size. */
+export const STANDARD_TIRES: StandardTire[] = (tires as TireEntry[])
+  .map((tire) => ({ ...tire, label: tireLabel(tire) }))
+  .sort(
+    (a, b) =>
+      a.brand.localeCompare(b.brand) || a.name.localeCompare(b.name) || a.type.localeCompare(b.type) || a.size - b.size,
+  );
+
+/** The listed tires grouped by brand, in list order. */
+export function tiresByBrand(list: StandardTire[] = STANDARD_TIRES): [string, StandardTire[]][] {
+  const groups = new Map<string, StandardTire[]>();
+  for (const tire of list) groups.set(tire.brand, [...(groups.get(tire.brand) ?? []), tire]);
+  return [...groups];
+}
 
 /** "50×15", the way riders say a gear. */
 export function gearName(gear: Pick<Gear, "chainring_teeth" | "cog_teeth">): string {
@@ -45,4 +66,11 @@ export function gearOf(bikes: Bike[], chainring: number | null, cog: number | nu
 export function rolloutPresetOf(rolloutMm: number | null): (typeof ROLLOUT_PRESETS)[number] | null {
   if (rolloutMm == null) return null;
   return ROLLOUT_PRESETS.find((preset) => Math.abs(preset.rolloutMm - rolloutMm) < 0.5) ?? null;
+}
+
+/** The listed tire with this label (ignoring case and spacing) and Crr; null once either is edited away from it. */
+export function standardTireOf(name: string, crr: number | null, list: StandardTire[] = STANDARD_TIRES): StandardTire | null {
+  const key = name.trim().replace(/\s+/g, " ").toLowerCase();
+  if (key === "" || crr == null) return null;
+  return list.find((tire) => tire.label.toLowerCase() === key && Math.abs(tire.crr - crr) < 1e-9) ?? null;
 }

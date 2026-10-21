@@ -19,7 +19,7 @@ export function deleteBike(athleteId: string, bikeId: string): Promise<void> {
   return apiFetch<void>(`${base(athleteId)}/bikes/${bikeId}`, { method: "DELETE" });
 }
 
-export function createGear(athleteId: string, bikeId: string, payload: Required<Omit<GearPayload, "tire">> & { tire?: string | null }): Promise<Gear> {
+export function createGear(athleteId: string, bikeId: string, payload: Required<Omit<GearPayload, "tire" | "crr">> & { tire?: string | null; crr?: number | null }): Promise<Gear> {
   return apiFetch<Gear>(`${base(athleteId)}/bikes/${bikeId}/gears`, { method: "POST", body: JSON.stringify(payload) });
 }
 

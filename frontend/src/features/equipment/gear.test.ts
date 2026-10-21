@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { bikeOfWeight, gearChoices, gearName, gearOf, parseNumber, rolloutPresetOf, weighedBikes } from "./gear";
+import tires from "./tires.json";
+import { bikeOfWeight, gearChoices, gearName, gearOf, parseNumber, rolloutPresetOf, standardTireOf, STANDARD_TIRES, tireLabel, tiresByBrand, weighedBikes } from "./gear";
+import { GEAR_BOUNDS } from "./types";
 import type { Bike } from "./types";
 
-const gear = { bike_id: "b", rollout_mm: 2100, tire: null, ratio: 0, development_m: 0, gear_inches: 0 };
+const gear = { bike_id: "b", rollout_mm: 2100, tire: null, crr: null, ratio: 0, development_m: 0, gear_inches: 0 };
 const bike = (id: string, name: string, gears: [string, number, number][]): Bike => ({
   id,
   name,
@@ -52,5 +54,44 @@ describe("gear", () => {
     expect(rolloutPresetOf(2.096 * 1000)?.tire).toBe("700×23c");
     expect(rolloutPresetOf(2100)).toBeNull();
     expect(rolloutPresetOf(null)).toBeNull();
+  });
+});
+
+describe("standard tires", () => {
+  const vittoria = { brand: "Vittoria", name: "Pista Control", type: "tubular", size: 23, crr: 0.001579 };
+  const list = [{ ...vittoria, label: tireLabel(vittoria) }];
+
+  it("labels a tire brand, name, type, size", () => {
+    expect(tireLabel(vittoria)).toBe("Vittoria Pista Control tubular 23 mm");
+  });
+
+  it("finds the listed tire from its label and Crr", () => {
+    expect(standardTireOf("  vittoria pista  control tubular 23 mm ", 0.001579, list)).toEqual(list[0]);
+    expect(standardTireOf("Vittoria Pista Control tubular 23 mm", 0.002, list)).toBeNull();
+    expect(standardTireOf("Vittoria Pista Control tubular 23 mm", null, list)).toBeNull();
+    expect(standardTireOf("My tire", 0.001579, list)).toBeNull();
+  });
+
+  it("groups by brand", () => {
+    const other = { ...vittoria, brand: "Continental", name: "Pro Track", label: "x" };
+    expect(tiresByBrand([list[0], other, list[0]]).map(([brand, tires]) => [brand, tires.length])).toEqual([
+      ["Vittoria", 2],
+      ["Continental", 1],
+    ]);
+  });
+
+  it("keeps tires.json valid: every field filled, a unique label and a Crr the API accepts", () => {
+    expect(STANDARD_TIRES).toHaveLength(tires.length);
+    expect(new Set(STANDARD_TIRES.map((tire) => tire.label.toLowerCase())).size).toBe(tires.length);
+    for (const tire of STANDARD_TIRES) {
+      expect(Number.isInteger(tire.size) && tire.size >= 15 && tire.size <= 60, `${tire.label}: size in whole mm`).toBe(true);
+      for (const field of ["brand", "name", "type"] as const) {
+        expect(typeof tire[field] === "string" && tire[field].trim() !== "", `${tire.label}: ${field}`).toBe(true);
+      }
+      expect(tire.label.length, tire.label).toBeLessThanOrEqual(100);
+      expect(typeof tire.crr, tire.label).toBe("number");
+      expect(tire.crr, tire.label).toBeGreaterThanOrEqual(GEAR_BOUNDS.crr.min);
+      expect(tire.crr, tire.label).toBeLessThanOrEqual(GEAR_BOUNDS.crr.max);
+    }
   });
 });

@@ -14,6 +14,7 @@ const gear = (id: string, chainring_teeth: number, cog_teeth: number) => ({
   cog_teeth,
   rollout_mm: 2096,
   tire: null,
+  crr: null,
   ratio: 0,
   development_m: 0,
   gear_inches: 0,
@@ -74,7 +75,7 @@ describe("GearingTool saved gears", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    const preset = await screen.findByLabelText("Standard tire");
+    const preset = await screen.findByLabelText("Tire size");
     await screen.findByLabelText("Saved gear");
     expect(preset).toHaveValue("700×23c");
 

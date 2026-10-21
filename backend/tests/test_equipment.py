@@ -38,8 +38,12 @@ async def test_bike_and_gear_crud(client, db_session):
     assert gear["development_m"] == pytest.approx(7.0)
     assert gear["gear_inches"] == pytest.approx(50 / 15 * 27)
 
-    resp = await client.patch(f"/athletes/{athlete_id}/gears/{gear['id']}", json={"cog_teeth": 14, "tire": None})
-    assert resp.json()["cog_teeth"] == 14 and resp.json()["tire"] is None
+    assert gear["crr"] is None
+    resp = await client.patch(f"/athletes/{athlete_id}/gears/{gear['id']}", json={"crr": 0.001579})
+    assert resp.json()["crr"] == 0.001579 and resp.json()["tire"] == "Veloflex 25"
+    assert (await client.patch(f"/athletes/{athlete_id}/gears/{gear['id']}", json={"crr": 0.5})).status_code == 422
+    resp = await client.patch(f"/athletes/{athlete_id}/gears/{gear['id']}", json={"cog_teeth": 14, "tire": None, "crr": None})
+    assert resp.json()["cog_teeth"] == 14 and resp.json()["tire"] is None and resp.json()["crr"] is None
     assert (await client.patch(f"/athletes/{athlete_id}/gears/{gear['id']}", json={"cog_teeth": None})).status_code == 422
     assert (await client.post(f"/athletes/{athlete_id}/bikes", json={"name": " "})).status_code == 422
     assert (

@@ -6,6 +6,7 @@ import { Button, Card, ConfirmDialog, Dialog, EmptyState, IconButton, Input, Ske
 import { useFormat } from "../../i18n/useFormat";
 import { gearName, parseNumber } from "./gear";
 import { RolloutPresetSelect } from "./RolloutPresetSelect";
+import { TireSelect } from "./TireSelect";
 import { DEFAULT_ROLLOUT_MM, GEAR_BOUNDS, type Bike, type Gear } from "./types";
 import { useBikes, useDeleteBike, useDeleteGear, useSaveBike, useSaveGear } from "./useEquipment";
 import "./EquipmentPanel.css";
@@ -72,6 +73,7 @@ export function EquipmentPanel({ athleteId }: { athleteId: string }) {
                     {t("gear.development", { value: fmt.number(gear.development_m, 2, 2) })} ·{" "}
                     {t("gear.gearInches", { value: fmt.number(gear.gear_inches, 1, 1) })}
                     {gear.tire ? ` · ${gear.tire}` : ""}
+                    {gear.crr != null ? ` · ${t("gear.crrValue", { value: fmt.number(gear.crr, 6, 3) })}` : ""}
                   </span>
                   <span className="equipment__gear-actions">
                     <Tooltip content={t("gear.edit", { name: gearName(gear) })}>
@@ -229,7 +231,9 @@ function GearDialog({ athleteId, bike, gear, onClose }: { athleteId: string; bik
   const [cog, setCog] = useState(gear ? String(gear.cog_teeth) : "");
   const [rollout, setRollout] = useState(String(gear?.rollout_mm ?? DEFAULT_ROLLOUT_MM));
   const [tire, setTire] = useState(gear?.tire ?? "");
+  const [crr, setCrr] = useState(gear?.crr != null ? String(gear.crr) : "");
   const values = { chainring_teeth: parseNumber(chainring), cog_teeth: parseNumber(cog), rollout_mm: parseNumber(rollout) };
+  const crrValue = parseNumber(crr);
   const valid =
     values.chainring_teeth != null &&
     Number.isInteger(values.chainring_teeth) &&
@@ -241,7 +245,8 @@ function GearDialog({ athleteId, bike, gear, onClose }: { athleteId: string; bik
     values.cog_teeth <= GEAR_BOUNDS.cog.max &&
     values.rollout_mm != null &&
     values.rollout_mm >= GEAR_BOUNDS.rollout.min &&
-    values.rollout_mm <= GEAR_BOUNDS.rollout.max;
+    values.rollout_mm <= GEAR_BOUNDS.rollout.max &&
+    (crr.trim() === "" || (crrValue != null && crrValue >= GEAR_BOUNDS.crr.min && crrValue <= GEAR_BOUNDS.crr.max));
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -255,6 +260,7 @@ function GearDialog({ athleteId, bike, gear, onClose }: { athleteId: string; bik
           cog_teeth: values.cog_teeth!,
           rollout_mm: values.rollout_mm!,
           tire: tire.trim() || null,
+          crr: crrValue,
         },
       });
       toast({ title: t("gear.saved"), tone: "success" });
@@ -322,7 +328,29 @@ function GearDialog({ athleteId, bike, gear, onClose }: { athleteId: string; bik
             onChange={(e) => setRollout(e.target.value)}
           />
         </div>
-        <Input label={t("gear.tire")} value={tire} maxLength={100} placeholder={t("gear.tirePlaceholder")} onChange={(e) => setTire(e.target.value)} />
+        <TireSelect
+          name={tire}
+          crr={crrValue}
+          onChange={(picked) => {
+            setTire(picked.label);
+            setCrr(String(picked.crr));
+          }}
+        />
+        <div className="equipment__row">
+          <Input label={t("gear.tire")} value={tire} maxLength={100} placeholder={t("gear.tirePlaceholder")} onChange={(e) => setTire(e.target.value)} />
+          <Input
+            label={t("gear.crr")}
+            hint={t("gear.crrHint")}
+            type="number"
+            inputMode="decimal"
+            min={GEAR_BOUNDS.crr.min}
+            max={GEAR_BOUNDS.crr.max}
+            step="any"
+            placeholder="0.004"
+            value={crr}
+            onChange={(e) => setCrr(e.target.value)}
+          />
+        </div>
         {save.isError && <p role="alert" className="equipment__error">{errorMessage(save.error)}</p>}
       </form>
     </Dialog>

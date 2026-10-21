@@ -20,7 +20,7 @@ class Bike(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class GearSetup(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    """A chainring, a cog and a tire on one bike. `rollout_mm` is the distance
+    """A chainring, a cog and a tire (with its Crr, when known) on one bike. `rollout_mm` is the distance
     the wheel travels in one turn, measured with the rider on the bike (the
     tire's circumference is a few millimetres short). Assigned to a session
     (`TrainingEvent.gear_setup_id`) or to one effort of it
@@ -36,3 +36,6 @@ class GearSetup(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     cog_teeth: Mapped[int] = mapped_column(Integer)
     rollout_mm: Mapped[float] = mapped_column(Float)
     tire: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # The tire's rolling resistance coefficient, from the standard-tire list
+    # or typed in.
+    crr: Mapped[float | None] = mapped_column(Float, nullable=True)

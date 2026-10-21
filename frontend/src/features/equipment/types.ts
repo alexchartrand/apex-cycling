@@ -5,6 +5,7 @@ export interface Gear {
   cog_teeth: number;
   rollout_mm: number;
   tire: string | null;
+  crr: number | null;
   ratio: number;
   development_m: number;
   gear_inches: number;
@@ -29,6 +30,7 @@ export interface GearPayload {
   cog_teeth?: number;
   rollout_mm?: number;
   tire?: string | null;
+  crr?: number | null;
 }
 
 /** Bounds mirror the backend's validation (`equipment/schemas.py`). */
@@ -37,6 +39,7 @@ export const GEAR_BOUNDS = {
   cog: { min: 5, max: 60 },
   rollout: { min: 1000, max: 3000 },
   bikeKg: { min: 3, max: 40 },
+  crr: { min: 0.001, max: 0.02 },
 } as const;
 
 /** A new gear starts on the 700×23c preset. */
@@ -49,3 +52,19 @@ export const ROLLOUT_PRESETS = [
   { tire: "700×25c", rolloutMm: 2105 },
   { tire: "700×28c", rolloutMm: 2136 },
 ] as const;
+
+/** One entry of `tires.json`. */
+export interface TireEntry {
+  brand: string;
+  name: string;
+  /** e.g. tubular, clincher, tubeless. */
+  type: string;
+  /** Width in millimetres. */
+  size: number;
+  crr: number;
+}
+
+export interface StandardTire extends TireEntry {
+  /** "Vittoria Pista Control tubular 23 mm": what picking it writes into the gear's tire. */
+  label: string;
+}

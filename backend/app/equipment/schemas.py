@@ -17,17 +17,21 @@ class GearWrite(BaseModel):
     # One wheel turn, ridden: 700×23–25c is about 2100 mm.
     rollout_mm: float = Field(ge=1000, le=3000)
     tire: str | None = Field(default=None, max_length=100)
+    # Same bounds as the aero lab's Crr input.
+    crr: float | None = Field(default=None, ge=0.001, le=0.02)
 
     _clean_tire = field_validator("tire")(_blank_is_none)
 
 
 class GearUpdate(BaseModel):
-    """PATCH body: only the fields sent change. The numbers can't be null."""
+    """PATCH body: only the fields sent change. The teeth and rollout can't be
+    null; null clears the tire or its Crr."""
 
     chainring_teeth: int | None = Field(default=None, ge=10, le=100)
     cog_teeth: int | None = Field(default=None, ge=5, le=60)
     rollout_mm: float | None = Field(default=None, ge=1000, le=3000)
     tire: str | None = Field(default=None, max_length=100)
+    crr: float | None = Field(default=None, ge=0.001, le=0.02)
 
     _clean_tire = field_validator("tire")(_blank_is_none)
 
@@ -46,6 +50,7 @@ class GearRead(BaseModel):
     cog_teeth: int
     rollout_mm: float
     tire: str | None
+    crr: float | None
     # What the numbers mean on the track.
     ratio: float
     development_m: float
