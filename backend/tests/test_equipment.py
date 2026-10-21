@@ -36,7 +36,7 @@ async def test_bike_and_gear_crud(client, db_session):
     assert gear["tire"] == "Veloflex 25"
     assert gear["ratio"] == pytest.approx(50 / 15)
     assert gear["development_m"] == pytest.approx(7.0)
-    assert gear["gear_inches"] == pytest.approx(50 / 15 * 2.1 / 3.141592653589793 / 0.0254)
+    assert gear["gear_inches"] == pytest.approx(50 / 15 * 27)
 
     resp = await client.patch(f"/athletes/{athlete_id}/gears/{gear['id']}", json={"cog_teeth": 14, "tire": None})
     assert resp.json()["cog_teeth"] == 14 and resp.json()["tire"] is None

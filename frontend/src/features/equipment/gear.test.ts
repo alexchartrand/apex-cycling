@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bikeOfWeight, gearChoices, gearName, gearOf, parseNumber, weighedBikes } from "./gear";
+import { bikeOfWeight, gearChoices, gearName, gearOf, parseNumber, rolloutPresetOf, weighedBikes } from "./gear";
 import type { Bike } from "./types";
 
 const gear = { bike_id: "b", rollout_mm: 2100, tire: null, ratio: 0, development_m: 0, gear_inches: 0 };
@@ -45,5 +45,12 @@ describe("gear", () => {
     expect(parseNumber(" 2105 ")).toBe(2105);
     expect(parseNumber("")).toBeNull();
     expect(parseNumber("abc")).toBeNull();
+  });
+
+  it("names the standard tire a rollout belongs to", () => {
+    expect(rolloutPresetOf(2105)?.tire).toBe("700×25c");
+    expect(rolloutPresetOf(2.096 * 1000)?.tire).toBe("700×23c");
+    expect(rolloutPresetOf(2100)).toBeNull();
+    expect(rolloutPresetOf(null)).toBeNull();
   });
 });

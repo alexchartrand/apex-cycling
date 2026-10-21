@@ -66,13 +66,13 @@ describe("EquipmentPanel", () => {
     expect(save).toBeDisabled(); // no teeth yet
     await user.type(screen.getByLabelText("Chainring"), "52");
     await user.type(screen.getByLabelText("Cog"), "14");
-    expect(screen.getByLabelText(/Rollout/)).toHaveValue(2100);
+    expect(screen.getByLabelText(/Rollout/)).toHaveValue(2096);
     await user.click(save);
 
     await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
     const [url, init] = fetchMock.mock.calls.find(([, i]) => i?.method === "POST")!;
     expect(url).toBe("/api/athletes/a1/bikes/b1/gears");
-    expect(JSON.parse(init.body)).toEqual({ chainring_teeth: 52, cog_teeth: 14, rollout_mm: 2100, tire: null });
+    expect(JSON.parse(init.body)).toEqual({ chainring_teeth: 52, cog_teeth: 14, rollout_mm: 2096, tire: null });
   });
 
   it("refuses a chainring outside the allowed range", async () => {

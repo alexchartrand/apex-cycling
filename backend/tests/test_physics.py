@@ -150,9 +150,10 @@ def test_power_for_an_impossible_time_is_none():
 
 
 def test_gearing_by_hand():
-    # 52×14 on a 2.10 m rollout: 7.8 m per crank turn, ~97.7 gear inches.
+    # 52×14 on a 2.10 m rollout: 7.8 m per crank turn; 58×16 is 97.88 in the tables.
     assert development_m(52, 14, 2.10) == pytest.approx(7.8)
-    assert gear_inches(52, 14, 2.10) == pytest.approx(97.75, abs=0.01)
+    assert gear_inches(52, 14) == pytest.approx(100.29, abs=0.01)
+    assert gear_inches(58, 16) == pytest.approx(97.875)
     assert speed_from_cadence_ms(110, 52, 14, 2.10) == pytest.approx(7.8 * 110 / 60)
     assert cadence_from_speed_rpm(7.8 * 110 / 60, 52, 14, 2.10) == pytest.approx(110)
 

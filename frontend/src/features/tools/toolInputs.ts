@@ -6,6 +6,7 @@
   text is kept as typed, so a half-typed "0." doesn't get rewritten.
 */
 import { parseTimeInput } from "../records/timeInput";
+import { DEFAULT_ROLLOUT_MM } from "../equipment/types";
 
 export type NumberSpec = { param: string; min: number; max: number; step: number; integer?: boolean };
 
@@ -56,7 +57,7 @@ export const FALLBACKS: Record<NumberKey, number | null> = {
   powerW: 400,
   chainring: 52,
   cog: 14,
-  rolloutM: 2.1,
+  rolloutM: DEFAULT_ROLLOUT_MM / 1000,
 };
 export const FALLBACK_TIME = "4:30";
 

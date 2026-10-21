@@ -39,5 +39,13 @@ export const GEAR_BOUNDS = {
   bikeKg: { min: 3, max: 40 },
 } as const;
 
-/** A 700×25c track tire turns about this far, ridden. */
-export const DEFAULT_ROLLOUT_MM = 2100;
+/** A new gear starts on the 700×23c preset. */
+export const DEFAULT_ROLLOUT_MM = 2096;
+
+/** Standard wheel circumferences (bike-computer tables, unloaded) offered next to every rollout field. */
+export const ROLLOUT_PRESETS = [
+  { tire: "700×21c", rolloutMm: 2090 },
+  { tire: "700×23c", rolloutMm: 2096 },
+  { tire: "700×25c", rolloutMm: 2105 },
+  { tire: "700×28c", rolloutMm: 2136 },
+] as const;

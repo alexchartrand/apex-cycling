@@ -264,9 +264,11 @@ export function developmentM(chainring: number, cog: number, rolloutM: number): 
   return (chainring / cog) * rolloutM;
 }
 
-/** Ratio × wheel diameter in inches, the diameter taken from the rollout. */
-export function gearInches(chainring: number, cog: number, rolloutM: number): number {
-  return (chainring / cog) * rolloutM / Math.PI / 0.0254;
+export const GEAR_INCHES_WHEEL_IN = 27;
+
+/** Ratio × a nominal 27-inch wheel, whatever the real tire, as gear tables do. */
+export function gearInches(chainring: number, cog: number): number {
+  return (chainring / cog) * GEAR_INCHES_WHEEL_IN;
 }
 
 export function speedFromCadenceMs(cadenceRpm: number, chainring: number, cog: number, rolloutM: number) {

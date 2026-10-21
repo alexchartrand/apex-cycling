@@ -28,7 +28,7 @@ def gear_read(gear: GearSetup) -> GearRead:
         tire=gear.tire,
         ratio=gear.chainring_teeth / gear.cog_teeth,
         development_m=physics.development_m(gear.chainring_teeth, gear.cog_teeth, rollout_m),
-        gear_inches=physics.gear_inches(gear.chainring_teeth, gear.cog_teeth, rollout_m),
+        gear_inches=physics.gear_inches(gear.chainring_teeth, gear.cog_teeth),
     )
 
 

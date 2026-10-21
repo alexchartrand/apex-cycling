@@ -5,6 +5,7 @@ import { errorMessage } from "../../api/errors";
 import { Button, Card, ConfirmDialog, Dialog, EmptyState, IconButton, Input, SkeletonGroup, Textarea, Tooltip, useToast } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
 import { gearName, parseNumber } from "./gear";
+import { RolloutPresetSelect } from "./RolloutPresetSelect";
 import { DEFAULT_ROLLOUT_MM, GEAR_BOUNDS, type Bike, type Gear } from "./types";
 import { useBikes, useDeleteBike, useDeleteGear, useSaveBike, useSaveGear } from "./useEquipment";
 import "./EquipmentPanel.css";
@@ -306,18 +307,21 @@ function GearDialog({ athleteId, bike, gear, onClose }: { athleteId: string; bik
             onChange={(e) => setCog(e.target.value)}
           />
         </div>
-        <Input
-          label={t("gear.rollout")}
-          hint={t("gear.rolloutHint")}
-          type="number"
-          inputMode="decimal"
-          min={GEAR_BOUNDS.rollout.min}
-          max={GEAR_BOUNDS.rollout.max}
-          step={1}
-          suffix="mm"
-          value={rollout}
-          onChange={(e) => setRollout(e.target.value)}
-        />
+        <div className="equipment__row">
+          <RolloutPresetSelect rolloutMm={values.rollout_mm} onChange={(mm) => setRollout(String(mm))} />
+          <Input
+            label={t("gear.rollout")}
+            hint={t("gear.rolloutHint")}
+            type="number"
+            inputMode="decimal"
+            min={GEAR_BOUNDS.rollout.min}
+            max={GEAR_BOUNDS.rollout.max}
+            step={1}
+            suffix="mm"
+            value={rollout}
+            onChange={(e) => setRollout(e.target.value)}
+          />
+        </div>
         <Input label={t("gear.tire")} value={tire} maxLength={100} placeholder={t("gear.tirePlaceholder")} onChange={(e) => setTire(e.target.value)} />
         {save.isError && <p role="alert" className="equipment__error">{errorMessage(save.error)}</p>}
       </form>

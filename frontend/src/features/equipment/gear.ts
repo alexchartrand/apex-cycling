@@ -1,4 +1,4 @@
-import type { Bike, Gear } from "./types";
+import { ROLLOUT_PRESETS, type Bike, type Gear } from "./types";
 
 /** "50×15", the way riders say a gear. */
 export function gearName(gear: Pick<Gear, "chainring_teeth" | "cog_teeth">): string {
@@ -39,4 +39,10 @@ export function gearOf(bikes: Bike[], chainring: number | null, cog: number | nu
     if (gear) return gear;
   }
   return null;
+}
+
+/** The standard tire whose rollout this is (to the millimetre); null for a measured or custom value. */
+export function rolloutPresetOf(rolloutMm: number | null): (typeof ROLLOUT_PRESETS)[number] | null {
+  if (rolloutMm == null) return null;
+  return ROLLOUT_PRESETS.find((preset) => Math.abs(preset.rolloutMm - rolloutMm) < 0.5) ?? null;
 }

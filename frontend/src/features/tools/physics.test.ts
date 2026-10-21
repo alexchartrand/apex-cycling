@@ -107,7 +107,7 @@ describe("physics.ts matches the Python model (shared vectors)", () => {
 
   it.each(vectors.gearing)("gearing %#", (c) => {
     expectClose(developmentM(c.chainring, c.cog, c.rollout_m), c.expected.development_m);
-    expectClose(gearInches(c.chainring, c.cog, c.rollout_m), c.expected.gear_inches);
+    expectClose(gearInches(c.chainring, c.cog), c.expected.gear_inches);
     expectClose(speedFromCadenceMs(c.cadence_rpm, c.chainring, c.cog, c.rollout_m), c.expected.speed_ms);
     expectClose(cadenceFromSpeedRpm(c.speed_ms, c.chainring, c.cog, c.rollout_m), c.expected.cadence_rpm);
   });

@@ -432,7 +432,7 @@
       "speed_ms": 15,
       "expected": {
         "development_m": 7.800000000000001,
-        "gear_inches": 97.74870520604597,
+        "gear_inches": 100.28571428571429,
         "speed_ms": 14.3,
         "cadence_rpm": 115.38461538461537
       }
@@ -445,7 +445,7 @@
       "speed_ms": 12.5,
       "expected": {
         "development_m": 6.846933333333333,
-        "gear_inches": 85.80498307249354,
+        "gear_inches": 88.2,
         "speed_ms": 10.840977777777777,
         "cadence_rpm": 109.53809004517838
       }
@@ -458,7 +458,7 @@
       "speed_ms": 19,
       "expected": {
         "development_m": 8.52,
-        "gear_inches": 106.77166260968096,
+        "gear_inches": 108.0,
         "speed_ms": 18.459999999999997,
         "cadence_rpm": 133.80281690140845
       }

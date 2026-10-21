@@ -12,7 +12,7 @@ const gear = (id: string, chainring_teeth: number, cog_teeth: number) => ({
   bike_id: "b1",
   chainring_teeth,
   cog_teeth,
-  rollout_mm: 2100,
+  rollout_mm: 2096,
   tire: null,
   ratio: 0,
   development_m: 0,
@@ -60,9 +60,27 @@ describe("GearingTool saved gears", () => {
     expect(screen.getByLabelText("Chainring")).toHaveValue("52");
     expect(screen.getByLabelText("Cog")).toHaveValue("14");
 
-    // 52×14 on 2.1 m is also the typical gear, yet the picker says None.
+    // 52×14 on 2.096 m is also the typical gear, yet the picker says None.
     await user.selectOptions(picker, "None");
     expect(picker).toHaveValue("none");
     expect(screen.getByLabelText("Chainring")).toHaveValue("52");
+  });
+
+  it("fills the rollout from a standard tire and shows which one a typed rollout is", async () => {
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/tools/gearing"]}>
+          <Gearing />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const preset = await screen.findByLabelText("Standard tire");
+    await screen.findByLabelText("Saved gear");
+    expect(preset).toHaveValue("700×23c");
+
+    const user = userEvent.setup();
+    await user.selectOptions(preset, "700×25c (2105 mm)");
+    expect(screen.getByLabelText("Rollout")).toHaveValue("2.105");
+    expect(preset).toHaveValue("700×25c");
   });
 });

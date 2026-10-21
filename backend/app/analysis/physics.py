@@ -282,10 +282,13 @@ def development_m(chainring: int, cog: int, rollout_m: float) -> float:
     return chainring / cog * rollout_m
 
 
-def gear_inches(chainring: int, cog: int, rollout_m: float) -> float:
-    """The traditional gear size: ratio × wheel diameter in inches, the
-    diameter being taken from the measured rollout."""
-    return chainring / cog * rollout_m / math.pi / 0.0254
+GEAR_INCHES_WHEEL_IN = 27.0
+
+
+def gear_inches(chainring: int, cog: int) -> float:
+    """The traditional gear size: ratio × a nominal 27-inch wheel, whatever the
+    real tire, so it matches published gear tables (58×16 = 97.9)."""
+    return chainring / cog * GEAR_INCHES_WHEEL_IN
 
 
 def speed_from_cadence_ms(cadence_rpm: float, chainring: int, cog: int, rollout_m: float) -> float:

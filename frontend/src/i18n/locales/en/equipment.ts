@@ -25,7 +25,7 @@ export default {
     cog: "Cog",
     teeth: "teeth",
     rollout: "Rollout",
-    rolloutHint: "How far the wheel travels in one turn, in millimetres. Roll the bike one turn with your weight on it and measure. About 2100 for a 700×25c tire.",
+    rolloutHint: "How far the wheel travels in one turn, in millimetres. Roll the bike one turn with your weight on it and measure. About 2096 for a 700×23c tire.",
     tire: "Tire",
     tirePlaceholder: "e.g. Veloflex Record 25",
     saved: "Gear saved",
@@ -36,6 +36,11 @@ export default {
     deleteBody: "Sessions and efforts that used {{name}} lose their gear.",
     development: "{{value}} m per turn",
     gearInches: "{{value}} in",
+  },
+  rolloutPreset: {
+    label: "Standard tire",
+    custom: "Custom / measured",
+    option: "{{tire}} ({{mm}} mm)",
   },
   bikeSelect: {
     label: "Bike",

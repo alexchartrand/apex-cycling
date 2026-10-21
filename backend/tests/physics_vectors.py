@@ -125,7 +125,7 @@ def build_vectors() -> dict:
                 "speed_ms": speed,
                 "expected": {
                     "development_m": physics.development_m(chainring, cog, rollout),
-                    "gear_inches": physics.gear_inches(chainring, cog, rollout),
+                    "gear_inches": physics.gear_inches(chainring, cog),
                     "speed_ms": physics.speed_from_cadence_ms(cadence, chainring, cog, rollout),
                     "cadence_rpm": physics.cadence_from_speed_rpm(speed, chainring, cog, rollout),
                 },

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Card, DataTable, Input, Select, StatTile, type DataTableColumn } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
 import { gearChoices, gearOf } from "../equipment/gear";
+import { RolloutPresetSelect } from "../equipment/RolloutPresetSelect";
 import { parseTimeInput } from "../records/timeInput";
 import { cadenceForLapTime, cadenceTable, type CadenceRow } from "./gearing";
 import { developmentM, gearInches } from "./physics";
@@ -65,9 +66,11 @@ export function GearingTool({ inputs }: { inputs: ToolInputs }) {
           )}
           <NumberField inputs={inputs} name="chainring" label={t("gearing.chainring")} />
           <NumberField inputs={inputs} name="cog" label={t("gearing.cog")} />
+          <RolloutPresetSelect
+            rolloutMm={rollout === null ? null : rollout * 1000}
+            onChange={(mm) => inputs.set("rolloutM", String(mm / 1000))}
+          />
           <NumberField inputs={inputs} name="rolloutM" label={t("gearing.rollout")} suffix="m" hint={t("gearing.rolloutHint")} />
-          <TrackSelect inputs={inputs} />
-          <NumberField inputs={inputs} name="lapM" label={t("effort.lap")} suffix="m" />
         </div>
       </Card>
 
@@ -84,28 +87,35 @@ export function GearingTool({ inputs }: { inputs: ToolInputs }) {
               tone="accent"
               size="lg"
             />
-            <StatTile label={t("gearing.gearInches")} value={fmt.number(gearInches(chainring, cog, rollout), 1, 1)} unit="in" />
+            <StatTile
+              label={t("gearing.gearInches")}
+              value={fmt.number(gearInches(chainring, cog), 1, 1)}
+              unit="in"
+              hint={t("gearing.gearInchesHint")}
+            />
           </div>
-          {lap !== null && (
-            <Card title={t("gearing.tableTitle")} as="section" padding="flush">
-              <div className="tools-inline-form">
-                <Input
-                  label={t("gearing.targetLap")}
-                  hint={t("effort.timeHint")}
-                  inputMode="decimal"
-                  autoComplete="off"
-                  value={targetLap}
-                  onChange={(event) => setTargetLap(event.target.value)}
-                  suffix={tc("units.s")}
+          <Card title={t("gearing.tableTitle")} as="section" padding="flush">
+            <div className="tools-inline-form">
+              <TrackSelect inputs={inputs} />
+              <NumberField inputs={inputs} name="lapM" label={t("effort.lap")} suffix="m" />
+              <Input
+                label={t("gearing.targetLap")}
+                hint={t("effort.timeHint")}
+                inputMode="decimal"
+                autoComplete="off"
+                value={targetLap}
+                onChange={(event) => setTargetLap(event.target.value)}
+                suffix={tc("units.s")}
+              />
+              {targetLapMs !== null && lap !== null && (
+                <StatTile
+                  label={t("gearing.cadenceNeeded")}
+                  value={fmt.number(cadenceForLapTime(targetLapMs / 1000, lap, chainring, cog, rollout), 0)}
+                  unit={tc("units.rpm")}
                 />
-                {targetLapMs !== null && (
-                  <StatTile
-                    label={t("gearing.cadenceNeeded")}
-                    value={fmt.number(cadenceForLapTime(targetLapMs / 1000, lap, chainring, cog, rollout), 0)}
-                    unit={tc("units.rpm")}
-                  />
-                )}
-              </div>
+              )}
+            </div>
+            {lap !== null && (
               <DataTable
                 columns={columns}
                 rows={cadenceTable(chainring, cog, rollout, lap)}
@@ -114,8 +124,8 @@ export function GearingTool({ inputs }: { inputs: ToolInputs }) {
                 layout="table"
                 dense
               />
-            </Card>
-          )}
+            )}
+          </Card>
         </>
       )}
     </div>

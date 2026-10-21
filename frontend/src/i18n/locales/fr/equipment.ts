@@ -29,7 +29,7 @@ export default {
     teeth: "dents",
     rollout: "Développement mesuré",
     rolloutHint:
-      "La distance parcourue par la roue en un tour, en millimètres. Faites rouler le vélo d'un tour avec votre poids dessus et mesurez. Environ 2100 pour un pneu 700×25c.",
+      "La distance parcourue par la roue en un tour, en millimètres. Faites rouler le vélo d'un tour avec votre poids dessus et mesurez. Environ 2096 pour un pneu 700×23c.",
     tire: "Pneu",
     tirePlaceholder: "p. ex. Veloflex Record 25",
     saved: "Braquet enregistré",
@@ -40,6 +40,11 @@ export default {
     deleteBody: "Les séances et efforts qui utilisaient {{name}} perdent leur braquet.",
     development: "{{value}} m par tour",
     gearInches: "{{value}} po",
+  },
+  rolloutPreset: {
+    label: "Pneu standard",
+    custom: "Personnalisé / mesuré",
+    option: "{{tire}} ({{mm}} mm)",
   },
   bikeSelect: {
     label: "Vélo",
