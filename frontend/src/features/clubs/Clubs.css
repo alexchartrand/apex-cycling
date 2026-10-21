@@ -173,3 +173,22 @@
   flex: 1;
   min-width: 0;
 }
+
+.leaderboard__filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.leaderboard__name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.leaderboard__empty {
+  margin: 0;
+  padding: var(--space-5) var(--space-4);
+  text-align: center;
+}

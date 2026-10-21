@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { EmptyState, PageHeader, SkeletonGroup, TabPanel, Tabs, type TabItem } from "../components/ui";
 import { ClubSettingsPanel } from "../features/clubs/ClubSettingsPanel";
 import { ClubTracksPanel } from "../features/clubs/ClubTracksPanel";
+import { LeaderboardPanel } from "../features/clubs/LeaderboardPanel";
 import { InvitesPanel } from "../features/clubs/InvitesPanel";
 import { MembersPanel } from "../features/clubs/MembersPanel";
 import { RosterPanel } from "../features/clubs/RosterPanel";
@@ -48,6 +49,9 @@ export function ClubPage() {
         </TabPanel>
         <TabPanel value="athletes">
           <RosterPanel club={club} />
+        </TabPanel>
+        <TabPanel value="leaderboard">
+          <LeaderboardPanel club={club} />
         </TabPanel>
         <TabPanel value="invites">
           <InvitesPanel club={club} />

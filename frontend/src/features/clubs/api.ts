@@ -8,6 +8,8 @@ import type {
   InviteCreated,
   InvitePayload,
   InvitePreview,
+  Leaderboard,
+  LeaderboardQuery,
   ManagedAthletePayload,
   Member,
   RosterAthlete,
@@ -91,4 +93,11 @@ export function unlinkSqorzAccount(clubId: string, sqorzAccountId: string): Prom
 
 export function listClubTracks(clubId: string): Promise<TrackSummary[]> {
   return apiFetch<TrackSummary[]>(`/clubs/${clubId}/tracks`);
+}
+
+export function getLeaderboard(clubId: string, query: LeaderboardQuery): Promise<Leaderboard> {
+  const params = new URLSearchParams({ event_key: query.eventKey, start_type: query.startType, track_id: query.trackId });
+  if (query.sex) params.set("sex", query.sex);
+  if (query.category) params.set("category", query.category);
+  return apiFetch<Leaderboard>(`/clubs/${clubId}/leaderboard?${params}`);
 }

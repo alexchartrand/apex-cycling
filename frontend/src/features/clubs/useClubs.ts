@@ -5,6 +5,7 @@ import {
   createInvite,
   createManagedAthlete,
   deleteManagedAthlete,
+  getLeaderboard,
   linkSqorzAccount,
   listClubs,
   listClubTracks,
@@ -19,7 +20,7 @@ import {
   unlinkSqorzAccount,
   updateClub,
 } from "./api";
-import type { ClubRole, InvitePayload, ManagedAthletePayload } from "./types";
+import type { ClubRole, InvitePayload, LeaderboardQuery, ManagedAthletePayload } from "./types";
 
 export function useMyClubs() {
   return useQuery({ queryKey: ["clubs"], queryFn: listClubs });
@@ -135,4 +136,12 @@ export function useLinkSqorzAccount(clubId: string) {
 
 export function useUnlinkSqorzAccount(clubId: string) {
   return useClubMutation((sqorzAccountId: string) => unlinkSqorzAccount(clubId, sqorzAccountId), [["club-tracks"], ["tracks"]]);
+}
+
+export function useLeaderboard(clubId: string, query: LeaderboardQuery | null) {
+  return useQuery({
+    queryKey: ["clubs", clubId, "leaderboard", query],
+    queryFn: () => getLeaderboard(clubId, query!),
+    enabled: clubId !== "" && query != null && query.trackId !== "",
+  });
 }

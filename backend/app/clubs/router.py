@@ -1,13 +1,13 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.athletes.models import Athlete
-from app.athletes.schemas import AthleteRead
+from app.athletes.schemas import AthleteRead, Sex
 from app.auth.account import delete_athlete
 from app.auth.deps import get_current_user, require_club_admin, require_club_member
 from app.auth.models import User
@@ -21,6 +21,7 @@ from app.clubs.schemas import (
     InvitePreview,
     InviteRead,
     InviteToken,
+    Leaderboard,
     ManagedAthleteCreate,
     MemberRead,
     MemberUpdate,
@@ -28,6 +29,7 @@ from app.clubs.schemas import (
     SqorzAccountLink,
     SqorzAccountRead,
 )
+from app.clubs.leaderboard import build_leaderboard
 from app.clubs.service import (
     ClubError,
     accept_invite,
@@ -42,6 +44,8 @@ from app.clubs.service import (
 from app.core.mail import mail_enabled, send_email
 from app.core.rate_limit import limiter
 from app.db.session import get_db
+from app.training.distances import STANDARD_EVENTS_BY_KEY
+from app.training.efforts import StartType
 from app.training.models import Track
 from app.training.schemas import TrackSummary
 from app.training.service import track_summary
@@ -421,3 +425,33 @@ async def club_tracks(
     )
     rights = await track_edit_rights(db, current_user)
     return [track_summary(t, can_edit=rights.can_edit(t)) for t in tracks]
+
+
+@router.get("/{club_id}/leaderboard", response_model=Leaderboard)
+async def leaderboard(
+    event_key: str,
+    track_id: uuid.UUID,
+    start_type: StartType | None = None,
+    sex: Sex | None = None,
+    category: str | None = Query(default=None, max_length=8),
+    membership: ClubMembership = Depends(require_club_member),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Leaderboard:
+    """Best time per athlete who opted in, on one track of the club's
+    facilities, for one standard event and start (default: its first). Any
+    member may read it; it lists nobody who hasn't agreed to appear."""
+    event = STANDARD_EVENTS_BY_KEY.get(event_key)
+    if event is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unknown event {event_key!r}")
+    start = start_type or event.start_types[0]
+    if start not in event.start_types:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"{event_key} has no {start.value} start")
+    account_ids = select(ClubSqorzAccount.sqorz_account_id).where(ClubSqorzAccount.club_id == membership.club_id)
+    track = await db.scalar(select(Track).where(Track.id == track_id, Track.sqorz_account_id.in_(account_ids)))
+    if track is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Track not found")
+    me = await db.scalar(select(Athlete.id).where(Athlete.user_id == current_user.id))
+    return await build_leaderboard(
+        db, membership.club_id, track, event_key, start, viewer_athlete_id=me, sex=sex, category=category
+    )

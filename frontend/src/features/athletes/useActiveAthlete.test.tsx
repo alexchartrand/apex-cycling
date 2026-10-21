@@ -18,6 +18,7 @@ const athlete = (id: string, name: string): Athlete => ({
   sex: null,
   height_cm: null,
   category: null,
+  leaderboard_opt_in: false,
 });
 
 describe("active athlete", () => {

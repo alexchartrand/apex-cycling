@@ -7,6 +7,7 @@ from pydantic import BaseModel, EmailStr, Field
 from app.athletes.schemas import Sex
 from app.auth.schemas import Locale
 from app.clubs.models import ClubRole
+from app.training.efforts import StartType
 
 # What an invite link may grant: admins are promoted in the member list, never
 # through a link that gets forwarded around.
@@ -108,3 +109,30 @@ class SqorzAccountLink(BaseModel):
 class SqorzAccountRead(BaseModel):
     sqorz_account_id: str
     track_names: list[str]
+
+
+class LeaderboardEntry(BaseModel):
+    rank: int
+    display_name: str
+    time_ms: int
+    achieved_on: date
+    sex: Sex | None
+    # UCI age category code (U19, ELITE, M35…) as of today; null without a birthdate.
+    category: str | None
+    source: Literal["sqorz", "manual"]
+    is_me: bool
+
+
+class Leaderboard(BaseModel):
+    """The best time of each athlete who opted in, on one track, for one
+    event and start. `participants` counts the opted-in athletes on the
+    roster (with or without a time here); `categories` are the age categories
+    present among the unfiltered entries, for the filter."""
+
+    event_key: str
+    start_type: StartType
+    track_id: uuid.UUID
+    track_name: str
+    participants: int
+    categories: list[str]
+    entries: list[LeaderboardEntry]

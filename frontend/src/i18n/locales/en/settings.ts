@@ -1,6 +1,19 @@
 export default {
   title: "Settings",
-  sections: { profile: "Profile", physiology: "Physiology", preferences: "Preferences", account: "Account" },
+  sections: { profile: "Profile", physiology: "Physiology", privacy: "Privacy", preferences: "Preferences", account: "Account" },
+  privacy: {
+    title: "Privacy",
+    description: "Your data is private. The only thing shared with others is what you choose here.",
+    leaderboard: {
+      label: "Show my best times on my club's leaderboard",
+      hint: "Club members can then see your name, your best time per track and event, and your age category. Turn it off at any time and you disappear from it at once. Leaving the club also turns it off.",
+      noClub: "You aren't on a club's roster yet.",
+      toClubs: "Go to clubs",
+      notYours: "Only the athlete decides this setting.",
+      on: "You're on the club leaderboard",
+      off: "You're off the club leaderboard",
+    },
+  },
   profile: {
     title: "Profile",
     name: "Display name",

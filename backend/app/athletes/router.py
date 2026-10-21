@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.activities.metrics_service import refresh_tss
+from app.athletes.coaching import speaks_for_athlete
 from app.athletes.models import Athlete, AthleteMetric
 from app.athletes.schemas import (
     AthleteMetricRead,
@@ -44,9 +45,22 @@ async def get_athlete(athlete: Athlete = Depends(require_athlete_access)) -> Ath
 async def update_athlete(
     payload: AthleteUpdate,
     athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Athlete:
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    if "leaderboard_opt_in" in changes:
+        # A coach or another club admin sees this athlete's data but can't put
+        # their name on a leaderboard: consent is the athlete's.
+        if not await speaks_for_athlete(db, current_user, athlete):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the athlete can change their leaderboard setting")
+        if changes.pop("leaderboard_opt_in"):
+            if athlete.club_id is None:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Join a club to appear on its leaderboard")
+            athlete.leaderboard_club_id = athlete.club_id
+        else:
+            athlete.leaderboard_club_id = None
+    for field, value in changes.items():
         setattr(athlete, field, value)
     await db.commit()
     await db.refresh(athlete)

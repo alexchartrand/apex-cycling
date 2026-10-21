@@ -18,8 +18,15 @@ class AthleteRead(BaseModel):
     birthdate: date | None
     sex: Sex | None
     height_cm: float | None
+    leaderboard_club_id: uuid.UUID | None = Field(default=None, exclude=True)
 
     model_config = {"from_attributes": True}
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def leaderboard_opt_in(self) -> bool:
+        """Whether this athlete's best times show on their club's leaderboard."""
+        return self.leaderboard_club_id is not None and self.leaderboard_club_id == self.club_id
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -36,11 +43,15 @@ class AthleteUpdate(BaseModel):
     birthdate: date | None = None
     sex: Sex | None = None
     height_cm: float | None = Field(default=None, gt=50, lt=260)
+    # Privacy: only the athlete (or a club admin for a managed athlete) may set it.
+    leaderboard_opt_in: bool | None = None
 
     @model_validator(mode="after")
     def _display_name_not_null(self) -> "AthleteUpdate":
         if "display_name" in self.model_fields_set and self.display_name is None:
             raise ValueError("display_name cannot be null")
+        if "leaderboard_opt_in" in self.model_fields_set and self.leaderboard_opt_in is None:
+            raise ValueError("leaderboard_opt_in cannot be null")
         if self.birthdate is not None and not date(1900, 1, 1) <= self.birthdate <= date.today():
             raise ValueError("birthdate is out of range")
         return self

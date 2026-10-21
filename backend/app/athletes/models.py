@@ -32,6 +32,10 @@ class Athlete(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     sex: Mapped[str | None] = mapped_column(String(32), nullable=True)
     height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The club whose leaderboard this athlete agreed to appear on. Opting in
+    # only counts while it is still the athlete's club (`club_id`), so moving
+    # to another club never carries the consent along.
+    leaderboard_club_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("clubs.id"), nullable=True)
 
     user: Mapped["User | None"] = relationship(back_populates="athlete", foreign_keys=[user_id])
 

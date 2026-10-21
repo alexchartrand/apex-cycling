@@ -74,3 +74,36 @@ export interface SqorzAccount {
   sqorz_account_id: string;
   track_names: string[];
 }
+
+export interface LeaderboardEntry {
+  rank: number;
+  display_name: string;
+  time_ms: number;
+  achieved_on: string;
+  sex: "female" | "male" | null;
+  /** UCI age category code as of today; null without a birthdate. */
+  category: string | null;
+  source: "sqorz" | "manual";
+  is_me: boolean;
+}
+
+/** The best time of each athlete who opted in, on one track, for one event and start. */
+export interface Leaderboard {
+  event_key: string;
+  start_type: "standing" | "flying";
+  track_id: string;
+  track_name: string;
+  /** Opted-in athletes on the roster, with or without a time here. */
+  participants: number;
+  /** Age categories among the unfiltered entries, youngest first. */
+  categories: string[];
+  entries: LeaderboardEntry[];
+}
+
+export interface LeaderboardQuery {
+  eventKey: string;
+  startType: "standing" | "flying";
+  trackId: string;
+  sex: "" | "female" | "male";
+  category: string;
+}

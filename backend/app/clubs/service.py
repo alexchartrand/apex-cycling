@@ -82,6 +82,7 @@ async def change_role(db: AsyncSession, membership: ClubMembership, role: ClubRo
         athlete.club_id = membership.club_id
     elif membership.role == ClubRole.ATHLETE and athlete is not None and athlete.club_id == membership.club_id:
         athlete.club_id = None
+        athlete.leaderboard_club_id = None  # leaving withdraws the consent for good
     membership.role = role
     await db.flush()
 
@@ -94,6 +95,7 @@ async def remove_member(db: AsyncSession, membership: ClubMembership) -> None:
     athlete = await self_athlete(db, membership.user_id)
     if athlete is not None and athlete.club_id == membership.club_id:
         athlete.club_id = None
+        athlete.leaderboard_club_id = None  # leaving withdraws the consent for good
     await db.delete(membership)
     await db.flush()
 
@@ -234,7 +236,11 @@ async def delete_empty_clubs_of(db: AsyncSession, user: User) -> None:
         )
         if others:
             continue
-        await db.execute(update(Athlete).where(Athlete.club_id == club_id).values(club_id=None))
+        await db.execute(
+            update(Athlete)
+            .where((Athlete.club_id == club_id) | (Athlete.leaderboard_club_id == club_id))
+            .values(club_id=None, leaderboard_club_id=None)
+        )
         await db.execute(delete(ClubInvite).where(ClubInvite.club_id == club_id))
         await db.execute(delete(ClubSqorzAccount).where(ClubSqorzAccount.club_id == club_id))
         await db.execute(delete(ClubMembership).where(ClubMembership.club_id == club_id))

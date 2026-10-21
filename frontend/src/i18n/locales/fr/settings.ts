@@ -3,7 +3,20 @@ import type en from "../en/settings";
 
 export default {
   title: "Paramètres",
-  sections: { profile: "Profil", physiology: "Physiologie", preferences: "Préférences", account: "Compte" },
+  sections: { profile: "Profil", physiology: "Physiologie", privacy: "Confidentialité", preferences: "Préférences", account: "Compte" },
+  privacy: {
+    title: "Confidentialité",
+    description: "Vos données sont privées. Seul ce que vous choisissez ici est partagé avec les autres.",
+    leaderboard: {
+      label: "Afficher mes meilleurs temps au classement de mon club",
+      hint: "Les membres du club peuvent alors voir votre nom, votre meilleur temps par piste et par épreuve, et votre catégorie d'âge. Désactivez à tout moment et vous disparaissez du classement aussitôt. Quitter le club le désactive aussi.",
+      noClub: "Vous ne figurez pas encore sur la liste d'un club.",
+      toClubs: "Aller aux clubs",
+      notYours: "Seul l'athlète décide de ce réglage.",
+      on: "Vous figurez au classement du club",
+      off: "Vous ne figurez plus au classement du club",
+    },
+  },
   profile: {
     title: "Profil",
     name: "Nom affiché",
