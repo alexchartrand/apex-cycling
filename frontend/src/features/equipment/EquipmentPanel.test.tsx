@@ -14,8 +14,10 @@ const bike: Bike = {
   name: "Track bike",
   weight_kg: 7.4,
   notes: null,
+  tire: "Veloflex",
+  crr: null,
   gears: [
-    { id: "g1", bike_id: "b1", chainring_teeth: 50, cog_teeth: 15, rollout_mm: 2100, tire: "Veloflex", crr: null, ratio: 3.33, development_m: 7, gear_inches: 104.9 },
+    { id: "g1", bike_id: "b1", chainring_teeth: 50, cog_teeth: 15, rollout_mm: 2100, ratio: 3.33, development_m: 7, gear_inches: 104.9 },
   ],
 };
 
@@ -50,7 +52,7 @@ describe("EquipmentPanel", () => {
     fetchMock.mockReset();
   });
 
-  it("lists the bikes with each gear's name and what it rolls", async () => {
+  it("lists the bikes with their tire, and each gear's name and what it rolls", async () => {
     render(wrap(<EquipmentPanel athleteId="a1" />));
     expect(await screen.findByText("Track bike")).toBeInTheDocument();
     expect(screen.getByText("50×15")).toBeInTheDocument();
@@ -73,15 +75,14 @@ describe("EquipmentPanel", () => {
     await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
     const [url, init] = fetchMock.mock.calls.find(([, i]) => i?.method === "POST")!;
     expect(url).toBe("/api/athletes/a1/bikes/b1/gears");
-    expect(JSON.parse(init.body)).toEqual({ chainring_teeth: 52, cog_teeth: 14, rollout_mm: 2096, tire: null, crr: null });
+    expect(JSON.parse(init.body)).toEqual({ chainring_teeth: 52, cog_teeth: 14, rollout_mm: 2096 });
   });
 
-  it("fills the tire and its Crr from the list, and still takes a tire that isn't listed", async () => {
+  it("fills a bike's tire and its Crr from the list, and still takes a tire that isn't listed", async () => {
     render(wrap(<EquipmentPanel athleteId="a1" />));
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Add a gear" }));
-    await user.type(screen.getByLabelText("Chainring"), "52");
-    await user.type(screen.getByLabelText("Cog"), "14");
+    await user.click(await screen.findByRole("button", { name: "Add a bike" }));
+    await user.type(screen.getByLabelText("Name"), "Spare");
 
     const listed = STANDARD_TIRES[0];
     await user.selectOptions(screen.getByLabelText("Tire from the list"), listed.label);

@@ -4,8 +4,6 @@ export interface Gear {
   chainring_teeth: number;
   cog_teeth: number;
   rollout_mm: number;
-  tire: string | null;
-  crr: number | null;
   ratio: number;
   development_m: number;
   gear_inches: number;
@@ -16,6 +14,8 @@ export interface Bike {
   name: string;
   weight_kg: number | null;
   notes: string | null;
+  tire: string | null;
+  crr: number | null;
   gears: Gear[];
 }
 
@@ -23,14 +23,14 @@ export interface BikePayload {
   name?: string;
   weight_kg?: number | null;
   notes?: string | null;
+  tire?: string | null;
+  crr?: number | null;
 }
 
 export interface GearPayload {
   chainring_teeth?: number;
   cog_teeth?: number;
   rollout_mm?: number;
-  tire?: string | null;
-  crr?: number | null;
 }
 
 /** Bounds mirror the backend's validation (`equipment/schemas.py`). */
@@ -65,6 +65,6 @@ export interface TireEntry {
 }
 
 export interface StandardTire extends TireEntry {
-  /** "Vittoria Pista Control tubular 23 mm": what picking it writes into the gear's tire. */
+  /** "Vittoria Pista Control tubular 23 mm": what picking it writes into the bike's tire. */
   label: string;
 }

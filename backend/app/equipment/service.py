@@ -25,8 +25,6 @@ def gear_read(gear: GearSetup) -> GearRead:
         chainring_teeth=gear.chainring_teeth,
         cog_teeth=gear.cog_teeth,
         rollout_mm=gear.rollout_mm,
-        tire=gear.tire,
-        crr=gear.crr,
         ratio=gear.chainring_teeth / gear.cog_teeth,
         development_m=physics.development_m(gear.chainring_teeth, gear.cog_teeth, rollout_m),
         gear_inches=physics.gear_inches(gear.chainring_teeth, gear.cog_teeth),
@@ -57,7 +55,13 @@ async def list_bikes(db: AsyncSession, athlete_id: uuid.UUID) -> list[BikeRead]:
 
 def _bike_read(bike: Bike, gears: list[GearSetup]) -> BikeRead:
     return BikeRead(
-        id=bike.id, name=bike.name, weight_kg=bike.weight_kg, notes=bike.notes, gears=[gear_read(g) for g in gears]
+        id=bike.id,
+        name=bike.name,
+        weight_kg=bike.weight_kg,
+        notes=bike.notes,
+        tire=bike.tire,
+        crr=bike.crr,
+        gears=[gear_read(g) for g in gears],
     )
 
 

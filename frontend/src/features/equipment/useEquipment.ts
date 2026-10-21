@@ -34,7 +34,7 @@ export function useDeleteBike(athleteId: string) {
 export function useSaveGear(athleteId: string) {
   const invalidate = useInvalidateEquipment(athleteId);
   return useMutation({
-    mutationFn: (args: { bikeId: string; gearId?: string; payload: Required<Omit<GearPayload, "tire" | "crr">> & { tire: string | null; crr: number | null } }) =>
+    mutationFn: (args: { bikeId: string; gearId?: string; payload: Required<GearPayload> }) =>
       args.gearId ? updateGear(athleteId, args.gearId, args.payload) : createGear(athleteId, args.bikeId, args.payload),
     onSuccess: invalidate,
   });

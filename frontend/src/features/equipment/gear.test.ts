@@ -4,12 +4,14 @@ import { bikeOfWeight, gearChoices, gearName, gearOf, parseNumber, rolloutPreset
 import { GEAR_BOUNDS } from "./types";
 import type { Bike } from "./types";
 
-const gear = { bike_id: "b", rollout_mm: 2100, tire: null, crr: null, ratio: 0, development_m: 0, gear_inches: 0 };
+const gear = { bike_id: "b", rollout_mm: 2100, ratio: 0, development_m: 0, gear_inches: 0 };
 const bike = (id: string, name: string, gears: [string, number, number][]): Bike => ({
   id,
   name,
   weight_kg: null,
   notes: null,
+  tire: null,
+  crr: null,
   gears: gears.map(([gid, chainring_teeth, cog_teeth]) => ({ ...gear, id: gid, chainring_teeth, cog_teeth })),
 });
 

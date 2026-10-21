@@ -13,13 +13,11 @@ const gear = (id: string, chainring_teeth: number, cog_teeth: number) => ({
   chainring_teeth,
   cog_teeth,
   rollout_mm: 2096,
-  tire: null,
-  crr: null,
   ratio: 0,
   development_m: 0,
   gear_inches: 0,
 });
-const bikes: Bike[] = [{ id: "b1", name: "Track", weight_kg: 7.4, notes: null, gears: [gear("g1", 50, 15), gear("g2", 52, 14)] }];
+const bikes: Bike[] = [{ id: "b1", name: "Track", weight_kg: 7.4, notes: null, tire: null, crr: null, gears: [gear("g1", 50, 15), gear("g2", 52, 14)] }];
 
 function json(body: unknown) {
   return new Response(JSON.stringify(body), { status: 200 });

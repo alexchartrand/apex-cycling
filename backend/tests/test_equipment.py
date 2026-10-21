@@ -23,7 +23,7 @@ async def _bike_and_gear(client, athlete_id: str, **bike) -> tuple[dict, dict]:
     bike = created.json()
     gear = await client.post(
         f"/athletes/{athlete_id}/bikes/{bike['id']}/gears",
-        json={"chainring_teeth": 50, "cog_teeth": 15, "rollout_mm": 2100, "tire": "  Veloflex 25  "},
+        json={"chainring_teeth": 50, "cog_teeth": 15, "rollout_mm": 2100},
     )
     assert gear.status_code == 201, gear.text
     return bike, gear.json()
@@ -31,19 +31,21 @@ async def _bike_and_gear(client, athlete_id: str, **bike) -> tuple[dict, dict]:
 
 async def test_bike_and_gear_crud(client, db_session):
     athlete_id = await _setup(client, db_session, upload=False)
-    bike, gear = await _bike_and_gear(client, athlete_id, weight_kg=7.4, notes="  ")
+    bike, gear = await _bike_and_gear(client, athlete_id, weight_kg=7.4, notes="  ", tire="  Veloflex 25  ")
     assert bike["notes"] is None and bike["weight_kg"] == 7.4 and bike["gears"] == []
-    assert gear["tire"] == "Veloflex 25"
+    assert bike["tire"] == "Veloflex 25" and bike["crr"] is None
+    assert "tire" not in gear
     assert gear["ratio"] == pytest.approx(50 / 15)
     assert gear["development_m"] == pytest.approx(7.0)
     assert gear["gear_inches"] == pytest.approx(50 / 15 * 27)
 
-    assert gear["crr"] is None
-    resp = await client.patch(f"/athletes/{athlete_id}/gears/{gear['id']}", json={"crr": 0.001579})
+    resp = await client.patch(f"/athletes/{athlete_id}/bikes/{bike['id']}", json={"crr": 0.001579})
     assert resp.json()["crr"] == 0.001579 and resp.json()["tire"] == "Veloflex 25"
-    assert (await client.patch(f"/athletes/{athlete_id}/gears/{gear['id']}", json={"crr": 0.5})).status_code == 422
-    resp = await client.patch(f"/athletes/{athlete_id}/gears/{gear['id']}", json={"cog_teeth": 14, "tire": None, "crr": None})
-    assert resp.json()["cog_teeth"] == 14 and resp.json()["tire"] is None and resp.json()["crr"] is None
+    assert (await client.patch(f"/athletes/{athlete_id}/bikes/{bike['id']}", json={"crr": 0.5})).status_code == 422
+    resp = await client.patch(f"/athletes/{athlete_id}/bikes/{bike['id']}", json={"tire": None, "crr": None})
+    assert resp.json()["tire"] is None and resp.json()["crr"] is None
+    resp = await client.patch(f"/athletes/{athlete_id}/gears/{gear['id']}", json={"cog_teeth": 14})
+    assert resp.json()["cog_teeth"] == 14
     assert (await client.patch(f"/athletes/{athlete_id}/gears/{gear['id']}", json={"cog_teeth": None})).status_code == 422
     assert (await client.post(f"/athletes/{athlete_id}/bikes", json={"name": " "})).status_code == 422
     assert (

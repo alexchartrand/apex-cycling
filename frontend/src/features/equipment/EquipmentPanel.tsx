@@ -61,6 +61,11 @@ export function EquipmentPanel({ athleteId }: { athleteId: string }) {
             </>
           }
         >
+          {(bike.tire || bike.crr != null) && (
+            <p className="equipment__tire">
+              {[bike.tire, bike.crr != null ? t("bike.crrValue", { value: fmt.number(bike.crr, 6, 3) }) : null].filter(Boolean).join(" · ")}
+            </p>
+          )}
           {bike.notes && <p className="equipment__notes">{bike.notes}</p>}
           {bike.gears.length === 0 ? (
             <p className="equipment__none">{t("gear.none")}</p>
@@ -72,8 +77,6 @@ export function EquipmentPanel({ athleteId }: { athleteId: string }) {
                   <span className="equipment__gear-detail">
                     {t("gear.development", { value: fmt.number(gear.development_m, 2, 2) })} ·{" "}
                     {t("gear.gearInches", { value: fmt.number(gear.gear_inches, 1, 1) })}
-                    {gear.tire ? ` · ${gear.tire}` : ""}
-                    {gear.crr != null ? ` · ${t("gear.crrValue", { value: fmt.number(gear.crr, 6, 3) })}` : ""}
                   </span>
                   <span className="equipment__gear-actions">
                     <Tooltip content={t("gear.edit", { name: gearName(gear) })}>
@@ -168,14 +171,20 @@ function BikeDialog({ athleteId, bike, onClose }: { athleteId: string; bike: Bik
   const [name, setName] = useState(bike?.name ?? "");
   const [weight, setWeight] = useState(bike?.weight_kg != null ? String(bike.weight_kg) : "");
   const [notes, setNotes] = useState(bike?.notes ?? "");
+  const [tire, setTire] = useState(bike?.tire ?? "");
+  const [crr, setCrr] = useState(bike?.crr != null ? String(bike.crr) : "");
   const weightKg = parseNumber(weight);
+  const crrValue = parseNumber(crr);
+  const valid =
+    name.trim() !== "" && (crr.trim() === "" || (crrValue != null && crrValue >= GEAR_BOUNDS.crr.min && crrValue <= GEAR_BOUNDS.crr.max));
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!valid) return;
     try {
       await save.mutateAsync({
         bikeId: bike?.id,
-        payload: { name: name.trim(), weight_kg: weightKg, notes: notes.trim() || null },
+        payload: { name: name.trim(), weight_kg: weightKg, notes: notes.trim() || null, tire: tire.trim() || null, crr: crrValue },
       });
       toast({ title: t("bike.saved"), tone: "success" });
       onClose();
@@ -195,7 +204,7 @@ function BikeDialog({ athleteId, bike, onClose }: { athleteId: string; bike: Bik
           <Button variant="secondary" onClick={onClose}>
             {tc("cancel")}
           </Button>
-          <Button type="submit" form="bike-form" loading={save.isPending} disabled={name.trim() === ""}>
+          <Button type="submit" form="bike-form" loading={save.isPending} disabled={!valid}>
             {tc("save")}
           </Button>
         </>
@@ -215,6 +224,29 @@ function BikeDialog({ athleteId, bike, onClose }: { athleteId: string; bike: Bik
           value={weight}
           onChange={(e) => setWeight(e.target.value)}
         />
+        <TireSelect
+          name={tire}
+          crr={crrValue}
+          onChange={(picked) => {
+            setTire(picked.label);
+            setCrr(String(picked.crr));
+          }}
+        />
+        <div className="equipment__row">
+          <Input label={t("bike.tire")} value={tire} maxLength={100} placeholder={t("bike.tirePlaceholder")} onChange={(e) => setTire(e.target.value)} />
+          <Input
+            label={t("bike.crr")}
+            hint={t("bike.crrHint")}
+            type="number"
+            inputMode="decimal"
+            min={GEAR_BOUNDS.crr.min}
+            max={GEAR_BOUNDS.crr.max}
+            step="any"
+            placeholder="0.004"
+            value={crr}
+            onChange={(e) => setCrr(e.target.value)}
+          />
+        </div>
         <Textarea label={t("bike.notes")} value={notes} maxLength={2000} rows={3} onChange={(e) => setNotes(e.target.value)} />
         {save.isError && <p role="alert" className="equipment__error">{errorMessage(save.error)}</p>}
       </form>
@@ -230,10 +262,7 @@ function GearDialog({ athleteId, bike, gear, onClose }: { athleteId: string; bik
   const [chainring, setChainring] = useState(gear ? String(gear.chainring_teeth) : "");
   const [cog, setCog] = useState(gear ? String(gear.cog_teeth) : "");
   const [rollout, setRollout] = useState(String(gear?.rollout_mm ?? DEFAULT_ROLLOUT_MM));
-  const [tire, setTire] = useState(gear?.tire ?? "");
-  const [crr, setCrr] = useState(gear?.crr != null ? String(gear.crr) : "");
   const values = { chainring_teeth: parseNumber(chainring), cog_teeth: parseNumber(cog), rollout_mm: parseNumber(rollout) };
-  const crrValue = parseNumber(crr);
   const valid =
     values.chainring_teeth != null &&
     Number.isInteger(values.chainring_teeth) &&
@@ -245,8 +274,7 @@ function GearDialog({ athleteId, bike, gear, onClose }: { athleteId: string; bik
     values.cog_teeth <= GEAR_BOUNDS.cog.max &&
     values.rollout_mm != null &&
     values.rollout_mm >= GEAR_BOUNDS.rollout.min &&
-    values.rollout_mm <= GEAR_BOUNDS.rollout.max &&
-    (crr.trim() === "" || (crrValue != null && crrValue >= GEAR_BOUNDS.crr.min && crrValue <= GEAR_BOUNDS.crr.max));
+    values.rollout_mm <= GEAR_BOUNDS.rollout.max;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -259,8 +287,6 @@ function GearDialog({ athleteId, bike, gear, onClose }: { athleteId: string; bik
           chainring_teeth: values.chainring_teeth!,
           cog_teeth: values.cog_teeth!,
           rollout_mm: values.rollout_mm!,
-          tire: tire.trim() || null,
-          crr: crrValue,
         },
       });
       toast({ title: t("gear.saved"), tone: "success" });
@@ -326,29 +352,6 @@ function GearDialog({ athleteId, bike, gear, onClose }: { athleteId: string; bik
             suffix="mm"
             value={rollout}
             onChange={(e) => setRollout(e.target.value)}
-          />
-        </div>
-        <TireSelect
-          name={tire}
-          crr={crrValue}
-          onChange={(picked) => {
-            setTire(picked.label);
-            setCrr(String(picked.crr));
-          }}
-        />
-        <div className="equipment__row">
-          <Input label={t("gear.tire")} value={tire} maxLength={100} placeholder={t("gear.tirePlaceholder")} onChange={(e) => setTire(e.target.value)} />
-          <Input
-            label={t("gear.crr")}
-            hint={t("gear.crrHint")}
-            type="number"
-            inputMode="decimal"
-            min={GEAR_BOUNDS.crr.min}
-            max={GEAR_BOUNDS.crr.max}
-            step="any"
-            placeholder="0.004"
-            value={crr}
-            onChange={(e) => setCrr(e.target.value)}
           />
         </div>
         {save.isError && <p role="alert" className="equipment__error">{errorMessage(save.error)}</p>}
