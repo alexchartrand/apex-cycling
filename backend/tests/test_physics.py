@@ -36,6 +36,19 @@ def test_humid_and_warm_air_is_lighter():
     assert air_density(15, pressure_pa=101_325, elevation_m=2000) == pytest.approx(air_density(15))
 
 
+def test_air_density_rejects_impossible_weather():
+    with pytest.raises(ValueError, match="absolute zero"):
+        air_density(-273.15)
+    with pytest.raises(ValueError, match="humidity"):
+        air_density(20, humidity_pct=150)
+    with pytest.raises(ValueError, match="barometric formula"):
+        pressure_at_elevation_pa(50_000)
+    with pytest.raises(ValueError, match="barometric formula"):
+        air_density(20, elevation_m=50_000)
+    # An explicit barometer reading bypasses the elevation estimate.
+    assert air_density(20, pressure_pa=90_000, elevation_m=50_000) > 0
+
+
 def test_power_required_by_hand():
     setup = Setup(mass_kg=80, cda_m2=0.2, rho=1.2, crr=0.003, efficiency=1, rotating_mass_kg=0)
     # drag ½·1.2·0.2·10² = 12 N, rolling 0.003·80·9.80665 = 2.3536 N.
@@ -54,6 +67,27 @@ def test_steady_speed_inverts_the_power_equation(power):
 
 def test_steady_speed_of_no_power_is_zero():
     assert steady_speed_ms(0, PURSUITER) == 0
+
+
+@pytest.mark.parametrize(
+    "setup",
+    [
+        Setup(mass_kg=0, cda_m2=0.2, rho=1.2),
+        Setup(mass_kg=83, cda_m2=0, rho=1.2),
+        Setup(mass_kg=83, cda_m2=-0.05, rho=1.2),
+        Setup(mass_kg=83, cda_m2=0.2, rho=0),
+        Setup(mass_kg=83, cda_m2=0.2, rho=1.2, efficiency=0),
+        Setup(mass_kg=83, cda_m2=0.2, rho=1.2, crr=-0.001),
+        Setup(mass_kg=83, cda_m2=0.2, rho=1.2, rotating_mass_kg=-1),
+    ],
+)
+def test_a_setup_that_is_not_a_rider_is_rejected(setup):
+    with pytest.raises(ValueError):
+        steady_speed_ms(450, setup)
+    with pytest.raises(ValueError):
+        power_required_w(10, setup)
+    with pytest.raises(ValueError):
+        simulate(4000, 450, setup)
 
 
 def test_flying_effort_rides_at_steady_speed():
@@ -91,6 +125,13 @@ def test_start_power_and_force_cap_shape_the_start():
 def test_a_rider_who_cannot_beat_rolling_resistance_never_finishes():
     # Rolling resistance is 0.0025·83·9.81 ≈ 2 N.
     assert simulate(250, 300, PURSUITER, start_force_n=1) is None
+
+
+def test_no_power_means_no_ride():
+    # The start force cap must not carry a rider who isn't pedalling.
+    assert simulate(4000, 0, PURSUITER) is None
+    assert simulate(4000, -100, PURSUITER) is None
+    assert simulate(4000, 0, PURSUITER, standing=False) is None
 
 
 def test_zero_distance():

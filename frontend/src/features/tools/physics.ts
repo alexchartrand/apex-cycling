@@ -72,7 +72,12 @@ export function saturationVaporPressurePa(tempC: number): number {
 
 /** Standard-atmosphere station pressure, for when there's no barometer reading. */
 export function pressureAtElevationPa(elevationM: number): number {
-  return SEA_LEVEL_PRESSURE_PA * (1 - 2.25577e-5 * elevationM) ** 5.25588;
+  const base = 1 - 2.25577e-5 * elevationM;
+  if (base <= 0) {
+    // Beyond ~44.3 km the base goes negative and the fractional power is NaN.
+    throw new Error(`elevationM is beyond the barometric formula's domain: ${elevationM}`);
+  }
+  return SEA_LEVEL_PRESSURE_PA * base ** 5.25588;
 }
 
 /**
@@ -87,13 +92,31 @@ export function airDensity(
     humidityPct = 0,
   }: { pressurePa?: number | null; elevationM?: number; humidityPct?: number } = {},
 ): number {
-  const pressure = pressurePa ?? pressureAtElevationPa(elevationM);
   const tempK = tempC + ZERO_CELSIUS_K;
+  if (tempK <= 0) throw new Error(`tempC must be above absolute zero: ${tempC}`);
+  if (humidityPct < 0 || humidityPct > 100) {
+    throw new Error(`humidityPct must be within 0..100: ${humidityPct}`);
+  }
+  const pressure = pressurePa ?? pressureAtElevationPa(elevationM);
   const vapor = (humidityPct / 100) * saturationVaporPressurePa(tempC);
   return (pressure - vapor) / (R_DRY_AIR * tempK) + vapor / (R_WATER_VAPOR * tempK);
 }
 
 // --- Power equation ----------------------------------------------------------
+
+/** The model needs a real rider in real air; anything else is a caller bug
+ * (a zeroed field, a negative CdA from a bad aero fit) and would otherwise
+ * surface as NaN deep inside a solve. */
+function checkSetup(setup: Setup): void {
+  if (setup.massKg <= 0) throw new Error(`massKg must be positive: ${setup.massKg}`);
+  if (setup.cdaM2 <= 0) throw new Error(`cdaM2 must be positive: ${setup.cdaM2}`);
+  if (setup.rho <= 0) throw new Error(`rho must be positive: ${setup.rho}`);
+  if (setup.efficiency <= 0) throw new Error(`efficiency must be positive: ${setup.efficiency}`);
+  if (setup.crr < 0) throw new Error(`crr must not be negative: ${setup.crr}`);
+  if (setup.rotatingMassKg < 0) {
+    throw new Error(`rotatingMassKg must not be negative: ${setup.rotatingMassKg}`);
+  }
+}
 
 /** Aerodynamic drag + rolling resistance at a speed. */
 export function resistiveForceN(speedMs: number, setup: Setup): number {
@@ -102,6 +125,7 @@ export function resistiveForceN(speedMs: number, setup: Setup): number {
 
 /** Pedal power to hold (or, with accelMs2, change) a speed. */
 export function powerRequiredW(speedMs: number, setup: Setup, accelMs2 = 0): number {
+  checkSetup(setup);
   const effectiveMass = setup.massKg + setup.rotatingMassKg;
   const wheelPower = speedMs * resistiveForceN(speedMs, setup) + effectiveMass * accelMs2 * speedMs;
   return wheelPower / setup.efficiency;
@@ -109,6 +133,7 @@ export function powerRequiredW(speedMs: number, setup: Setup, accelMs2 = 0): num
 
 /** The speed a constant power holds (Cardano on ½ρCdA·v³ + Crr·m·g·v = η·P). */
 export function steadySpeedMs(powerW: number, setup: Setup): number {
+  checkSetup(setup);
   if (powerW <= 0) return 0;
   const a = 0.5 * setup.rho * setup.cdaM2;
   const p = (setup.crr * setup.massKg * G) / a;
@@ -125,8 +150,16 @@ function riderPowerW(speedMs: number, powerW: number, raceSpeedMs: number, start
 
 function acceleration(speedMs: number, riderPower: number, setup: Setup, startForceN: number) {
   const drivePower = setup.efficiency * riderPower;
-  // min(F_max, ηP/v), written so v = 0 never divides.
-  const driveForce = speedMs * startForceN <= drivePower ? startForceN : drivePower / speedMs;
+  // min(F_max, ηP/v), written so v = 0 never divides. No drive power means
+  // no drive force: the cap must not push a rider who isn't pedalling.
+  let driveForce: number;
+  if (drivePower <= 0) {
+    driveForce = 0;
+  } else if (speedMs <= 0 || speedMs * startForceN <= drivePower) {
+    driveForce = startForceN;
+  } else {
+    driveForce = drivePower / speedMs;
+  }
   if (speedMs <= 0 && driveForce <= resistiveForceN(0, setup)) return 0;
   return (driveForce - resistiveForceN(speedMs, setup)) / (setup.massKg + setup.rotatingMassKg);
 }
@@ -134,7 +167,8 @@ function acceleration(speedMs: number, riderPower: number, setup: Setup, startFo
 /**
  * Ride `distanceM` at race power `powerW`, standing (from v = 0 at
  * startPowerRatio × race power, force-capped, until race pace) or flying.
- * Fixed-step RK4; null if the rider can't finish within an hour.
+ * Fixed-step RK4; null if the rider can't finish within an hour or has no
+ * power to ride with.
  */
 export function simulate(
   distanceM: number,
@@ -150,6 +184,9 @@ export function simulate(
   const raceSpeed = steadySpeedMs(powerW, setup);
   if (distanceM <= 0) {
     return { timeS: 0, finalSpeedMs: standing ? 0 : raceSpeed, averagePowerW: 0, splitTimesS: [] };
+  }
+  if (powerW <= 0) {
+    return null; // no power, no ride: the force cap must not carry a stopped rider
   }
   const dt = SIMULATION_STEP_S;
   const marks: number[] = [];

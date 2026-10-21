@@ -15,6 +15,7 @@ import {
   gearInches,
   powerForTimeW,
   powerRequiredW,
+  pressureAtElevationPa,
   simulate,
   speedFromCadenceMs,
   steadySpeedMs,
@@ -121,5 +122,29 @@ describe("physics.ts", () => {
 
   it("leaves a stalled rider standing still", () => {
     expect(simulate(250, 300, setup("pursuiter"), { startForceN: 1 })).toBeNull();
+  });
+
+  it("leaves a rider with no power unfinished", () => {
+    // The start force cap must not carry a rider who isn't pedalling.
+    expect(simulate(4000, 0, setup("pursuiter"))).toBeNull();
+    expect(simulate(4000, -100, setup("pursuiter"))).toBeNull();
+    expect(simulate(4000, 0, setup("pursuiter"), { standing: false })).toBeNull();
+  });
+
+  it("rejects a setup that is not a rider", () => {
+    const base = setup("pursuiter");
+    expect(() => steadySpeedMs(450, { ...base, massKg: 0 })).toThrow(/massKg/);
+    expect(() => steadySpeedMs(450, { ...base, cdaM2: 0 })).toThrow(/cdaM2/);
+    expect(() => steadySpeedMs(450, { ...base, cdaM2: -0.05 })).toThrow(/cdaM2/);
+    expect(() => steadySpeedMs(450, { ...base, rho: 0 })).toThrow(/rho/);
+    expect(() => powerRequiredW(10, { ...base, efficiency: 0 })).toThrow(/efficiency/);
+    expect(() => simulate(4000, 450, { ...base, cdaM2: 0 })).toThrow(/cdaM2/);
+  });
+
+  it("rejects impossible weather", () => {
+    expect(() => airDensity(-273.15)).toThrow(/absolute zero/);
+    expect(() => airDensity(20, { humidityPct: 150 })).toThrow(/humidityPct/);
+    expect(() => pressureAtElevationPa(50_000)).toThrow(/barometric formula/);
+    expect(() => airDensity(20, { elevationM: 50_000 })).toThrow(/barometric formula/);
   });
 });

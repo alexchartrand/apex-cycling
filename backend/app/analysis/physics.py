@@ -41,8 +41,8 @@ DEFAULT_START_FORCE_N = 300.0
 
 # Integration step for the effort simulation (fixed, so Python and TS agree).
 SIMULATION_STEP_S = 0.02
-# Hard stop for a simulation that will never finish (zero power, a cap too
-# small to overcome rolling resistance…).
+# Hard stop for a simulation that will never finish (a force cap too small
+# to overcome rolling resistance…).
 MAX_SIMULATION_S = 3600.0
 
 
@@ -83,7 +83,12 @@ def saturation_vapor_pressure_pa(temp_c: float) -> float:
 def pressure_at_elevation_pa(elevation_m: float) -> float:
     """Standard-atmosphere station pressure at an elevation, for when no
     barometer reading is available."""
-    return SEA_LEVEL_PRESSURE_PA * (1 - 2.25577e-5 * elevation_m) ** 5.25588
+    base = 1 - 2.25577e-5 * elevation_m
+    if base <= 0:
+        # Beyond ~44.3 km the base goes negative and a fractional power of it
+        # would silently come back complex.
+        raise ValueError(f"elevation_m is beyond the barometric formula's domain: {elevation_m}")
+    return SEA_LEVEL_PRESSURE_PA * base**5.25588
 
 
 def air_density(
@@ -96,13 +101,35 @@ def air_density(
     """Density of moist air in kg/m³. `pressure_pa` is the actual (station,
     not sea-level-corrected) pressure; without it the pressure is estimated
     from `elevation_m`. Humid air is lighter than dry air."""
-    pressure = pressure_pa if pressure_pa is not None else pressure_at_elevation_pa(elevation_m)
     temp_k = temp_c + ZERO_CELSIUS_K
+    if temp_k <= 0:
+        raise ValueError(f"temp_c must be above absolute zero: {temp_c}")
+    if not 0 <= humidity_pct <= 100:
+        raise ValueError(f"humidity_pct must be within 0..100: {humidity_pct}")
+    pressure = pressure_pa if pressure_pa is not None else pressure_at_elevation_pa(elevation_m)
     vapor = humidity_pct / 100 * saturation_vapor_pressure_pa(temp_c)
     return (pressure - vapor) / (R_DRY_AIR * temp_k) + vapor / (R_WATER_VAPOR * temp_k)
 
 
 # --- Power equation -----------------------------------------------------------
+
+
+def _check_setup(setup: Setup) -> None:
+    """The model needs a real rider in real air. Anything else is a caller bug
+    (a zeroed field, a negative CdA from a bad aero fit) and would otherwise
+    surface as a math domain error or a nonsensical speed deep inside a solve."""
+    if setup.mass_kg <= 0:
+        raise ValueError(f"mass_kg must be positive: {setup.mass_kg}")
+    if setup.cda_m2 <= 0:
+        raise ValueError(f"cda_m2 must be positive: {setup.cda_m2}")
+    if setup.rho <= 0:
+        raise ValueError(f"rho must be positive: {setup.rho}")
+    if setup.efficiency <= 0:
+        raise ValueError(f"efficiency must be positive: {setup.efficiency}")
+    if setup.crr < 0:
+        raise ValueError(f"crr must not be negative: {setup.crr}")
+    if setup.rotating_mass_kg < 0:
+        raise ValueError(f"rotating_mass_kg must not be negative: {setup.rotating_mass_kg}")
 
 
 def resistive_force_n(speed_ms: float, setup: Setup) -> float:
@@ -112,6 +139,7 @@ def resistive_force_n(speed_ms: float, setup: Setup) -> float:
 
 def power_required_w(speed_ms: float, setup: Setup, accel_ms2: float = 0.0) -> float:
     """Pedal power to hold (or, with `accel_ms2`, change) a speed."""
+    _check_setup(setup)
     effective_mass = setup.mass_kg + setup.rotating_mass_kg
     wheel_power = speed_ms * resistive_force_n(speed_ms, setup) + effective_mass * accel_ms2 * speed_ms
     return wheel_power / setup.efficiency
@@ -120,6 +148,7 @@ def power_required_w(speed_ms: float, setup: Setup, accel_ms2: float = 0.0) -> f
 def steady_speed_ms(power_w: float, setup: Setup) -> float:
     """The speed a constant power holds, solving ½ρCdA·v³ + Crr·m·g·v = η·P
     (one real root, by Cardano: the cubic has no v² term and p > 0)."""
+    _check_setup(setup)
     if power_w <= 0:
         return 0.0
     a = 0.5 * setup.rho * setup.cda_m2
@@ -138,8 +167,14 @@ def _rider_power_w(speed_ms: float, power_w: float, race_speed_ms: float, start_
 
 def _acceleration(speed_ms: float, rider_power_w: float, setup: Setup, start_force_n: float) -> float:
     drive_power = setup.efficiency * rider_power_w
-    # min(F_max, ηP/v), written so v = 0 never divides.
-    drive_force = start_force_n if speed_ms * start_force_n <= drive_power else drive_power / speed_ms
+    # min(F_max, ηP/v), written so v = 0 never divides. No drive power means
+    # no drive force: the cap must not push a rider who isn't pedalling.
+    if drive_power <= 0:
+        drive_force = 0.0
+    elif speed_ms <= 0 or speed_ms * start_force_n <= drive_power:
+        drive_force = start_force_n
+    else:
+        drive_force = drive_power / speed_ms
     if speed_ms <= 0 and drive_force <= resistive_force_n(0, setup):
         return 0.0  # rolling resistance only opposes motion: a stalled rider stays put
     return (drive_force - resistive_force_n(speed_ms, setup)) / (setup.mass_kg + setup.rotating_mass_kg)
@@ -160,10 +195,12 @@ def simulate(
     `start_force_n`, until reaching the race-power steady speed) or flying
     (already at that speed). Fixed-step RK4 in time; split and finish times
     are interpolated linearly inside the step that crosses them. None if the
-    rider can't finish within `MAX_SIMULATION_S`."""
+    rider can't finish within `MAX_SIMULATION_S` or has no power to ride with."""
     race_speed = steady_speed_ms(power_w, setup)
     if distance_m <= 0:
         return Ride(0.0, 0.0 if standing else race_speed, 0.0, ())
+    if power_w <= 0:
+        return None  # no power, no ride: the force cap must not carry a stopped rider
     dt = SIMULATION_STEP_S
     marks: list[float] = []
     if split_every_m and split_every_m > 0:
