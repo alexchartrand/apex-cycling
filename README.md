@@ -143,6 +143,20 @@ $EDITOR .env.prod        # optional: SMTP, timezone, backup settings (documented
 scripts/deploy.sh
 ```
 
+`init-env.sh` also generates `DATA_ENCRYPTION_KEY`, which encrypts the Strava
+tokens and Intervals.icu keys stored in the database. **Upgrading a server
+whose `.env.prod` predates this key:** `deploy.sh` stops with "set
+DATA_ENCRYPTION_KEY" until you add one. Do it once, before the deploy:
+
+```bash
+echo "DATA_ENCRYPTION_KEY=$(openssl rand -base64 32 | tr + - | tr / _)" >> .env.prod
+```
+
+Keep a copy of `.env.prod` with your backups: restoring a database onto a
+server with a different key leaves those connections unreadable (athletes would
+have to reconnect them). Don't change the key later; to rotate it, put the new
+key first and keep the old one after a comma (`new,old`).
+
 `deploy.sh` builds the images (tagged with the git commit), takes a backup if
 a database already exists, starts everything, waits for every container's
 healthcheck, then checks `https://<domain>/api/health` through Caddy. If the
