@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gearChoices, gearName, parseNumber } from "./gear";
+import { bikeOfWeight, gearChoices, gearName, gearOf, parseNumber, weighedBikes } from "./gear";
 import type { Bike } from "./types";
 
 const gear = { bike_id: "b", rollout_mm: 2100, tire: null, ratio: 0, development_m: 0, gear_inches: 0 };
@@ -23,6 +23,21 @@ describe("gear", () => {
       { id: "g2", label: "Track · 52×14" },
       { id: "g3", label: "Road · 53×12" },
     ]);
+  });
+
+  it("finds the bike a weight belongs to, among the weighed ones", () => {
+    const bikes = [bike("1", "Unweighed", []), { ...bike("2", "Track", []), weight_kg: 7.4 }, { ...bike("3", "Spare", []), weight_kg: 7.4 }];
+    expect(weighedBikes(bikes).map((b) => b.id)).toEqual(["2", "3"]);
+    expect(bikeOfWeight(bikes, 7.4)?.id).toBe("2");
+    expect(bikeOfWeight(bikes, 8)).toBeNull();
+    expect(bikeOfWeight(bikes, null)).toBeNull();
+  });
+
+  it("finds the saved gear from its teeth and rollout", () => {
+    const bikes = [bike("1", "Track", [["g1", 50, 15], ["g2", 52, 14]])];
+    expect(gearOf(bikes, 52, 14, 2100.2)?.id).toBe("g2");
+    expect(gearOf(bikes, 52, 14, 2105)).toBeNull();
+    expect(gearOf(bikes, 52, null, 2100)).toBeNull();
   });
 
   it("reads numbers with a decimal comma and rejects text", () => {

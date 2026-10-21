@@ -6,6 +6,10 @@ export interface PlannedEffort {
   event_key: string | null;
   start_type: "standing" | "flying" | null;
   target_time_ms: number | null;
+  /** One of the athlete's gears to ride it in. */
+  gear_setup_id: string | null;
+  /** "Track bike · 50×15", sent back by the server only. */
+  gear_label?: string | null;
 }
 
 export interface LinkedPlanSession {

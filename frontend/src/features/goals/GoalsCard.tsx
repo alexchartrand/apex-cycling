@@ -6,6 +6,9 @@ import { Badge, Button, Card, ConfirmDialog, Dialog, IconButton, Input, Progress
 import { useFormat } from "../../i18n/useFormat";
 import { formatRecordTime } from "../records/timeInput";
 import { EVENT_START_TYPES, STANDARD_EVENT_KEYS, type StandardEventKey } from "../records/types";
+import { BikeSelect } from "../equipment/BikeSelect";
+import type { Bike } from "../equipment/types";
+import { useBikes } from "../equipment/useEquipment";
 import { useTracks } from "../training/useTraining";
 import type { TrackSummary } from "../training/types";
 import { dueState, emptyGoalForm, goalCreatePayload, goalFormErrors, goalFormFrom, goalUpdatePayload, predictedGapMs, withEvent, type GoalForm } from "./goalForm";
@@ -20,6 +23,7 @@ export function GoalsCard({ athleteId }: { athleteId: string }) {
   const { toast } = useToast();
   const goals = useGoals(athleteId);
   const tracks = useTracks(athleteId);
+  const bikes = useBikes(athleteId);
   const remove = useDeleteGoal(athleteId);
   const [editing, setEditing] = useState<Goal | "new" | null>(null);
   const [deleting, setDeleting] = useState<Goal | null>(null);
@@ -47,6 +51,7 @@ export function GoalsCard({ athleteId }: { athleteId: string }) {
           key={editing === "new" ? "new" : editing.id}
           athleteId={athleteId}
           tracks={tracks.data ?? []}
+          bikes={bikes.data ?? []}
           goal={editing === "new" ? null : editing}
           onClose={() => setEditing(null)}
         />
@@ -87,7 +92,9 @@ function GoalRow({ goal, onEdit, onDelete }: { goal: Goal; onEdit: () => void; o
       <div className="goals__head">
         <div className="goals__title">
           <strong>{title}</strong>
-          <span className="goals__place">{goal.track_name ?? t("anyTrack")}</span>
+          <span className="goals__place">
+            {goal.bike_name ? `${goal.track_name ?? t("anyTrack")} · ${goal.bike_name}` : (goal.track_name ?? t("anyTrack"))}
+          </span>
         </div>
         <span className="goals__actions">
           <Tooltip content={t("edit")}>
@@ -147,6 +154,8 @@ function GoalRow({ goal, onEdit, onDelete }: { goal: Goal; onEdit: () => void; o
               date: fmt.date(goal.prediction.power_on, "medium"),
               cda: fmt.number(goal.prediction.cda_m2, 3, 3),
               label: goal.prediction.cda_label,
+              rider: fmt.number(goal.prediction.rider_kg, 1),
+              bike: fmt.number(goal.prediction.bike_kg, 1),
             })}
           </span>
         </p>
@@ -158,7 +167,19 @@ function GoalRow({ goal, onEdit, onDelete }: { goal: Goal; onEdit: () => void; o
   );
 }
 
-function GoalDialog({ athleteId, tracks, goal, onClose }: { athleteId: string; tracks: TrackSummary[]; goal: Goal | null; onClose: () => void }) {
+function GoalDialog({
+  athleteId,
+  tracks,
+  bikes,
+  goal,
+  onClose,
+}: {
+  athleteId: string;
+  tracks: TrackSummary[];
+  bikes: Bike[];
+  goal: Goal | null;
+  onClose: () => void;
+}) {
   const { t } = useTranslation("goals");
   const { t: tr } = useTranslation("records");
   const { t: tc } = useTranslation("common");
@@ -252,6 +273,14 @@ function GoalDialog({ athleteId, tracks, goal, onClose }: { athleteId: string; t
             </option>
           ))}
         </Select>
+        <BikeSelect
+          bikes={bikes}
+          value={form.bikeId}
+          onChange={(bike) => set("bikeId", bike?.id ?? "")}
+          label={t("dialog.bike")}
+          hint={t("dialog.bikeHint")}
+          emptyLabel={t("dialog.testBike")}
+        />
         <Textarea label={t("dialog.notes")} rows={2} maxLength={1000} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
         {save.isError && (
           <p className="goals__error" role="alert">

@@ -46,6 +46,8 @@ export default {
     noEvent: "Aucune épreuve",
     start: "Départ",
     anyStart: "Au choix",
+    gear: "Braquet",
+    anyGear: "Au choix",
     time: "Objectif",
     timeInvalid: "Comme 34,0 ou 1:10,5",
     addBlock: "Ajouter un effort",

@@ -22,7 +22,7 @@ export default {
   predictedBeats: "C'est {{gap}} s sous l'objectif.",
   predictedShort: "Il manque {{gap}} s pour l'objectif.",
   basis:
-    "D'après {{power}} W sur {{duration}} (meilleur depuis le {{date}}) et un CdA de {{cda}} ({{label}}). Une estimation : la puissance et la position sur piste peuvent différer.",
+    "D'après {{power}} W sur {{duration}} (meilleur depuis le {{date}}) un CdA de {{cda}} ({{label}}) et {{rider}} kg + {{bike}} kg de vélo. Une estimation : la puissance et la position sur piste peuvent différer.",
   problems: {
     no_track: "Choisissez une piste pour prédire un tour lancé : sa longueur donne la distance.",
     no_track_length: "Cette piste n'a pas encore de longueur, la distance d'un tour est donc inconnue.",
@@ -42,6 +42,9 @@ export default {
     dateInvalid: "Choisissez une date",
     track: "Piste",
     trackHint: "Ne compter que les résultats de cette piste, ou de toutes.",
+    bike: "Vélo",
+    bikeHint: "Son poids entre dans le temps prédit.",
+    testBike: "Le vélo du test aéro",
     notes: "Notes",
   },
   saved: "Objectif enregistré",

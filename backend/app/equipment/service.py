@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.analysis import physics
 from app.equipment.models import Bike, GearSetup
 from app.equipment.schemas import BikeRead, BikeUpdate, BikeWrite, GearRead, GearUpdate, GearWrite
+from app.goals.models import Goal
 from app.training.models import Track, TrainingEvent, TrainingLap
 from app.training.schemas import EffortDetail, SessionDetail
 from app.training.service import get_session_efforts
@@ -95,7 +96,7 @@ async def update_bike(
 
 async def delete_bike(db: AsyncSession, athlete_id: uuid.UUID, bike_id: uuid.UUID) -> bool:
     """Removes the bike and its gears; sessions and efforts that used them
-    just have no gear any more."""
+    just have no gear any more, goals on it fall back to the default bike."""
     bike = await _own_bike(db, athlete_id, bike_id)
     if bike is None:
         return False
@@ -103,6 +104,7 @@ async def delete_bike(db: AsyncSession, athlete_id: uuid.UUID, bike_id: uuid.UUI
     for gear_id in gear_ids:
         await _detach(db, gear_id)
         await db.delete(await db.get(GearSetup, gear_id))
+    await db.execute(update(Goal).where(Goal.bike_id == bike.id).values(bike_id=None))
     await db.delete(bike)
     await db.commit()
     return True

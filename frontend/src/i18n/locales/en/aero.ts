@@ -78,6 +78,8 @@ export default {
     pressureFromElevation: "From the elevation",
     crrAuto: "Fitted when the laps span enough speeds",
     weightFrom: "Profile, {{date}}",
+    sessionBike: "The session's gear (else 8 kg)",
+    typedBike: "Typed weight",
     rho: "Air density {{value}} kg/m³",
     range: "Between {{min}} and {{max}}",
   },

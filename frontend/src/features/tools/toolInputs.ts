@@ -34,6 +34,9 @@ export const TIME_PARAM = "time";
 export const START_PARAM = "start";
 export const TRACK_PARAM = "track";
 export const MODE_PARAM = "mode";
+/** `?gear=none`: the gearing fields don't come from a saved gear. */
+export const GEAR_PARAM = "gear";
+export const NO_GEAR = "none";
 
 export type StartKind = "standing" | "flying";
 

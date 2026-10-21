@@ -1,7 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { Input } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
-import { INPUT_BOUNDS, INPUT_KEYS, type InputDraft, type InputKey } from "./aero";
+import { BikeSelect } from "../equipment/BikeSelect";
+import { bikeOfWeight, weighedBikes } from "../equipment/gear";
+import type { Bike } from "../equipment/types";
+import { INPUT_BOUNDS, INPUT_KEYS, readInputs, type InputDraft, type InputKey } from "./aero";
 import type { AeroConditions } from "./types";
 
 const SUFFIX: Record<InputKey, string | undefined> = {
@@ -14,18 +17,24 @@ const SUFFIX: Record<InputKey, string | undefined> = {
   crr: undefined,
 };
 
-/** The estimate's assumptions; a blank field shows, as its placeholder, the value the estimate used. */
+/**
+ * The estimate's assumptions; a blank field shows, as its placeholder, the
+ * value the estimate used. Picking a bike types its weight in; the blank
+ * choice is the bike of the session's gear (else the default).
+ */
 export function AeroInputsForm({
   draft,
   invalid,
   conditions,
   crrUsed,
+  bikes,
   onChange,
 }: {
   draft: InputDraft;
   invalid: InputKey[];
   conditions: AeroConditions | null;
   crrUsed: number | null;
+  bikes: Bike[];
   onChange: (key: InputKey, value: string) => void;
 }) {
   const { t } = useTranslation("aero");
@@ -46,8 +55,18 @@ export function AeroInputsForm({
     return undefined;
   };
 
+  const weighed = weighedBikes(bikes);
+  const typedBikeKg = readInputs(draft).inputs.bike_kg;
+  const bike = bikeOfWeight(weighed, typedBikeKg);
+
   return (
     <div className="aero-lab__inputs">
+      <BikeSelect
+        bikes={weighed}
+        value={bike?.id ?? null}
+        onChange={(picked) => onChange("bike_kg", picked?.weight_kg != null ? String(picked.weight_kg) : "")}
+        emptyLabel={typedBikeKg == null ? t("inputs.sessionBike") : t("inputs.typedBike")}
+      />
       {INPUT_KEYS.map((key) => (
         <Input
           key={key}

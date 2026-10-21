@@ -14,6 +14,8 @@ import { SaveTestDialog } from "../features/aero/SaveTestDialog";
 import type { AeroSetup, AeroTest } from "../features/aero/types";
 import { useAeroEstimate, useAeroTests, useCreateAeroTest, useUpdateAeroTest } from "../features/aero/useAero";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
+import { bikeOfWeight, weighedBikes } from "../features/equipment/gear";
+import { useBikes } from "../features/equipment/useEquipment";
 import { useSessions } from "../features/training/useTraining";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useFormat } from "../i18n/useFormat";
@@ -34,6 +36,7 @@ export function AeroPage() {
   const sessions = useSessions(athleteId);
   const activities = useActivities(athleteId);
   const tests = useAeroTests(athleteId);
+  const bikes = useBikes(athleteId);
   const createTest = useCreateAeroTest(athleteId);
   const updateTest = useUpdateAeroTest(athleteId);
 
@@ -213,6 +216,7 @@ export function AeroPage() {
                     invalid={invalid}
                     conditions={result.conditions}
                     crrUsed={fit?.crr ?? null}
+                    bikes={bikes.data ?? []}
                     onChange={(key, value) => setDraft((current) => ({ ...current, [key]: value }))}
                   />
                 </Card>
@@ -231,6 +235,7 @@ export function AeroPage() {
         open={saveOpen}
         onOpenChange={setSaveOpen}
         initial={editing}
+        bikeName={bikeOfWeight(weighedBikes(bikes.data ?? []), inputs.bike_kg)?.name}
         saving={createTest.isPending || updateTest.isPending}
         onSave={save}
       />

@@ -10,6 +10,8 @@ export type GoalForm = {
   date: string;
   /** "" = on any track. */
   trackId: string;
+  /** "" = the aero test's bike. */
+  bikeId: string;
   notes: string;
 };
 
@@ -17,7 +19,7 @@ export type GoalFormErrors = { time?: true; date?: true };
 
 /** A new goal: the kilo from a standing start, on any track, with the date left for the rider to pick. */
 export function emptyGoalForm(): GoalForm {
-  return { eventKey: "1km", startType: "standing", time: "", date: "", trackId: "", notes: "" };
+  return { eventKey: "1km", startType: "standing", time: "", date: "", trackId: "", bikeId: "", notes: "" };
 }
 
 export function goalFormFrom(goal: Goal, fmt: Pick<Formatters, "seconds" | "lapTime">): GoalForm {
@@ -27,6 +29,7 @@ export function goalFormFrom(goal: Goal, fmt: Pick<Formatters, "seconds" | "lapT
     time: timeToInput(goal.target_time_ms, fmt),
     date: goal.target_date,
     trackId: goal.track_id ?? "",
+    bikeId: goal.bike_id ?? "",
     notes: goal.notes ?? "",
   };
 }
@@ -53,6 +56,7 @@ export function goalCreatePayload(form: GoalForm): GoalCreate | null {
     target_time_ms: parseTimeInput(form.time)!,
     target_date: form.date,
     track_id: form.trackId || null,
+    bike_id: form.bikeId || null,
     notes: form.notes.trim() || null,
   };
 }
@@ -65,6 +69,7 @@ export function goalUpdatePayload(form: GoalForm): GoalUpdate | null {
     target_time_ms: created.target_time_ms,
     target_date: created.target_date,
     track_id: created.track_id,
+    bike_id: created.bike_id,
     notes: created.notes,
   };
 }

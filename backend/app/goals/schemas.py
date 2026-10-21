@@ -23,6 +23,8 @@ class GoalWrite(BaseModel):
     target_date: date
     # Null = on any track.
     track_id: uuid.UUID | None = None
+    # One of the athlete's bikes; null = the bike weight of the aero test the CdA comes from.
+    bike_id: uuid.UUID | None = None
     notes: str | None = Field(default=None, max_length=1000)
 
     _clean_notes = field_validator("notes")(_blank_is_none)
@@ -39,11 +41,13 @@ class GoalWrite(BaseModel):
 
 class GoalUpdate(BaseModel):
     """PATCH body: only the fields sent change. The event and its start are
-    fixed (set a new goal for another one); `track_id` null = any track."""
+    fixed (set a new goal for another one); `track_id` null = any track,
+    `bike_id` null = the aero test's bike."""
 
     target_time_ms: int | None = Field(default=None, gt=0, le=7_200_000)
     target_date: date | None = None
     track_id: uuid.UUID | None = None
+    bike_id: uuid.UUID | None = None
     notes: str | None = Field(default=None, max_length=1000)
 
     _clean_notes = field_validator("notes")(_blank_is_none)
@@ -74,6 +78,7 @@ class GoalPrediction(BaseModel):
     cda_m2: float
     cda_label: str
     rider_kg: float
+    bike_kg: float
 
 
 class GoalRead(BaseModel):
@@ -82,6 +87,8 @@ class GoalRead(BaseModel):
     start_type: StartType
     track_id: uuid.UUID | None
     track_name: str | None
+    bike_id: uuid.UUID | None
+    bike_name: str | None
     target_time_ms: int
     target_date: date
     notes: str | None

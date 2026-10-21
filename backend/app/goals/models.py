@@ -25,4 +25,6 @@ class Goal(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     target_time_ms: Mapped[int] = mapped_column(Integer)
     target_date: Mapped[date] = mapped_column(Date)
     baseline_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The bike it will be ridden on (its weight goes into the predicted time); null = the aero test's.
+    bike_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("bikes.id"), nullable=True)
     notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)

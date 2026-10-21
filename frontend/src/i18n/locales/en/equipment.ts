@@ -37,6 +37,10 @@ export default {
     development: "{{value}} m per turn",
     gearInches: "{{value}} in",
   },
+  bikeSelect: {
+    label: "Bike",
+    withWeight: "{{name}} ({{weight}} kg)",
+  },
   picker: {
     session: "Gear",
     effort: "Gear",

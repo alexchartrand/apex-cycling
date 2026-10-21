@@ -43,8 +43,18 @@ async def test_the_athlete_plans_marks_done_and_unlinks(client, db_session):
         "event_key": "500m",
         "start_type": "standing",
         "target_time_ms": 34_000,
+        "gear_setup_id": None,
+        "gear_label": None,
     }
-    assert plan["targets"][1] == {"label": "Tempo", "reps": 4, "event_key": None, "start_type": None, "target_time_ms": None}
+    assert plan["targets"][1] == {
+        "label": "Tempo",
+        "reps": 4,
+        "event_key": None,
+        "start_type": None,
+        "target_time_ms": None,
+        "gear_setup_id": None,
+        "gear_label": None,
+    }
 
     done = (await client.patch(f"{url}/{plan['id']}", json={"status": "done"})).json()
     assert done["status"] == "done" and done["session"] is None
@@ -143,6 +153,44 @@ async def test_the_coach_plans_but_only_the_athlete_marks_it(client, db_session)
 
         # But the athlete can drop the coach's plan.
         assert (await client.delete(f"{url}/{plan['id']}")).status_code == 204
+
+
+async def test_a_planned_effort_names_one_of_the_athletes_gears(client, db_session):
+    athlete_id = await _setup(client, db_session, upload=False)
+    url = f"/athletes/{athlete_id}/planned-sessions"
+    bike = (await client.post(f"/athletes/{athlete_id}/bikes", json={"name": "Track bike"})).json()
+    gear = (
+        await client.post(
+            f"/athletes/{athlete_id}/bikes/{bike['id']}/gears",
+            json={"chainring_teeth": 50, "cog_teeth": 15, "rollout_mm": 2100},
+        )
+    ).json()
+
+    async with _coach_of(db_session, athlete_id) as coach:  # a coach plans in the athlete's gear
+        created = await coach.post(url, json=_plan(targets=[{"label": "Flying 200", "gear_setup_id": gear["id"]}]))
+        assert created.status_code == 201, created.text
+        target = created.json()["targets"][0]
+        assert target["gear_setup_id"] == gear["id"] and target["gear_label"] == "Track bike · 50×15"
+
+    async with _other_client() as other:
+        await _signup(other, "other@example.com")
+        theirs_athlete = (await other.get("/athletes/me")).json()["id"]
+        their_bike = (await other.post(f"/athletes/{theirs_athlete}/bikes", json={"name": "Theirs"})).json()
+        theirs = (
+            await other.post(
+                f"/athletes/{theirs_athlete}/bikes/{their_bike['id']}/gears",
+                json={"chainring_teeth": 52, "cog_teeth": 14, "rollout_mm": 2100},
+            )
+        ).json()
+    plan = created.json()
+    refused = await client.patch(f"{url}/{plan['id']}", json={"targets": [{"label": "x", "gear_setup_id": theirs["id"]}]})
+    assert refused.status_code == 404
+    assert (await client.post(url, json=_plan(targets=[{"label": "x", "gear_setup_id": theirs["id"]}]))).status_code == 404
+
+    # A deleted gear just drops out of the plan.
+    assert (await client.delete(f"/athletes/{athlete_id}/gears/{gear['id']}")).status_code == 204
+    target = (await client.get(url)).json()[0]["targets"][0]
+    assert target["gear_setup_id"] is None and target["gear_label"] is None and target["label"] == "Flying 200"
 
 
 async def test_strangers_cant_reach_the_plan(client, db_session):

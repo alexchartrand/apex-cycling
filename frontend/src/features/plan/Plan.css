@@ -168,7 +168,14 @@ li:first-child > .plan-list__row {
 }
 
 .plan-form__remove {
+  /* Stays at the end of the first line when the gear wraps to a second one. */
+  grid-row: 1;
+  grid-column: -2;
   margin-bottom: 2px;
+}
+
+.plan-form__gear {
+  grid-column: span 2;
 }
 
 .plan-form__error {
@@ -188,5 +195,10 @@ li:first-child > .plan-list__row {
 
   .plan-form__target > :first-child {
     grid-column: 1 / -1;
+  }
+
+  .plan-form__remove {
+    grid-row: auto;
+    grid-column: auto;
   }
 }

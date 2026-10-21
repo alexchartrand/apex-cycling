@@ -18,6 +18,8 @@ export interface GoalPrediction {
   cda_m2: number;
   cda_label: string;
   rider_kg: number;
+  /** The goal's bike, else the bike weight of the aero test the CdA comes from. */
+  bike_kg: number;
 }
 
 export interface Goal {
@@ -26,6 +28,8 @@ export interface Goal {
   start_type: StartType;
   track_id: string | null;
   track_name: string | null;
+  bike_id: string | null;
+  bike_name: string | null;
   target_time_ms: number;
   target_date: string;
   notes: string | null;
@@ -48,6 +52,7 @@ export interface GoalCreate {
   target_time_ms: number;
   target_date: string;
   track_id: string | null;
+  bike_id: string | null;
   notes: string | null;
 }
 
@@ -56,5 +61,6 @@ export interface GoalUpdate {
   target_time_ms?: number;
   target_date?: string;
   track_id?: string | null;
+  bike_id?: string | null;
   notes?: string | null;
 }

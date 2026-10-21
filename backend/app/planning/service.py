@@ -13,10 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.athletes.coaching import speaks_for_athlete
 from app.athletes.models import Athlete
 from app.auth.models import User
+from app.equipment.models import Bike, GearSetup
 from app.planning.models import PlannedSession, PlanStatus
 from app.planning.schemas import (
     LinkedSession,
     PlannedEffort,
+    PlannedEffortRead,
     PlannedSessionRead,
     PlannedSessionUpdate,
     PlannedSessionWrite,
@@ -26,6 +28,34 @@ from app.training.models import TrainingEvent
 
 class NotAllowed(Exception):
     """The viewer may not make this change."""
+
+
+class UnknownGear(Exception):
+    """A planned effort names a gear that isn't one of this athlete's."""
+
+
+async def _gear_labels(db: AsyncSession, athlete_id: uuid.UUID) -> dict[uuid.UUID, str]:
+    """The athlete's gears as riders say them: "Track bike · 50×15"."""
+    rows = await db.execute(
+        select(GearSetup.id, Bike.name, GearSetup.chainring_teeth, GearSetup.cog_teeth)
+        .join(Bike, Bike.id == GearSetup.bike_id)
+        .where(GearSetup.athlete_id == athlete_id)
+    )
+    return {gear_id: f"{bike} · {ring}×{cog}" for gear_id, bike, ring, cog in rows.all()}
+
+
+async def _stored_targets(db: AsyncSession, athlete: Athlete, targets: list[PlannedEffort]) -> list[dict]:
+    """Raises `UnknownGear`."""
+    gear_ids = {t.gear_setup_id for t in targets if t.gear_setup_id is not None}
+    if gear_ids - set(await _gear_labels(db, athlete.id)):
+        raise UnknownGear
+    return [t.model_dump(mode="json", exclude_none=True) for t in targets]
+
+
+def _target_read(stored: dict, gear_labels: dict[uuid.UUID, str]) -> PlannedEffortRead:
+    target = PlannedEffortRead.model_validate(stored)
+    label = gear_labels.get(target.gear_setup_id) if target.gear_setup_id else None
+    return target.model_copy(update={"gear_setup_id": target.gear_setup_id if label else None, "gear_label": label})
 
 
 async def _reads(
@@ -40,6 +70,7 @@ async def _reads(
     )
     event_ids = {p.training_event_id for p in plans if p.training_event_id}
     events = {e.id: e for e in await db.scalars(select(TrainingEvent).where(TrainingEvent.id.in_(event_ids)))}
+    gear_labels = await _gear_labels(db, athlete.id)
     reads = []
     for plan in plans:
         event = events.get(plan.training_event_id) if plan.training_event_id else None
@@ -49,7 +80,7 @@ async def _reads(
                 planned_date=plan.planned_date,
                 title=plan.title,
                 description=plan.description,
-                targets=[PlannedEffort.model_validate(t) for t in plan.targets or []],
+                targets=[_target_read(t, gear_labels) for t in plan.targets or []],
                 status=PlanStatus(plan.status),
                 created_by_name=names.get(plan.created_by_user_id),
                 session=LinkedSession(
@@ -91,13 +122,14 @@ async def _read_one(db: AsyncSession, athlete: Athlete, viewer: User, plan: Plan
 async def create_plan(
     db: AsyncSession, athlete: Athlete, viewer: User, payload: PlannedSessionWrite
 ) -> PlannedSessionRead:
+    """Raises `UnknownGear` for another athlete's gear."""
     plan = PlannedSession(
         athlete_id=athlete.id,
         created_by_user_id=viewer.id,
         planned_date=payload.planned_date,
         title=payload.title,
         description=payload.description,
-        targets=[t.model_dump(mode="json", exclude_none=True) for t in payload.targets],
+        targets=await _stored_targets(db, athlete, payload.targets),
     )
     db.add(plan)
     await db.commit()
@@ -107,7 +139,8 @@ async def create_plan(
 async def update_plan(
     db: AsyncSession, athlete: Athlete, viewer: User, plan_id: uuid.UUID, payload: PlannedSessionUpdate
 ) -> PlannedSessionRead | None:
-    """Raises `NotAllowed` when the viewer may not make one of the changes."""
+    """Raises `NotAllowed` when the viewer may not make one of the changes,
+    `UnknownGear` for another athlete's gear."""
     plan = await _own(db, athlete, plan_id)
     if plan is None:
         return None
@@ -119,7 +152,7 @@ async def update_plan(
     if new_status is not None and not athlete_side:
         raise NotAllowed
     if "targets" in changes:
-        changes["targets"] = [t.model_dump(mode="json", exclude_none=True) for t in payload.targets or []]
+        changes["targets"] = await _stored_targets(db, athlete, payload.targets or [])
     for field, value in changes.items():
         setattr(plan, field, value)
     if new_status is not None:

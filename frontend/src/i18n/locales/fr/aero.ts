@@ -83,6 +83,8 @@ export default {
     pressureFromElevation: "D'après l'altitude",
     crrAuto: "Ajusté si les tours couvrent assez de vitesses",
     weightFrom: "Profil, {{date}}",
+    sessionBike: "Braquet de la séance (sinon 8 kg)",
+    typedBike: "Poids saisi",
     rho: "Densité de l'air {{value}} kg/m³",
     range: "Entre {{min}} et {{max}}",
   },

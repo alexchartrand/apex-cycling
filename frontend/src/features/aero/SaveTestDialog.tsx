@@ -7,17 +7,22 @@ const TEXT_FIELDS = ["position", "helmet", "skinsuit", "bike"] as const;
 
 const blankToNull = (value: string) => (value.trim() === "" ? null : value.trim());
 
-/** Names the setup of an aero test. Mount it with a `key` to reset it to `initial`. */
+/**
+ * Names the setup of an aero test. Mount it with a `key` to reset it to
+ * `initial`; `bikeName` (the bike picked in the lab) fills a blank bike field.
+ */
 export function SaveTestDialog({
   open,
   onOpenChange,
   initial,
+  bikeName,
   saving,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initial: AeroSetup | null;
+  bikeName?: string | null;
   saving: boolean;
   onSave: (setup: AeroSetup) => void;
 }) {
@@ -27,7 +32,7 @@ export function SaveTestDialog({
     position: initial?.position ?? "",
     helmet: initial?.helmet ?? "",
     skinsuit: initial?.skinsuit ?? "",
-    bike: initial?.bike ?? "",
+    bike: initial?.bike ?? bikeName ?? "",
   });
   const [notes, setNotes] = useState(initial?.notes ?? "");
 

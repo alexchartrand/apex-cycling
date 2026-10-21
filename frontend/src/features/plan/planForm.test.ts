@@ -41,8 +41,8 @@ describe("plan form", () => {
       title: " Openers ",
       description: "  ",
       targets: [
-        { label: "Standing", reps: "3", eventKey: "500m" as const, startType: "standing" as const, time: "34,5" },
-        { label: "Tempo", reps: "4", eventKey: "" as const, startType: "standing" as const, time: "" },
+        { label: "Standing", reps: "3", eventKey: "500m" as const, startType: "standing" as const, time: "34,5", gearId: "g1" },
+        { label: "Tempo", reps: "4", eventKey: "" as const, startType: "standing" as const, time: "", gearId: "" },
       ],
     };
     expect(planPayload(form)).toEqual({
@@ -50,8 +50,8 @@ describe("plan form", () => {
       title: "Openers",
       description: null,
       targets: [
-        { label: "Standing", reps: 3, event_key: "500m", start_type: "standing", target_time_ms: 34_500 },
-        { label: "Tempo", reps: 4, event_key: null, start_type: null, target_time_ms: null },
+        { label: "Standing", reps: 3, event_key: "500m", start_type: "standing", target_time_ms: 34_500, gear_setup_id: "g1" },
+        { label: "Tempo", reps: 4, event_key: null, start_type: null, target_time_ms: null, gear_setup_id: null },
       ],
     });
     expect(planPayload(emptyPlanForm(""))).toBeNull();
@@ -66,11 +66,11 @@ describe("plan form", () => {
 
   it("an edit starts from the saved plan", () => {
     const form = planFormFrom(
-      plan({ description: "Easy", targets: [{ label: "Kilo", reps: 2, event_key: "1km", start_type: "standing", target_time_ms: 70_500 }] }),
+      plan({ description: "Easy", targets: [{ label: "Kilo", reps: 2, event_key: "1km", start_type: "standing", target_time_ms: 70_500, gear_setup_id: "g1" }] }),
       { seconds: () => "", lapTime: () => "1:10.500" },
     );
     expect(form).toMatchObject({ date: "2026-11-10", description: "Easy" });
-    expect(form.targets).toEqual([{ label: "Kilo", reps: "2", eventKey: "1km", startType: "standing", time: "1:10.500" }]);
+    expect(form.targets).toEqual([{ label: "Kilo", reps: "2", eventKey: "1km", startType: "standing", time: "1:10.500", gearId: "g1" }]);
   });
 });
 

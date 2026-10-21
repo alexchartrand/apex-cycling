@@ -10,6 +10,8 @@ export type EffortRow = {
   eventKey: "" | StandardEventKey;
   startType: "" | "standing" | "flying";
   time: string;
+  /** "" = no gear asked for. */
+  gearId: string;
 };
 
 export type PlanForm = {
@@ -21,7 +23,7 @@ export type PlanForm = {
 
 export type PlanFormErrors = { title?: true; date?: true; targets: Record<number, "label" | "reps" | "time"> };
 
-export const emptyEffortRow = (): EffortRow => ({ label: "", reps: "1", eventKey: "", startType: "", time: "" });
+export const emptyEffortRow = (): EffortRow => ({ label: "", reps: "1", eventKey: "", startType: "", time: "", gearId: "" });
 
 export function emptyPlanForm(date: string): PlanForm {
   return { date, title: "", description: "", targets: [] };
@@ -38,6 +40,7 @@ export function planFormFrom(plan: PlannedSession, fmt: Pick<Formatters, "second
       eventKey: (STANDARD_EVENT_KEYS as readonly string[]).includes(target.event_key ?? "") ? (target.event_key as StandardEventKey) : "",
       startType: target.start_type ?? "",
       time: target.target_time_ms != null ? timeToInput(target.target_time_ms, fmt) : "",
+      gearId: target.gear_setup_id ?? "",
     })),
   };
 }
@@ -79,6 +82,7 @@ export function planPayload(form: PlanForm): PlannedSessionWrite | null {
         event_key: row.eventKey || null,
         start_type: row.eventKey ? row.startType || null : null,
         target_time_ms: row.eventKey && row.time.trim() !== "" ? parseTimeInput(row.time) : null,
+        gear_setup_id: row.gearId || null,
       }),
     ),
   };
@@ -98,7 +102,7 @@ export function linkCandidates<T extends { event_date: string }>(plan: PlannedSe
 
 export const STATUS_TONE: Record<PlanStatus, "neutral" | "positive" | "marker"> = { planned: "neutral", done: "positive", skipped: "marker" };
 
-/** "3 × Standing start — 500 m, 34.000" */
+/** "3 × Standing start — 500 m, 34.000, Track bike · 50×15" */
 export function effortText(
   target: PlannedEffort,
   words: { reps: (n: number, label: string) => string; event: (key: StandardEventKey) => string; time: (ms: number) => string },
@@ -107,6 +111,7 @@ export function effortText(
   const parts = [
     target.event_key ? words.event(target.event_key as StandardEventKey) : null,
     target.target_time_ms != null ? words.time(target.target_time_ms) : null,
+    target.gear_label ?? null,
   ].filter(Boolean);
   return parts.length > 0 ? `${head} — ${parts.join(", ")}` : head;
 }

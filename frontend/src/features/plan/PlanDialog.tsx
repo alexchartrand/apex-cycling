@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { errorMessage } from "../../api/errors";
 import { Button, Dialog, IconButton, Input, Select, Textarea, useToast } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
+import { gearChoices } from "../equipment/gear";
+import { useBikes } from "../equipment/useEquipment";
 import { EVENT_START_TYPES, STANDARD_EVENT_KEYS, type StandardEventKey } from "../records/types";
 import { emptyEffortRow, emptyPlanForm, planFormErrors, planFormFrom, planPayload, withRowEvent, type EffortRow, type PlanForm } from "./planForm";
 import type { PlannedSession } from "./types";
@@ -18,6 +20,7 @@ export function PlanDialog({ athleteId, date, plan, onClose }: { athleteId: stri
   const fmt = useFormat();
   const { toast } = useToast();
   const save = useSavePlan(athleteId);
+  const gears = gearChoices(useBikes(athleteId).data ?? []);
   const [form, setForm] = useState<PlanForm>(() => (plan ? planFormFrom(plan, fmt) : emptyPlanForm(date)));
   const [showErrors, setShowErrors] = useState(false);
   const errors = planFormErrors(form);
@@ -134,6 +137,18 @@ export function PlanDialog({ athleteId, date, plan, onClose }: { athleteId: stri
                   error={problem === "time" ? t("dialog.timeInvalid") : undefined}
                   onChange={(e) => setRow(index, { ...row, time: e.target.value })}
                 />
+                {gears.length > 0 && (
+                  <div className="plan-form__gear">
+                    <Select label={t("dialog.gear")} value={row.gearId} onChange={(e) => setRow(index, { ...row, gearId: e.target.value })}>
+                      <option value="">{t("dialog.anyGear")}</option>
+                      {gears.map((gear) => (
+                        <option key={gear.id} value={gear.id}>
+                          {gear.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                )}
                 <IconButton
                   aria-label={t("dialog.removeBlock", { n: index + 1 })}
                   className="plan-form__remove"

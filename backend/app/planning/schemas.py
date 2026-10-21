@@ -14,14 +14,16 @@ def _blank_is_none(value: str | None) -> str | None:
 
 
 class PlannedEffort(BaseModel):
-    """One block of the plan: "3 × 500 m standing, aiming at 34.0". The event
-    and time are optional (a "4 × 10 min tempo" has neither)."""
+    """One block of the plan: "3 × 500 m standing, aiming at 34.0, on 50×15".
+    The event, time and gear are optional (a "4 × 10 min tempo" has none)."""
 
     label: str = Field(min_length=1, max_length=100)
     reps: int = Field(default=1, ge=1, le=99)
     event_key: str | None = None
     start_type: StartType | None = None
     target_time_ms: int | None = Field(default=None, gt=0, le=7_200_000)
+    # One of the athlete's gears (`equipment`), to ride it in.
+    gear_setup_id: uuid.UUID | None = None
 
     @field_validator("label")
     @classmethod
@@ -43,6 +45,11 @@ class PlannedEffort(BaseModel):
         if self.start_type is not None and self.start_type not in event.start_types:
             raise ValueError(f"{self.event_key} has no {self.start_type.value} start")
         return self
+
+
+class PlannedEffortRead(PlannedEffort):
+    # "Track bike · 50×15"; the gear id and its label are null once the gear is deleted.
+    gear_label: str | None = None
 
 
 class PlannedSessionWrite(BaseModel):
@@ -106,7 +113,7 @@ class PlannedSessionRead(BaseModel):
     planned_date: date
     title: str
     description: str | None
-    targets: list[PlannedEffort]
+    targets: list[PlannedEffortRead]
     status: PlanStatus
     created_by_name: str | None
     # The session that was ridden, when linked.

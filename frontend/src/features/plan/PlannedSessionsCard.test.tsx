@@ -20,8 +20,8 @@ const plan = (over: Partial<PlannedSession> = {}): PlannedSession => ({
   title: "Kilo openers",
   description: "Full recovery",
   targets: [
-    { label: "Standing start", reps: 3, event_key: "500m", start_type: "standing", target_time_ms: 34_000 },
-    { label: "Tempo", reps: 1, event_key: null, start_type: null, target_time_ms: null },
+    { label: "Standing start", reps: 3, event_key: "500m", start_type: "standing", target_time_ms: 34_000, gear_setup_id: "g1", gear_label: "Track bike · 50×15" },
+    { label: "Tempo", reps: 1, event_key: null, start_type: null, target_time_ms: null, gear_setup_id: null },
   ],
   status: "planned",
   created_by_name: "Coach Cam",
@@ -74,7 +74,7 @@ describe("PlannedSessionsCard", () => {
     await user.click(await screen.findByRole("button", { name: /Kilo openers/ }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText("Full recovery")).toBeInTheDocument();
-    expect(within(dialog).getByText("3 × Standing start — 500 m, 34.000 s")).toBeInTheDocument();
+    expect(within(dialog).getByText("3 × Standing start — 500 m, 34.000 s, Track bike · 50×15")).toBeInTheDocument();
     expect(within(dialog).getByText("Tempo")).toBeInTheDocument();
     expect(within(dialog).getByText(/by Coach Cam/)).toBeInTheDocument();
   });
@@ -153,7 +153,7 @@ describe("PlannedSessionsCard", () => {
     expect(JSON.parse(init.body)).toMatchObject({
       title: "Openers",
       description: null,
-      targets: [{ label: "Starts", reps: 1, event_key: "500m", start_type: null, target_time_ms: 34_500 }],
+      targets: [{ label: "Starts", reps: 1, event_key: "500m", start_type: null, target_time_ms: 34_500, gear_setup_id: null }],
     });
   });
 });

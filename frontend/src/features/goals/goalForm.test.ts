@@ -18,6 +18,7 @@ describe("goal form", () => {
       target_time_ms: 70_500,
       target_date: "2026-12-01",
       track_id: null,
+      bike_id: null,
       notes: null,
     });
     expect(goalCreatePayload({ ...filled, trackId: "t1", notes: " Worlds " })).toMatchObject({ track_id: "t1", notes: "Worlds" });
@@ -25,7 +26,7 @@ describe("goal form", () => {
   });
 
   it("an update never carries the event or start", () => {
-    expect(goalUpdatePayload(filled)).toEqual({ target_time_ms: 70_500, target_date: "2026-12-01", track_id: null, notes: null });
+    expect(goalUpdatePayload(filled)).toEqual({ target_time_ms: 70_500, target_date: "2026-12-01", track_id: null, bike_id: null, notes: null });
   });
 
   it("switching to an event without the current start falls back to its own", () => {

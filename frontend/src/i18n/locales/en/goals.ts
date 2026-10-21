@@ -17,7 +17,7 @@ export default {
   predicted: "Predicted {{time}}.",
   predictedBeats: "That beats the target by {{gap}} s.",
   predictedShort: "That is {{gap}} s short of the target.",
-  basis: "From {{power}} W over {{duration}} (best since {{date}}) and a CdA of {{cda}} ({{label}}). An estimate: track power and position can differ.",
+  basis: "From {{power}} W over {{duration}} (best since {{date}}) a CdA of {{cda}} ({{label}}) and {{rider}} kg + {{bike}} kg of bike. An estimate: track power and position can differ.",
   problems: {
     no_track: "Pick a track to predict a flying lap: its length sets the distance.",
     no_track_length: "This track has no length yet, so a lap's distance is unknown.",
@@ -37,6 +37,9 @@ export default {
     dateInvalid: "Pick a date",
     track: "Track",
     trackHint: "Count only results on this track, or on any.",
+    bike: "Bike",
+    bikeHint: "Its weight goes into the predicted time.",
+    testBike: "The aero test's bike",
     notes: "Notes",
   },
   saved: "Goal saved",

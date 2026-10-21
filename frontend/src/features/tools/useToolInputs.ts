@@ -2,11 +2,15 @@ import { useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useActiveAthlete } from "../athletes/useActiveAthlete";
 import { useCurrentMetrics } from "../athletes/useAthlete";
+import { weighedBikes } from "../equipment/gear";
+import { useBikes } from "../equipment/useEquipment";
 import { useTracks } from "../training/useTraining";
 import type { TrackSummary } from "../training/types";
 import { airDensity, makeSetup, type Setup } from "./physics";
 import {
   FALLBACK_TIME,
+  GEAR_PARAM,
+  NO_GEAR,
   MODE_PARAM,
   NUMBER_FIELDS,
   START_PARAM,
@@ -23,12 +27,14 @@ import {
 
 /** Values a track fills in; picking another track drops them from the URL. */
 const TRACK_KEYS: NumberKey[] = ["lapM", "elevationM", "tempC"];
+/** The gearing fields a saved gear fills in. */
+const GEAR_KEYS: NumberKey[] = ["chainring", "cog", "rolloutM"];
 /** `?track=none` keeps the URL from falling back to the first track. */
 export const NO_TRACK = "none";
 
 /**
  * The tools' shared inputs, read from the URL with the active athlete's
- * weight and track facts as defaults (see toolInputs.ts). Setters write to
+ * weight, first bike and gear, and track facts as defaults (see toolInputs.ts). Setters write to
  * the URL (replacing the history entry, so typing doesn't stack up Back steps).
  */
 export function useToolInputs() {
@@ -36,6 +42,8 @@ export function useToolInputs() {
   const athleteId = useActiveAthlete().data?.id ?? "";
   const metrics = useCurrentMetrics(athleteId);
   const tracksQuery = useTracks(athleteId);
+  const bikesQuery = useBikes(athleteId);
+  const bikes = useMemo(() => bikesQuery.data ?? [], [bikesQuery.data]);
 
   const tracks = useMemo(() => tracksQuery.data ?? [], [tracksQuery.data]);
   const trackParam = params.get(TRACK_PARAM);
@@ -46,15 +54,20 @@ export function useToolInputs() {
         (trackParam === null ? (tracks.find((candidate) => candidate.length_m != null) ?? null) : null));
 
   const weight = metrics.data?.weight_kg?.value ?? null;
-  const prefill = useMemo(
-    () => ({
+  const noGear = params.get(GEAR_PARAM) === NO_GEAR;
+  const prefill = useMemo(() => {
+    const gear = noGear ? undefined : bikes.flatMap((bike) => bike.gears)[0];
+    return {
       riderKg: weight,
+      bikeKg: weighedBikes(bikes)[0]?.weight_kg ?? null,
+      chainring: gear?.chainring_teeth ?? null,
+      cog: gear?.cog_teeth ?? null,
+      rolloutM: gear ? gear.rollout_mm / 1000 : null,
       lapM: track?.length_m ?? null,
       elevationM: track?.elevation_m ?? null,
       tempC: track?.default_temp_c ?? null,
-    }),
-    [weight, track],
-  );
+    };
+  }, [weight, bikes, noGear, track]);
 
   const field = useCallback(
     (key: NumberKey): FieldState => readNumberField(key, rawValue(params, key, prefill)),
@@ -78,6 +91,20 @@ export function useToolInputs() {
 
   const set = useCallback(
     (key: NumberKey, raw: string) => update((next) => next.set(NUMBER_FIELDS[key].param, raw)),
+    [update],
+  );
+  /** A saved gear's teeth and rollout, or null for none (back to the typical gear). */
+  const setGear = useCallback(
+    (values: { chainring: number; cog: number; rolloutM: number } | null) =>
+      update((next) => {
+        if (values === null) {
+          next.set(GEAR_PARAM, NO_GEAR);
+          for (const key of GEAR_KEYS) next.delete(NUMBER_FIELDS[key].param);
+          return;
+        }
+        next.delete(GEAR_PARAM);
+        for (const key of GEAR_KEYS) next.set(NUMBER_FIELDS[key].param, String(values[key as keyof typeof values]));
+      }),
     [update],
   );
   const setParam = useCallback((param: string, value: string) => update((next) => next.set(param, value)), [update]);
@@ -129,7 +156,10 @@ export function useToolInputs() {
     params,
     field,
     set,
+    setGear,
+    noGear,
     setParam,
+    bikes,
     tracks,
     track,
     setTrack,

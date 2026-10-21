@@ -15,6 +15,7 @@ router = APIRouter(prefix="/athletes/{athlete_id}/goals", tags=["goals"])
 
 _NO_GOAL = HTTPException(status.HTTP_404_NOT_FOUND, "Goal not found")
 _NO_TRACK = HTTPException(status.HTTP_404_NOT_FOUND, "Track not found")
+_NO_BIKE = HTTPException(status.HTTP_404_NOT_FOUND, "Bike not found")
 
 
 @router.get("", response_model=list[GoalRead])
@@ -39,6 +40,8 @@ async def create_goal(
         return await service.create_goal(db, athlete, current_user, payload)
     except UnknownTrackError:
         raise _NO_TRACK from None
+    except service.UnknownBike:
+        raise _NO_BIKE from None
 
 
 @router.patch("/{goal_id}", response_model=GoalRead)
@@ -54,6 +57,8 @@ async def update_goal(
         updated = await service.update_goal(db, athlete, current_user, goal_id, payload)
     except UnknownTrackError:
         raise _NO_TRACK from None
+    except service.UnknownBike:
+        raise _NO_BIKE from None
     if updated is None:
         raise _NO_GOAL
     return updated

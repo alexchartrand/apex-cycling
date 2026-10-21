@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, Input, SegmentedControl, Select } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
+import { BikeSelect } from "../equipment/BikeSelect";
+import { bikeOfWeight, weighedBikes } from "../equipment/gear";
 import { NUMBER_FIELDS, type NumberKey, type NumberSpec, type StartKind, START_PARAM } from "./toolInputs";
 import type { ToolInputs } from "./useToolInputs";
 
@@ -60,9 +62,18 @@ export function StartControl({ inputs }: { inputs: ToolInputs }) {
 export function RiderCard({ inputs }: { inputs: ToolInputs }) {
   const { t } = useTranslation("tools");
   const { t: tc } = useTranslation("common");
+  const bikes = weighedBikes(inputs.bikes);
+  const bike = bikeOfWeight(bikes, inputs.field("bikeKg").value);
   return (
     <Card title={t("rider.title")} as="section">
       <div className="tools-grid">
+        <BikeSelect
+          bikes={bikes}
+          value={bike?.id ?? null}
+          onChange={(picked) => picked?.weight_kg != null && inputs.set("bikeKg", String(picked.weight_kg))}
+          emptyLabel={t("rider.typedBike")}
+          emptyDisabled={bike != null}
+        />
         <NumberField
           inputs={inputs}
           name="riderKg"

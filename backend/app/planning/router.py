@@ -20,6 +20,7 @@ router = APIRouter(prefix="/athletes/{athlete_id}/planned-sessions", tags=["plan
 
 _NO_PLAN = HTTPException(status.HTTP_404_NOT_FOUND, "Planned session not found")
 _FORBIDDEN = HTTPException(status.HTTP_403_FORBIDDEN, "You can't change this planned session")
+_NO_GEAR = HTTPException(status.HTTP_404_NOT_FOUND, "Gear not found")
 
 
 @router.get("", response_model=list[PlannedSessionRead])
@@ -42,7 +43,10 @@ async def create_planned_session(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PlannedSessionRead:
-    return await service.create_plan(db, athlete, current_user, payload)
+    try:
+        return await service.create_plan(db, athlete, current_user, payload)
+    except service.UnknownGear:
+        raise _NO_GEAR from None
 
 
 @router.patch("/{plan_id}", response_model=PlannedSessionRead)
@@ -58,6 +62,8 @@ async def update_planned_session(
         updated = await service.update_plan(db, athlete, current_user, plan_id, payload)
     except service.NotAllowed:
         raise _FORBIDDEN from None
+    except service.UnknownGear:
+        raise _NO_GEAR from None
     if updated is None:
         raise _NO_PLAN
     return updated

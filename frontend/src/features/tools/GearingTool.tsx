@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, DataTable, Input, StatTile, type DataTableColumn } from "../../components/ui";
+import { Card, DataTable, Input, Select, StatTile, type DataTableColumn } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
+import { gearChoices, gearOf } from "../equipment/gear";
 import { parseTimeInput } from "../records/timeInput";
 import { cadenceForLapTime, cadenceTable, type CadenceRow } from "./gearing";
 import { developmentM, gearInches } from "./physics";
+import { NO_GEAR } from "./toolInputs";
 import { NumberField, TrackSelect } from "./ToolFields";
 import type { ToolInputs } from "./useToolInputs";
 
@@ -19,6 +21,17 @@ export function GearingTool({ inputs }: { inputs: ToolInputs }) {
   const lap = inputs.field("lapM").value;
   const gearValid = chainring !== null && cog !== null && rollout !== null;
   const targetLapMs = parseTimeInput(targetLap);
+  const choices = gearChoices(inputs.bikes);
+  // "none" once chosen, even if the typical gear happens to be a saved one.
+  const savedGear = inputs.noGear ? null : gearOf(inputs.bikes, chainring, cog, rollout === null ? null : rollout * 1000);
+  const pickGear = (gearId: string) => {
+    if (gearId === NO_GEAR) {
+      inputs.setGear(null);
+      return;
+    }
+    const gear = inputs.bikes.flatMap((bike) => bike.gears).find((candidate) => candidate.id === gearId);
+    if (gear) inputs.setGear({ chainring: gear.chainring_teeth, cog: gear.cog_teeth, rolloutM: gear.rollout_mm / 1000 });
+  };
 
   const columns: DataTableColumn<CadenceRow>[] = [
     { id: "cadence", header: t("gearing.cadence"), cell: (row) => `${row.cadenceRpm} ${tc("units.rpm")}`, primary: true },
@@ -31,6 +44,25 @@ export function GearingTool({ inputs }: { inputs: ToolInputs }) {
     <div className="tools-tool">
       <Card title={t("gearing.title")} as="section">
         <div className="tools-grid">
+          {choices.length > 0 && (
+            <Select
+              label={t("gearing.savedGear")}
+              value={savedGear?.id ?? (inputs.noGear ? NO_GEAR : "")}
+              onChange={(event) => pickGear(event.target.value)}
+            >
+              {!inputs.noGear && savedGear == null && (
+                <option value="" disabled>
+                  {t("gearing.typedGear")}
+                </option>
+              )}
+              <option value={NO_GEAR}>{t("gearing.noGear")}</option>
+              {choices.map((choice) => (
+                <option key={choice.id} value={choice.id}>
+                  {choice.label}
+                </option>
+              ))}
+            </Select>
+          )}
           <NumberField inputs={inputs} name="chainring" label={t("gearing.chainring")} />
           <NumberField inputs={inputs} name="cog" label={t("gearing.cog")} />
           <NumberField inputs={inputs} name="rolloutM" label={t("gearing.rollout")} suffix="m" hint={t("gearing.rolloutHint")} />

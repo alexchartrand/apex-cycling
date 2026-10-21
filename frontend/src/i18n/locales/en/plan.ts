@@ -43,6 +43,8 @@ export default {
     noEvent: "No event",
     start: "Start",
     anyStart: "Any",
+    gear: "Gear",
+    anyGear: "Any gear",
     time: "Target",
     timeInvalid: "Like 34.0 or 1:10.5",
     addBlock: "Add an effort",

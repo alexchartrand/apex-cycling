@@ -194,6 +194,30 @@ async def test_the_prediction_uses_power_and_cda(client, db_session):
     assert 40_000 < predicted["time_ms"] < 200_000
 
 
+async def test_the_prediction_rides_the_goal_bike(client, db_session):
+    athlete_id = await _setup(client, db_session)
+    url = f"/athletes/{athlete_id}/goals"
+    await client.post(f"/athletes/{athlete_id}/aero-tests", json={"external_event_id": "evt-aero", "label": "Hoods"})
+    bike = (await client.post(f"/athletes/{athlete_id}/bikes", json={"name": "Pursuit", "weight_kg": 6.5})).json()
+
+    default = (await client.post(url, json=_goal())).json()
+    assert default["bike_id"] is None and default["prediction"]["bike_kg"] == 8  # the aero test's default bike
+    on_bike = (await client.patch(f"{url}/{default['id']}", json={"bike_id": bike["id"]})).json()
+    assert on_bike["bike_name"] == "Pursuit" and on_bike["prediction"]["bike_kg"] == 6.5
+    assert on_bike["prediction"]["time_ms"] < default["prediction"]["time_ms"]
+
+    async with _other_client() as stranger:
+        await _signup(stranger, "stranger@example.com")
+        their_athlete = (await stranger.get("/athletes/me")).json()["id"]
+        their_bike = (await stranger.post(f"/athletes/{their_athlete}/bikes", json={"name": "Theirs"})).json()
+    assert (await client.patch(f"{url}/{default['id']}", json={"bike_id": their_bike["id"]})).status_code == 404
+    assert (await client.post(url, json=_goal(bike_id=str(uuid.uuid4())))).status_code == 404
+
+    assert (await client.delete(f"/athletes/{athlete_id}/bikes/{bike['id']}")).status_code == 204
+    after = (await client.get(url)).json()[0]
+    assert after["bike_id"] is None and after["prediction"]["bike_kg"] == 8
+
+
 async def test_the_prediction_says_what_is_missing(client, db_session):
     athlete_id = await _setup(client, db_session, upload=False, weight=False)
     track_id = await _track_id(client, athlete_id)

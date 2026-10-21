@@ -41,6 +41,10 @@ export default {
     development: "{{value}} m par tour",
     gearInches: "{{value}} po",
   },
+  bikeSelect: {
+    label: "Vélo",
+    withWeight: "{{name}} ({{weight}} kg)",
+  },
   picker: {
     session: "Braquet",
     effort: "Braquet",

@@ -13,6 +13,8 @@ const base: Goal = {
   start_type: "standing",
   track_id: null,
   track_name: null,
+  bike_id: null,
+  bike_name: null,
   target_time_ms: 70_000,
   target_date: "2099-01-01",
   notes: "Nationals",
@@ -31,6 +33,7 @@ const base: Goal = {
     cda_m2: 0.231,
     cda_label: "Hoods",
     rider_kg: 74,
+    bike_kg: 8,
   },
   prediction_problem: null,
 };
@@ -60,6 +63,7 @@ describe("GoalsCard", () => {
   beforeEach(() => {
     goals = [base];
     fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (url.endsWith("/bikes")) return Promise.resolve(json([]));
       if (url.endsWith("/tracks")) return Promise.resolve(json([{ id: "t1", name: "Bromont" }]));
       if (init?.method === "POST") return Promise.resolve(json(base, 201));
       return Promise.resolve(json(goals));
@@ -127,6 +131,7 @@ describe("GoalsCard", () => {
       target_time_ms: 70_500,
       target_date: "2099-02-03",
       track_id: null,
+      bike_id: null,
       notes: null,
     });
   });

@@ -16,6 +16,7 @@ from app.analysis import physics
 from app.athletes.models import Athlete
 from app.athletes.service import metrics_at
 from app.auth.models import User
+from app.equipment.models import Bike
 from app.goals.models import Goal
 from app.goals.prediction import pick_power, predict_time_s
 from app.goals.schemas import GoalBest, GoalPrediction, GoalRead, GoalUpdate, GoalWrite
@@ -39,8 +40,9 @@ class _Inputs:
     board: list[RecordEntry]
     today: date
     tracks: dict[uuid.UUID, Track]
+    bikes: dict[uuid.UUID, Bike]
     _power: list | None = None
-    _cda: tuple[float, str] | None | bool = False  # False = not looked up yet
+    _cda: tuple[float, str, float] | None | bool = False  # False = not looked up yet
     _weight: float | None | bool = False
 
     async def power_curve(self):
@@ -51,13 +53,14 @@ class _Inputs:
             )
         return self._power
 
-    async def cda(self) -> tuple[float, str] | None:
-        """The CdA of the newest saved aero test that has a fit, with its label."""
+    async def cda(self) -> tuple[float, str, float] | None:
+        """The CdA of the newest saved aero test that has a fit, with its label
+        and the bike weight it was worked out with."""
         if self._cda is False:
             self._cda = None
             for test in await aero_service.list_tests(self.db, self.athlete, self.viewer):
                 if test.fit is not None:
-                    self._cda = (test.fit.cda_m2, test.label)
+                    self._cda = (test.fit.cda_m2, test.label, test.conditions.bike_kg)
                     break
         return self._cda
 
@@ -71,6 +74,7 @@ class _Inputs:
 async def _inputs(db: AsyncSession, athlete: Athlete, viewer: User) -> _Inputs:
     zone = await athlete_timezone(db, athlete)
     tracks = {track.id: track for track in await db.scalars(select(Track))}
+    bikes = {bike.id: bike for bike in await db.scalars(select(Bike).where(Bike.athlete_id == athlete.id))}
     return _Inputs(
         db=db,
         athlete=athlete,
@@ -78,6 +82,7 @@ async def _inputs(db: AsyncSession, athlete: Athlete, viewer: User) -> _Inputs:
         board=await get_records_board(db, athlete.id),
         today=local_day(datetime.now(timezone.utc), zone),
         tracks=tracks,
+        bikes=bikes,
     )
 
 
@@ -125,7 +130,9 @@ async def _predict(
         elevation_m=track.elevation_m if track and track.elevation_m is not None else 0.0,
         humidity_pct=aero_service.DEFAULT_HUMIDITY_PCT,
     )
-    setup = physics.Setup(mass_kg=weight + aero_service.DEFAULT_BIKE_KG, cda_m2=cda[0], rho=rho)
+    bike = inputs.bikes.get(goal.bike_id) if goal.bike_id else None
+    bike_kg = bike.weight_kg if bike is not None and bike.weight_kg is not None else cda[2]
+    setup = physics.Setup(mass_kg=weight + bike_kg, cda_m2=cda[0], rho=rho)
     seconds = predict_time_s(distance_m, goal.start_type == StartType.STANDING.value, pick.power_w, setup)
     if seconds is None:
         return None, "no_power"
@@ -138,6 +145,7 @@ async def _predict(
             cda_m2=cda[0],
             cda_label=cda[1],
             rider_kg=weight,
+            bike_kg=bike_kg,
         ),
         None,
     )
@@ -154,12 +162,15 @@ async def _read(inputs: _Inputs, goal: Goal) -> GoalRead:
     best = _best(inputs.board, goal.event_key, goal.start_type, goal.track_id)
     prediction, problem = await _predict(inputs, goal, best)
     track = inputs.tracks.get(goal.track_id) if goal.track_id else None
+    bike = inputs.bikes.get(goal.bike_id) if goal.bike_id else None
     return GoalRead(
         id=goal.id,
         event_key=goal.event_key,
         start_type=StartType(goal.start_type),
         track_id=goal.track_id,
         track_name=track.name if track else None,
+        bike_id=goal.bike_id,
+        bike_name=bike.name if bike else None,
         target_time_ms=goal.target_time_ms,
         target_date=goal.target_date,
         notes=goal.notes,
@@ -198,8 +209,21 @@ async def _check_track(db: AsyncSession, track_id: uuid.UUID | None) -> None:
         raise UnknownTrackError(str(track_id))
 
 
+class UnknownBike(Exception):
+    """The bike isn't one of this athlete's."""
+
+
+async def _check_bike(db: AsyncSession, athlete_id: uuid.UUID, bike_id: uuid.UUID | None) -> None:
+    if bike_id is None:
+        return
+    bike = await db.get(Bike, bike_id)
+    if bike is None or bike.athlete_id != athlete_id:
+        raise UnknownBike
+
+
 async def create_goal(db: AsyncSession, athlete: Athlete, viewer: User, payload: GoalWrite) -> GoalRead:
     await _check_track(db, payload.track_id)
+    await _check_bike(db, athlete.id, payload.bike_id)
     inputs = await _inputs(db, athlete, viewer)
     baseline = _best(inputs.board, payload.event_key, payload.start_type.value, payload.track_id)
     goal = Goal(
@@ -207,6 +231,7 @@ async def create_goal(db: AsyncSession, athlete: Athlete, viewer: User, payload:
         event_key=payload.event_key,
         start_type=payload.start_type.value,
         track_id=payload.track_id,
+        bike_id=payload.bike_id,
         target_time_ms=payload.target_time_ms,
         target_date=payload.target_date,
         notes=payload.notes,
@@ -225,6 +250,7 @@ async def update_goal(
         return None
     changes = payload.model_dump(exclude_unset=True)
     await _check_track(db, changes.get("track_id"))
+    await _check_bike(db, athlete.id, changes.get("bike_id"))
     for field_name, value in changes.items():
         setattr(goal, field_name, value)
     await db.commit()
