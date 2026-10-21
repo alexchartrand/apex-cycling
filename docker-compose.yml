@@ -59,9 +59,9 @@ services:
         condition: service_healthy
       backend:
         condition: service_started
-    # backend runs migrations on start; restart if the worker's first poll
-    # races ahead of them and hits missing tables.
-    restart: "on-failure:5"
+    # No restart policy: the daemon would bring the worker back alone after an
+    # unclean Docker/WSL shutdown. A poll that races the backend's migrations
+    # is logged and retried on the next interval, not fatal.
 
   frontend:
     build:
