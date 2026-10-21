@@ -62,8 +62,15 @@ def visible_conditions(athlete: Athlete, viewer: User) -> list:
 
 
 def _ftp_on(metric_rows: Sequence[AthleteMetric], day: date) -> float | None:
+    """The FTP in force on `day`; before the first one was entered, that first
+    one (rides older than the athlete's records still deserve a TSS)."""
     ftp: DatedValue | None = metrics_as_of(list(metric_rows), day)["ftp_w"]
-    return float(ftp.value) if ftp else None
+    if ftp is None:
+        entered = [row for row in metric_rows if row.ftp_w is not None]
+        if entered:
+            return float(min(entered, key=lambda row: row.effective_date).ftp_w)
+        return None
+    return float(ftp.value)
 
 
 def _tss(activity: Activity, ftp_w: float | None) -> float | None:
@@ -211,8 +218,9 @@ async def analyze_activity(db: AsyncSession, athlete: Athlete, activity: Activit
     """Zones, intensity and per-kilogram figures of one activity, from its
     stored samples and the athlete's FTP / weight / max HR on that day."""
     day = local_day(activity.start_time, await athlete_timezone(db, athlete))
-    values = metrics_as_of(await _metric_rows(db, athlete.id), day)
-    ftp = float(values["ftp_w"].value) if values["ftp_w"] else None
+    rows = await _metric_rows(db, athlete.id)
+    values = metrics_as_of(rows, day)
+    ftp = _ftp_on(rows, day)
     weight = float(values["weight_kg"].value) if values["weight_kg"] else None
     max_hr = int(values["max_hr"].value) if values["max_hr"] else None
 

@@ -107,6 +107,13 @@ async def test_tss_follows_the_ftp_in_force_on_the_day(client):
     # ... a correction effective before it does.
     await client.post(f"/athletes/{athlete_id}/metrics", json={"effective_date": "2026-05-15", "ftp_w": 200})
     assert await tss() == pytest.approx(599 / 3600 * (250 / 200) ** 2 * 100, rel=1e-3)
+    # A ride older than the first FTP ever entered uses that first FTP.
+    await client.post(f"/athletes/{athlete_id}/metrics", json={"effective_date": "2026-09-01", "ftp_w": 220})
+    for earlier in ("2026-05-15", "2026-05-01", "2026-07-01"):
+        stale = [m["id"] for m in (await client.get(f"/athletes/{athlete_id}/metrics")).json() if m["effective_date"] == earlier]
+        for metric_id in stale:
+            await client.delete(f"/athletes/{athlete_id}/metrics/{metric_id}")
+    assert await tss() == pytest.approx(599 / 3600 * (250 / 220) ** 2 * 100, rel=1e-3)
     # No FTP left at all: no TSS.
     metric_ids = [m["id"] for m in (await client.get(f"/athletes/{athlete_id}/metrics")).json()]
     for metric_id in metric_ids:
