@@ -1,13 +1,18 @@
-import { CalendarDays, ChevronLeft, ChevronRight, CloudDownload, HeartPulse, Zap } from "lucide-react";
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, CloudDownload, HeartPulse, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Badge, Button, ButtonLink, Card, EmptyState, IconButton, PageHeader, SegmentedControl, SkeletonGroup } from "../components/ui";
 import { localDay, mpsToKmh } from "../features/activities/format";
 import { groupItemsByMonth, mergeLog, monthCalendar, type LogItem } from "../features/activities/logItems";
 import { useActivities } from "../features/activities/useActivities";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
+import { PlanDetailDialog } from "../features/plan/PlanDetailDialog";
+import { PlanDialog } from "../features/plan/PlanDialog";
+import { usePlannedSessions } from "../features/plan/usePlan";
+import type { PlannedSession } from "../features/plan/types";
 import { useSessions } from "../features/training/useTraining";
-import { parseLocalDate } from "../i18n/format";
+import { localIsoDate, parseLocalDate } from "../i18n/format";
 import { useFormat } from "../i18n/useFormat";
 import "./LogPage.css";
 
@@ -24,12 +29,15 @@ function itemHref(item: LogItem): string {
 }
 
 export function LogPage() {
-  const { t } = useTranslation(["training", "activities", "shell", "common"]);
+  const { t } = useTranslation(["training", "activities", "shell", "common", "plan"]);
   const fmt = useFormat();
   const athlete = useActiveAthlete();
   const athleteId = athlete.data?.id ?? "";
   const sessions = useSessions(athleteId);
   const activities = useActivities(athleteId);
+  const plans = usePlannedSessions(athleteId);
+  const [planOpen, setPlanOpen] = useState<PlannedSession | null>(null);
+  const [planning, setPlanning] = useState(false);
   const [params, setParams] = useSearchParams();
   const view: View = params.get("view") === "calendar" ? "calendar" : "list";
 
@@ -73,12 +81,17 @@ export function LogPage() {
                 { value: "calendar", label: t("activities:log.views.calendar") },
               ]}
             />
+            <Button variant="secondary" icon={<CalendarPlus aria-hidden />} onClick={() => setPlanning(true)} disabled={athleteId === ""}>
+              {t("plan:add")}
+            </Button>
             <ButtonLink to="/import" variant="secondary" icon={<CloudDownload aria-hidden />}>
               {t("shell:nav.import")}
             </ButtonLink>
           </>
         }
       />
+      {planning && <PlanDialog key="new" athleteId={athleteId} date={localIsoDate()} plan={null} onClose={() => setPlanning(false)} />}
+      {planOpen && <PlanDetailDialog key={planOpen.id} athleteId={athleteId} plan={plans.data?.find((p) => p.id === planOpen.id) ?? planOpen} onClose={() => setPlanOpen(null)} />}
 
       {loading && <SkeletonGroup lines={6} />}
       {failed && <p role="alert">{t("log.loadError")}</p>}
@@ -128,7 +141,7 @@ export function LogPage() {
               {t("activities:log.today")}
             </Button>
           </div>
-          <Calendar year={year} monthIndex={monthIndex} items={items} />
+          <Calendar year={year} monthIndex={monthIndex} items={items} plans={plans.data ?? []} onOpenPlan={setPlanOpen} />
         </section>
       )}
     </>
@@ -206,8 +219,8 @@ function DateBlock({ date }: { date: Date }) {
   );
 }
 
-function Calendar({ year, monthIndex, items }: { year: number; monthIndex: number; items: LogItem[] }) {
-  const { t } = useTranslation(["activities"]);
+function Calendar({ year, monthIndex, items, plans, onOpenPlan }: { year: number; monthIndex: number; items: LogItem[]; plans: PlannedSession[]; onOpenPlan: (plan: PlannedSession) => void }) {
+  const { t } = useTranslation(["activities", "plan"]);
   const fmt = useFormat();
   const weeks = monthCalendar(year, monthIndex, items);
   const todayKey = localDay(new Date().toISOString());
@@ -215,7 +228,9 @@ function Calendar({ year, monthIndex, items }: { year: number; monthIndex: numbe
   const weekdays = Array.from({ length: 7 }, (_, i) =>
     new Intl.DateTimeFormat(fmt.locale, { weekday: "short" }).format(new Date(2024, 0, 1 + i)),
   );
-  const inMonth = weeks.flat().some((day) => day.inMonth && day.items.length > 0);
+  const plansByDay = new Map<string, PlannedSession[]>();
+  for (const plan of plans) plansByDay.set(plan.planned_date, [...(plansByDay.get(plan.planned_date) ?? []), plan]);
+  const inMonth = weeks.flat().some((day) => day.inMonth && (day.items.length > 0 || plansByDay.has(day.day)));
 
   return (
     <Card padding="flush">
@@ -250,6 +265,18 @@ function Calendar({ year, monthIndex, items }: { year: number; monthIndex: numbe
                       {item.kind === "session" ? item.session.event_name : (item.activity.name ?? t("activities:log.ride"))}
                     </span>
                   </Link>
+                </li>
+              ))}
+              {(plansByDay.get(day.day) ?? []).map((plan) => (
+                <li key={plan.id}>
+                  <button
+                    type="button"
+                    className={`log-calendar__chip log-calendar__chip--plan log-calendar__chip--plan-${plan.status}`}
+                    title={t("plan:chip", { title: plan.title })}
+                    onClick={() => onOpenPlan(plan)}
+                  >
+                    <span className="log-calendar__chip-text">{plan.title}</span>
+                  </button>
                 </li>
               ))}
             </ul>

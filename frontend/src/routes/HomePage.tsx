@@ -7,6 +7,7 @@ import { FitnessCard } from "../features/activities/FitnessCard";
 import { useActivities } from "../features/activities/useActivities";
 import "../features/activities/Activities.css";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
+import { PlannedSessionsCard } from "../features/plan/PlannedSessionsCard";
 import { GoalsCard } from "../features/goals/GoalsCard";
 import { useIngestionRuns, useTransponderAssignments } from "../features/connections/useConnections";
 import { bestLap, DEFAULT_LAP_DISTANCE_M, flying200Ms, startOfWeek, summarizeWeek } from "../features/training/sessionStats";
@@ -84,6 +85,8 @@ export function HomePage() {
       )}
 
       {athleteId !== "" && <FitnessCard athleteId={athleteId} hideWhenEmpty />}
+
+      {athleteId !== "" && <PlannedSessionsCard athleteId={athleteId} />}
 
       {athleteId !== "" && !noData && <GoalsCard athleteId={athleteId} />}
 

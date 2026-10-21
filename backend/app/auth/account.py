@@ -30,6 +30,7 @@ from app.connections.models import DataSourceConnection, IngestionRun, RawSnapsh
 from app.db.base import Base
 from app.equipment.models import Bike, GearSetup
 from app.goals.models import Goal
+from app.planning.models import PlannedSession
 from app.training.models import (
     EventClass,
     EventTrack,
@@ -185,6 +186,17 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
                 Goal,
                 list(await db.scalars(select(Goal).where(Goal.athlete_id == athlete.id).order_by(Goal.target_date))),
             ),
+            (
+                "planned_sessions.csv",
+                PlannedSession,
+                list(
+                    await db.scalars(
+                        select(PlannedSession)
+                        .where(PlannedSession.athlete_id == athlete.id)
+                        .order_by(PlannedSession.planned_date)
+                    )
+                ),
+            ),
             ("tracks.csv", Track, list(await db.scalars(select(Track).where(Track.id.in_(track_ids))))),
             (
                 "track_loops.csv",
@@ -263,6 +275,7 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     await db.execute(delete(Activity).where(Activity.athlete_id == athlete.id))
 
     await db.execute(delete(AeroTest).where(AeroTest.athlete_id == athlete.id))  # they point at sessions too
+    await db.execute(delete(PlannedSession).where(PlannedSession.athlete_id == athlete.id))
     event_ids = select(TrainingEvent.id).where(TrainingEvent.athlete_id == athlete.id)
     lap_ids = select(TrainingLap.id).where(TrainingLap.athlete_id == athlete.id)
     await db.execute(delete(SessionComment).where(SessionComment.training_event_id.in_(event_ids)))
@@ -316,6 +329,9 @@ async def delete_account(db: AsyncSession, user: User) -> None:
         update(TransponderAssignment)
         .where(TransponderAssignment.created_by_user_id == user.id)
         .values(created_by_user_id=None)
+    )
+    await db.execute(
+        update(PlannedSession).where(PlannedSession.created_by_user_id == user.id).values(created_by_user_id=None)
     )
     await db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == user.id))
     await db.execute(

@@ -13,6 +13,7 @@ from app.admin.router import router as admin_router
 from app.aero.router import router as aero_router
 from app.equipment.router import router as equipment_router
 from app.goals.router import router as goals_router
+from app.planning.router import router as planning_router
 from app.athletes.coach_router import router as coach_links_router
 from app.athletes.router import router as athletes_router
 from app.auth.router import router as auth_router
@@ -81,6 +82,7 @@ api_router.include_router(admin_router)
 api_router.include_router(aero_router)
 api_router.include_router(equipment_router)
 api_router.include_router(goals_router)
+api_router.include_router(planning_router)
 
 
 @api_router.get("/health")

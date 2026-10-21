@@ -225,6 +225,29 @@
   border-left: 3px solid var(--chart-2);
 }
 
+/* A planned session: an outline, filled in once done. It's a button (it opens the plan), so it resets the button look. */
+.log-calendar__chip--plan {
+  width: 100%;
+  border: 1px dashed var(--color-border-strong);
+  border-left: 3px solid var(--color-marker);
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.log-calendar__chip--plan-done {
+  border-style: solid;
+  border-left-color: var(--color-positive);
+  background: var(--color-positive-soft);
+}
+
+.log-calendar__chip--plan-skipped {
+  border-left-color: var(--color-border-strong);
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
 .log-calendar__chip-text {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -255,6 +278,17 @@
 
   .log-calendar__chip--activity {
     background: var(--chart-2);
+  }
+
+  .log-calendar__chip--plan {
+    border: 1.5px dashed var(--color-marker);
+    background: transparent;
+  }
+
+  .log-calendar__chip--plan-done {
+    border-style: solid;
+    border-color: var(--color-positive);
+    background: var(--color-positive-soft);
   }
 
   .log-calendar__chip-text {

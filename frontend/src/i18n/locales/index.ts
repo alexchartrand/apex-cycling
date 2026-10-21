@@ -9,6 +9,7 @@ import enEquipment from "./en/equipment";
 import enGoals from "./en/goals";
 import enHome from "./en/home";
 import enImport from "./en/import";
+import enPlan from "./en/plan";
 import enRecords from "./en/records";
 import enSettings from "./en/settings";
 import enShell from "./en/shell";
@@ -25,6 +26,7 @@ import frEquipment from "./fr/equipment";
 import frGoals from "./fr/goals";
 import frHome from "./fr/home";
 import frImport from "./fr/import";
+import frPlan from "./fr/plan";
 import frRecords from "./fr/records";
 import frSettings from "./fr/settings";
 import frShell from "./fr/shell";
@@ -49,6 +51,7 @@ export const resources = {
     aero: enAero,
     equipment: enEquipment,
     goals: enGoals,
+    plan: enPlan,
   },
   fr: {
     common: frCommon,
@@ -67,6 +70,7 @@ export const resources = {
     aero: frAero,
     equipment: frEquipment,
     goals: frGoals,
+    plan: frPlan,
   },
 } as const;
 
