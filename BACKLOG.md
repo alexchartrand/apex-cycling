@@ -80,7 +80,7 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 
 **Phase 9 — Equipment, goals, engagement**
 - [x] T9.1 Bikes & gears (migration 0007; `bikes` + `gear_setups` (chainring, cog, measured rollout, tire) under `/athletes/{id}/bikes|gears`, a gear assigned to a session (`PUT …/sessions/{event}/gear`) or to one effort (`…/efforts/{first_lap}/gear`, overriding the session's); laps and efforts then carry `est_cadence_rpm` = lap speed ÷ development, the aero lab takes the session bike's weight as its default; `/equipment` page replaces the "coming soon" placeholder; covered by account export/delete). Cadence assumes no coasting (fine on a fixed gear) and needs the track length. Checked in a browser on real LS-03407 laps (EN/FR, light/dark, phone); 50×15 on 2100 mm gives 84 rpm at 25.4 s/250 m, as computed by hand
-- [ ] T9.2 Goals
+- [x] T9.2 Goals (migration 0008; `goals` = event + start + optional track + target time + date, CRUD under `/athletes/{id}/goals`; the best so far, gap, progress (from the best when the goal was set) and days left are computed on every read; a predicted time simulates the event (T6.1 physics) at the best average power over the duration nearest the target (power curve of the last 120 days) with the CdA of the newest saved aero test, and says what is missing (`no_cda`, `no_power`, `no_weight`, `no_track[_length]`) when it can't; Goals card on Home, EN/FR). The prediction is an estimate (road/trainer power and position-dependent CdA), validated against the physics only, not against a real ride
 - [ ] T9.3 Coach planned sessions
 - [ ] T9.4 Opt-in club leaderboard
 

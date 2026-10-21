@@ -6,6 +6,7 @@ import enClub from "./en/club";
 import enCoach from "./en/coach";
 import enCommon from "./en/common";
 import enEquipment from "./en/equipment";
+import enGoals from "./en/goals";
 import enHome from "./en/home";
 import enImport from "./en/import";
 import enRecords from "./en/records";
@@ -21,6 +22,7 @@ import frClub from "./fr/club";
 import frCoach from "./fr/coach";
 import frCommon from "./fr/common";
 import frEquipment from "./fr/equipment";
+import frGoals from "./fr/goals";
 import frHome from "./fr/home";
 import frImport from "./fr/import";
 import frRecords from "./fr/records";
@@ -46,6 +48,7 @@ export const resources = {
     activities: enActivities,
     aero: enAero,
     equipment: enEquipment,
+    goals: enGoals,
   },
   fr: {
     common: frCommon,
@@ -63,6 +66,7 @@ export const resources = {
     activities: frActivities,
     aero: frAero,
     equipment: frEquipment,
+    goals: frGoals,
   },
 } as const;
 

@@ -14,6 +14,7 @@ from app.connections.models import (  # noqa: F401
     TransponderAssignment,
 )
 from app.equipment.models import Bike, GearSetup  # noqa: F401
+from app.goals.models import Goal  # noqa: F401
 from app.ops.models import WorkerHeartbeat  # noqa: F401
 from app.training.models import (  # noqa: F401
     EventClass,

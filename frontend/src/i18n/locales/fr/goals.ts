@@ -1,0 +1,49 @@
+import type { LocaleNamespace } from "../types";
+import type en from "../en/goals";
+
+export default {
+  title: "Objectifs",
+  add: "Ajouter un objectif",
+  edit: "Modifier l'objectif",
+  remove: "Supprimer l'objectif",
+  empty:
+    "Fixez un temps à battre pour une épreuve et une date : vous verrez où vous en êtes et le temps que prédisent votre puissance et votre CdA.",
+  anyTrack: "Toute piste",
+  target: "Objectif",
+  best: "Meilleur",
+  gap: "À gagner",
+  reached: "Atteint",
+  progress: "Progression vers {{event}}",
+  by: "d'ici le {{date}}",
+  daysLeft_one: "{{count}} jour restant",
+  daysLeft_other: "{{count}} jours restants",
+  due: { reached: "Atteint", today: "À atteindre aujourd'hui", overdue: "Échéance passée", upcoming: "À venir" },
+  predicted: "Prédit : {{time}}.",
+  predictedBeats: "C'est {{gap}} s sous l'objectif.",
+  predictedShort: "Il manque {{gap}} s pour l'objectif.",
+  basis:
+    "D'après {{power}} W sur {{duration}} (meilleur depuis le {{date}}) et un CdA de {{cda}} ({{label}}). Une estimation : la puissance et la position sur piste peuvent différer.",
+  problems: {
+    no_track: "Choisissez une piste pour prédire un tour lancé : sa longueur donne la distance.",
+    no_track_length: "Cette piste n'a pas encore de longueur, la distance d'un tour est donc inconnue.",
+    no_weight: "Ajoutez votre poids dans Réglages pour obtenir un temps prédit.",
+    no_power: "Un temps prédit demande une sortie avec puissance des quatre derniers mois. Importez-en une.",
+    no_cda: "Un temps prédit demande un CdA : enregistrez un test aéro dans le Labo aéro.",
+  },
+  dialog: {
+    addTitle: "Ajouter un objectif",
+    editTitle: "Modifier l'objectif",
+    event: "Épreuve",
+    start: "Départ",
+    time: "Temps visé",
+    timeHint: "Par exemple 1:10,5 ou 17,2",
+    timeInvalid: "Entrez un temps comme 1:10,5 ou 17,2",
+    date: "Date limite",
+    dateInvalid: "Choisissez une date",
+    track: "Piste",
+    trackHint: "Ne compter que les résultats de cette piste, ou de toutes.",
+    notes: "Notes",
+  },
+  saved: "Objectif enregistré",
+  delete: { title: "Supprimer cet objectif ?", body: "Vos résultats sont conservés ; seul l'objectif disparaît.", done: "Objectif supprimé" },
+} satisfies LocaleNamespace<typeof en>;

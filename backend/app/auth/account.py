@@ -29,6 +29,7 @@ from app.clubs.service import delete_empty_clubs_of
 from app.connections.models import DataSourceConnection, IngestionRun, RawSnapshot, TransponderAssignment
 from app.db.base import Base
 from app.equipment.models import Bike, GearSetup
+from app.goals.models import Goal
 from app.training.models import (
     EventClass,
     EventTrack,
@@ -179,6 +180,11 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
                     )
                 ),
             ),
+            (
+                "goals.csv",
+                Goal,
+                list(await db.scalars(select(Goal).where(Goal.athlete_id == athlete.id).order_by(Goal.target_date))),
+            ),
             ("tracks.csv", Track, list(await db.scalars(select(Track).where(Track.id.in_(track_ids))))),
             (
                 "track_loops.csv",
@@ -268,6 +274,7 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     await db.execute(delete(EventTrack).where(EventTrack.training_event_id.in_(event_ids)))
     await db.execute(delete(EventClass).where(EventClass.training_event_id.in_(event_ids)))
     await db.execute(delete(TrainingEvent).where(TrainingEvent.athlete_id == athlete.id))
+    await db.execute(delete(Goal).where(Goal.athlete_id == athlete.id))
     await db.execute(delete(GearSetup).where(GearSetup.athlete_id == athlete.id))  # sessions and laps pointed at them
     await db.execute(delete(Bike).where(Bike.athlete_id == athlete.id))
     await db.execute(delete(AthleteMetric).where(AthleteMetric.athlete_id == athlete.id))
