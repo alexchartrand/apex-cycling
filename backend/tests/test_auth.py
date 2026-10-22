@@ -20,7 +20,7 @@ async def test_signup_creates_user_and_self_athlete(client, db_session):
         assert user is not None
         athlete = await session.scalar(select(Athlete).where(Athlete.user_id == user.id))
         assert athlete is not None
-        assert athlete.club_id is None
+        assert athlete.club_ids == []
         assert athlete.display_name == "Alex"
 
 

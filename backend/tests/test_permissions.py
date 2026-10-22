@@ -123,7 +123,8 @@ async def test_club_admin_can_access_managed_athlete_without_login(client, db_se
         )
         session.add(membership)
 
-        junior = Athlete(user_id=None, club_id=club.id, display_name="Junior Athlete")
+        junior = Athlete(user_id=None, display_name="Junior Athlete")
+        junior.join_club(club.id)
         session.add(junior)
         await session.commit()
         junior_id = junior.id

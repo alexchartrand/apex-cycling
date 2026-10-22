@@ -57,6 +57,8 @@ export default {
     title: "Athletes",
     name: "Name",
     kind: "Type",
+    category: "Age category",
+    allCategories: "All ages",
     managed: "Managed profile",
     member: "Member",
     view: "View data",

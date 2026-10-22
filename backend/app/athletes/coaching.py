@@ -19,7 +19,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus
+from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus, on_roster_of
 from app.athletes.schemas import CoachLinkRead
 from app.auth.models import User
 from app.clubs.models import ClubMembership, ClubRole
@@ -37,12 +37,22 @@ class NotAllowed(Exception):
     """The caller isn't entitled to make this request (router: 403)."""
 
 
-async def club_role(db: AsyncSession, user_id: uuid.UUID, club_id: uuid.UUID | None) -> ClubRole | None:
-    if club_id is None:
-        return None
-    return await db.scalar(
-        select(ClubMembership.role).where(ClubMembership.user_id == user_id, ClubMembership.club_id == club_id)
+async def has_club_role(
+    db: AsyncSession, user_id: uuid.UUID, athlete: Athlete, roles: tuple[ClubRole, ...]
+) -> bool:
+    """Whether the user holds one of `roles` in any club the athlete is on the roster of."""
+    if not athlete.club_ids:
+        return False
+    found = await db.scalar(
+        select(ClubMembership.id)
+        .where(
+            ClubMembership.user_id == user_id,
+            ClubMembership.club_id.in_(athlete.club_ids),
+            ClubMembership.role.in_(roles),
+        )
+        .limit(1)
     )
+    return found is not None
 
 
 async def admin_club_ids(db: AsyncSession, user_id: uuid.UUID) -> set[uuid.UUID]:
@@ -57,7 +67,7 @@ async def admin_club_ids(db: AsyncSession, user_id: uuid.UUID) -> set[uuid.UUID]
 def _speaks_for(user_id: uuid.UUID, admin_clubs: set[uuid.UUID], athlete: Athlete) -> bool:
     if athlete.user_id is not None:
         return athlete.user_id == user_id
-    return athlete.club_id in admin_clubs
+    return any(club_id in admin_clubs for club_id in athlete.club_ids)
 
 
 async def speaks_for_athlete(db: AsyncSession, user: User, athlete: Athlete) -> bool:
@@ -113,7 +123,7 @@ async def request_as_athlete(db: AsyncSession, actor: User, athlete: Athlete, co
     For a managed athlete the club's admin assigns one of the club's own
     coaches directly."""
     if athlete.user_id is None:
-        if await club_role(db, coach_user_id, athlete.club_id) not in (ClubRole.COACH, ClubRole.CLUB_ADMIN):
+        if not await has_club_role(db, coach_user_id, athlete, (ClubRole.COACH, ClubRole.CLUB_ADMIN)):
             raise NotAllowed("A managed athlete can only be given a coach of their own club")
         status = CoachAthleteStatus.ACTIVE
     else:
@@ -229,7 +239,7 @@ async def inbox(db: AsyncSession, user: User) -> list[CoachLinkRead]:
     mine = or_(
         CoachAthlete.coach_user_id == user.id,
         Athlete.user_id == user.id,
-        and_(Athlete.user_id.is_(None), Athlete.club_id.in_(admin_clubs)),
+        and_(Athlete.user_id.is_(None), on_roster_of(admin_clubs)),
     )
     rows = await _rows(db, CoachAthlete.status.in_(PENDING), mine)
     reads = [_read(r, user, admin_clubs) for r in rows]

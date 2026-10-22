@@ -103,10 +103,6 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
   - Why: the cards show sessions, laps and mean RPE for the last 7 days against the 7 before. A real fitness/fatigue/form model (CTL/ATL/TSB) needs power or HR data, which arrives with the import phases.
   - Notes: `app/athletes/dashboard.py` is the one place to extend.
 
-- [ ] 🟢 One club per athlete profile — *added 10/19*
-  - Why: `Athlete.club_id` is a single column, so joining a second club as an athlete is refused (coach and admin memberships can be in any number of clubs).
-  - Notes: fine for "the club" audience; revisit if athletes need to ride for two clubs. The roster API also doesn't return the UCI category yet (only the birthdate).
-
 - [ ] 🟡 Refactoring of backend — *added 7/28*
   - Why: Backend business logic is tightly coupled to the database layer. Which make maintenance and testting difficult.
   - Notes: Adding manual dependency injection. Use of the repository pattern and DTO
@@ -127,6 +123,8 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
   - Notes: only if plain-Postgres progression queries get slow.
 
 ## ✅ Done
+- [x] Roster API doesn't return the UCI category — *added 10/19, resolved 10/22 (`RosterAthlete.category`, as of today; the club roster page has a Category column and an age-category filter)*
+- [x] One club per athlete profile — *added 10/19, resolved 10/22 (migration 0015: `athletes.club_id` → `athlete_clubs` roster table with the leaderboard consent per club; managed athletes stay on one club; TSS timezone = club joined first)*
 - [x] Long lap tables on phones — *added 10/19, resolved 10/22 (phones show the first 12 laps with a "Show all N laps" toggle; CSV and desktop untouched)*
 - [x] Frontend test suite times out under CPU load — *added 10/20, fixed 10/21*
 - [x] M4b — Roster management + coach dashboard — *added 7/23, resolved 10/19 (Phase 4, T4.1–T4.4)*

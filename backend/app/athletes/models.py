@@ -3,8 +3,23 @@ import uuid
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    false,
+    func,
+    select,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
@@ -24,7 +39,6 @@ class Athlete(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id"), unique=True, nullable=True, index=True
     )
-    club_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("clubs.id"), nullable=True, index=True)
     display_name: Mapped[str] = mapped_column(String(255))
     birthdate: Mapped[date | None] = mapped_column(Date, nullable=True)
     # "female" / "male": the competition category, which is what UCI age
@@ -32,12 +46,51 @@ class Athlete(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     sex: Mapped[str | None] = mapped_column(String(32), nullable=True)
     height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # The club whose leaderboard this athlete agreed to appear on. Opting in
-    # only counts while it is still the athlete's club (`club_id`), so moving
-    # to another club never carries the consent along.
-    leaderboard_club_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("clubs.id"), nullable=True)
 
     user: Mapped["User | None"] = relationship(back_populates="athlete", foreign_keys=[user_id])
+    # Always loaded: access checks and the API read it on every request. Change
+    # it through the collection (`join_club` / `leave_club`), not by bulk SQL
+    # on a loaded athlete, or the loaded copy goes stale.
+    club_links: Mapped[list["AthleteClub"]] = relationship(
+        lazy="selectin", cascade="all, delete-orphan", order_by="AthleteClub.joined_at, AthleteClub.club_id"
+    )
+
+    @property
+    def club_ids(self) -> list[uuid.UUID]:
+        """The rosters this athlete is on, earliest joined first."""
+        return [link.club_id for link in self.club_links]
+
+    @property
+    def leaderboard_club_ids(self) -> list[uuid.UUID]:
+        """The clubs whose leaderboard this athlete agreed to appear on."""
+        return [link.club_id for link in self.club_links if link.leaderboard_opt_in]
+
+    def join_club(self, club_id: uuid.UUID) -> None:
+        if club_id not in self.club_ids:
+            self.club_links.append(AthleteClub(club_id=club_id))
+
+    def leave_club(self, club_id: uuid.UUID) -> None:
+        """Takes the athlete off the roster, which also withdraws the leaderboard
+        consent given there for good."""
+        self.club_links = [link for link in self.club_links if link.club_id != club_id]
+
+
+class AthleteClub(Base):
+    """One roster entry. `leaderboard_opt_in` is the athlete's consent to
+    appear on this club's leaderboard; it lives on the entry, so leaving the
+    club (or the club going away) ends it and rejoining never revives it."""
+
+    __tablename__ = "athlete_clubs"
+
+    athlete_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("athletes.id"), primary_key=True)
+    club_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("clubs.id"), primary_key=True, index=True)
+    leaderboard_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+def on_roster_of(club_ids) -> ColumnElement[bool]:
+    """`Athlete` rows on the roster of any of `club_ids` (a collection or a subquery)."""
+    return Athlete.id.in_(select(AthleteClub.athlete_id).where(AthleteClub.club_id.in_(club_ids)))
 
 
 class CoachAthleteStatus(str, enum.Enum):

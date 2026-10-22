@@ -57,9 +57,8 @@ async def _athlete_to_coach(db: AsyncSession, user: User, payload: CoachLinkRequ
         return await coaching.athlete_for_email(db, payload.athlete_email)
     athlete = await db.get(Athlete, payload.athlete_id)
     # The club roster is what a coach can browse; anything else is invisible.
-    if athlete is None or await coaching.club_role(db, user.id, athlete.club_id) not in (
-        ClubRole.COACH,
-        ClubRole.CLUB_ADMIN,
+    if athlete is None or not await coaching.has_club_role(
+        db, user.id, athlete, (ClubRole.COACH, ClubRole.CLUB_ADMIN)
     ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Athlete not found")
     return athlete

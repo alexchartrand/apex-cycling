@@ -14,7 +14,7 @@ async def test_get_my_athlete_returns_self_profile(client, db_session):
     body = resp.json()
     assert body["user_id"] == user["id"]
     assert body["display_name"] == "Me"
-    assert body["club_id"] is None
+    assert body["club_ids"] == []
 
 
 async def test_get_my_athlete_requires_auth(client):

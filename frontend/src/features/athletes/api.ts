@@ -13,6 +13,14 @@ export function updateAthlete(athleteId: string, payload: AthleteUpdate): Promis
   return apiFetch<Athlete>(`/athletes/${athleteId}`, { method: "PATCH", body: JSON.stringify(payload) });
 }
 
+/** Only the athlete (or a club admin for a managed athlete) may change this. */
+export function setLeaderboardConsent(athleteId: string, clubId: string, optIn: boolean): Promise<Athlete> {
+  return apiFetch<Athlete>(`/athletes/${athleteId}/clubs/${clubId}/leaderboard`, {
+    method: "PUT",
+    body: JSON.stringify({ opt_in: optIn }),
+  });
+}
+
 export function listMetrics(athleteId: string): Promise<AthleteMetric[]> {
   return apiFetch<AthleteMetric[]>(`/athletes/${athleteId}/metrics`);
 }

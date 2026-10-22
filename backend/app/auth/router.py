@@ -5,7 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, HTTPException, 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.athletes.models import Athlete
+from app.athletes.models import Athlete, on_roster_of
 from app.auth.account import build_export, delete_account
 from app.auth.deps import get_current_user
 from app.auth.models import User
@@ -292,7 +292,7 @@ async def _can_issue_reset_link(db: AsyncSession, admin: User, target: User) -> 
         )
     )
     via_athlete = await db.scalar(
-        select(Athlete.id).where(Athlete.user_id == target.id, Athlete.club_id.in_(admin_club_ids))
+        select(Athlete.id).where(Athlete.user_id == target.id, on_roster_of(admin_club_ids))
     )
     return via_membership is not None or via_athlete is not None
 

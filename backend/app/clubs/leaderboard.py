@@ -1,7 +1,7 @@
 """The club leaderboard: the best time per athlete on one track for one event,
-among athletes who opted in. Opting in is per club (`Athlete.leaderboard_club_id`
-must still be the athlete's `club_id`), so it follows the athlete's consent and
-ends when they leave. Times come from `personal_records` (computed from sqorz
+among athletes who opted in. Opting in is per club (`AthleteClub.leaderboard_opt_in`
+on the athlete's roster entry), so it follows the athlete's consent and ends
+when they leave. Times come from `personal_records` (computed from sqorz
 laps) and from manual results that name the track; Strava activities never feed
 either, which keeps them out of every shared view.
 """
@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.athletes.categories import age_category
-from app.athletes.models import Athlete
+from app.athletes.models import Athlete, AthleteClub
 from app.clubs.schemas import Leaderboard, LeaderboardEntry
 from app.training.efforts import StartType
 from app.training.models import ManualResult, PersonalRecord, Track
@@ -22,7 +22,13 @@ from app.training.models import ManualResult, PersonalRecord, Track
 async def opted_in_athletes(db: AsyncSession, club_id: uuid.UUID) -> list[Athlete]:
     return list(
         await db.scalars(
-            select(Athlete).where(Athlete.club_id == club_id, Athlete.leaderboard_club_id == club_id)
+            select(Athlete).where(
+                Athlete.id.in_(
+                    select(AthleteClub.athlete_id).where(
+                        AthleteClub.club_id == club_id, AthleteClub.leaderboard_opt_in.is_(True)
+                    )
+                )
+            )
         )
     )
 

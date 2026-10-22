@@ -12,13 +12,13 @@ import { useViewAthlete } from "./useViewAthlete";
 const athlete = (id: string, name: string): Athlete => ({
   id,
   user_id: null,
-  club_id: null,
+  club_ids: [],
   display_name: name,
   birthdate: null,
   sex: null,
   height_cm: null,
   category: null,
-  leaderboard_opt_in: false,
+  leaderboard_club_ids: [],
 });
 
 describe("active athlete", () => {

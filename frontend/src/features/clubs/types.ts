@@ -31,6 +31,8 @@ export interface RosterAthlete {
   managed: boolean;
   birthdate: string | null;
   sex: "female" | "male" | null;
+  /** UCI age category code as of today, from the birthdate. */
+  category: string | null;
 }
 
 export interface ManagedAthletePayload {

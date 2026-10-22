@@ -9,16 +9,20 @@ import type { User } from "../auth/types";
 import { PrivacySettings } from "./PrivacySettings";
 
 const user = { id: "u1", email: "me@example.com" } as User;
+const clubs = [
+  { id: "c1", name: "CNCB", slug: "cncb", timezone: "UTC", role: "athlete" },
+  { id: "c2", name: "Velo Nord", slug: "velo-nord", timezone: "UTC", role: "athlete" },
+];
 const athlete = (over: Partial<Athlete> = {}): Athlete => ({
   id: "a1",
   user_id: "u1",
-  club_id: "c1",
+  club_ids: ["c1"],
   display_name: "Me",
   birthdate: null,
   sex: null,
   height_cm: null,
   category: null,
-  leaderboard_opt_in: false,
+  leaderboard_club_ids: [],
   ...over,
 });
 
@@ -26,7 +30,11 @@ describe("PrivacySettings", () => {
   const fetchMock = vi.fn();
 
   beforeEach(() => {
-    fetchMock.mockResolvedValue(new Response(JSON.stringify(athlete({ leaderboard_opt_in: true })), { status: 200 }));
+    fetchMock.mockImplementation(async (url: string) =>
+      url === "/api/clubs"
+        ? new Response(JSON.stringify(clubs), { status: 200 })
+        : new Response(JSON.stringify(athlete({ leaderboard_club_ids: ["c1"] })), { status: 200 }),
+    );
     vi.stubGlobal("fetch", fetchMock);
   });
 
@@ -47,32 +55,40 @@ describe("PrivacySettings", () => {
     );
   }
 
-  it("opts in with a PATCH of just that setting", async () => {
+  const clubCalls = () => fetchMock.mock.calls.filter(([url]) => url !== "/api/clubs");
+
+  it("opts in to one club with a PUT of just that club", async () => {
     renderSettings(athlete());
-    const checkbox = screen.getByRole("checkbox", { name: /best times on my club's leaderboard/ });
+    const checkbox = await screen.findByRole("checkbox", { name: "Show my best times on the CNCB leaderboard" });
     expect(checkbox).not.toBeChecked();
     await userEvent.setup().click(checkbox);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("/api/athletes/a1");
-    expect(init.method).toBe("PATCH");
-    expect(JSON.parse(init.body)).toEqual({ leaderboard_opt_in: true });
+    await waitFor(() => expect(clubCalls()).toHaveLength(1));
+    const [url, init] = clubCalls()[0];
+    expect(url).toBe("/api/athletes/a1/clubs/c1/leaderboard");
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(init.body)).toEqual({ opt_in: true });
   });
 
-  it("is off the table without a club", () => {
-    renderSettings(athlete({ club_id: null }));
-    expect(screen.getByRole("checkbox")).toBeDisabled();
-    expect(screen.getByText(/aren't on a club's roster/)).toBeInTheDocument();
+  it("has a choice per club the athlete rides for", async () => {
+    renderSettings(athlete({ club_ids: ["c1", "c2"], leaderboard_club_ids: ["c2"] }));
+    expect(await screen.findByRole("checkbox", { name: /CNCB leaderboard/ })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Velo Nord leaderboard/ })).toBeChecked();
   });
 
-  it("isn't a coach's to change on an athlete's behalf", () => {
-    renderSettings(athlete({ user_id: "someone-else", leaderboard_opt_in: true }));
-    expect(screen.getByRole("checkbox")).toBeDisabled();
+  it("is off the table without a club", async () => {
+    renderSettings(athlete({ club_ids: [] }));
+    expect(await screen.findByText(/aren't on a club's roster/)).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("isn't a coach's to change on an athlete's behalf", async () => {
+    renderSettings(athlete({ user_id: "someone-else", leaderboard_club_ids: ["c1"] }));
+    expect(await screen.findByRole("checkbox")).toBeDisabled();
     expect(screen.getByText("Only the athlete decides this setting.")).toBeInTheDocument();
   });
 
-  it("a club admin can decide for a managed athlete", () => {
+  it("a club admin can decide for a managed athlete", async () => {
     renderSettings(athlete({ user_id: null }));
-    expect(screen.getByRole("checkbox")).toBeEnabled();
+    expect(await screen.findByRole("checkbox")).toBeEnabled();
   });
 });

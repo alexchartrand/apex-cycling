@@ -5,8 +5,8 @@ export default {
     title: "Privacy",
     description: "Your data is private. The only thing shared with others is what you choose here.",
     leaderboard: {
-      label: "Show my best times on my club's leaderboard",
-      hint: "Club members can then see your name, your best time per track and event, and your age category. Turn it off at any time and you disappear from it at once. Leaving the club also turns it off.",
+      label: "Show my best times on the {{club}} leaderboard",
+      hint: "Club members can then see your name, your best time per track and event, and your age category. Turn it off at any time and you disappear from it at once. Leaving a club also turns it off for that club.",
       noClub: "You aren't on a club's roster yet.",
       toClubs: "Go to clubs",
       notYours: "Only the athlete decides this setting.",

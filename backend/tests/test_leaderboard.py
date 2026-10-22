@@ -43,8 +43,8 @@ async def _result(client, athlete_id: str, track_id: str, time_ms: int, **over) 
     assert (await client.post(f"/athletes/{athlete_id}/manual-results", json=body)).status_code == 201
 
 
-async def _opt_in(client, athlete_id: str, value: bool = True) -> dict:
-    resp = await client.patch(f"/athletes/{athlete_id}", json={"leaderboard_opt_in": value})
+async def _opt_in(client, athlete_id: str, club_id: str, value: bool = True) -> dict:
+    resp = await client.put(f"/athletes/{athlete_id}/clubs/{club_id}/leaderboard", json={"opt_in": value})
     assert resp.status_code == 200, resp.text
     return resp.json()
 
@@ -86,8 +86,8 @@ async def test_only_opted_in_athletes_are_ranked(client, db_session):
         assert (await client.get(url, params=params)).json()["entries"] == []  # nobody agreed yet
         assert (await client.get(url, params=params)).json()["participants"] == 0
 
-        await _opt_in(ann, await _my_athlete(ann))
-        await _opt_in(bob, await _my_athlete(bob))
+        await _opt_in(ann, await _my_athlete(ann), club["id"])
+        await _opt_in(bob, await _my_athlete(bob), club["id"])
         board = (await ann.get(url, params=params)).json()
         assert board["track_name"] == "Tour complet" and board["participants"] == 2
         assert [(e["rank"], e["display_name"], e["time_ms"], e["is_me"]) for e in board["entries"]] == [
@@ -98,7 +98,7 @@ async def test_only_opted_in_athletes_are_ranked(client, db_session):
         assert "Cleo" not in str(board)  # she never opted in
 
         # Opting out takes the name off straight away.
-        await _opt_in(bob, await _my_athlete(bob), False)
+        await _opt_in(bob, await _my_athlete(bob), club["id"], False)
         assert [e["display_name"] for e in (await client.get(url, params=params)).json()["entries"]] == ["Ann"]
     finally:
         await _close(riders)
@@ -117,7 +117,7 @@ async def test_equal_times_share_a_rank_and_filters_narrow_the_board(client, db_
             athlete_id = await _my_athlete(rider)
             await _result(rider, athlete_id, track["id"], time_ms)
             await _set_profile(db_session, athlete_id, **profiles[rider])
-            await _opt_in(rider, athlete_id)
+            await _opt_in(rider, athlete_id, club["id"])
 
         url, params = _board(club["id"], track["id"])
         board = (await client.get(url, params=params)).json()
@@ -146,9 +146,9 @@ async def test_the_best_of_sqorz_records_and_manual_results_counts(client, db_se
         # The admin rides in the club too, and opted in.
         async with db_session() as session:
             athlete = await session.get(Athlete, uuid.UUID(admin_athlete))
-            athlete.club_id = uuid.UUID(club["id"])
+            athlete.join_club(uuid.UUID(club["id"]))
             await session.commit()
-        await _opt_in(client, admin_athlete)
+        await _opt_in(client, admin_athlete, club["id"])
 
         url = f"/clubs/{club['id']}/leaderboard"
         params = {"event_key": record["event_key"], "start_type": record["start_type"], "track_id": track["id"]}
@@ -167,21 +167,21 @@ async def test_only_the_athlete_decides_to_appear(client, db_session):
     try:
         ann = riders[0]
         ann_id = await _my_athlete(ann)
-        assert (await ann.get(f"/athletes/{ann_id}")).json()["leaderboard_opt_in"] is False
-        assert (await _opt_in(ann, ann_id))["leaderboard_opt_in"] is True
+        consent = f"/athletes/{ann_id}/clubs/{club['id']}/leaderboard"
+        assert (await ann.get(f"/athletes/{ann_id}")).json()["leaderboard_club_ids"] == []
+        assert (await _opt_in(ann, ann_id, club["id"]))["leaderboard_club_ids"] == [club["id"]]
 
         # The club admin sees Ann's roster entry but can't change her privacy setting.
-        resp = await client.patch(f"/athletes/{ann_id}", json={"leaderboard_opt_in": False})
-        assert resp.status_code == 403
-        assert (await client.get(f"/athletes/{ann_id}")).json()["leaderboard_opt_in"] is True
+        assert (await client.put(consent, json={"opt_in": False})).status_code == 403
+        assert (await client.get(f"/athletes/{ann_id}")).json()["leaderboard_club_ids"] == [club["id"]]
 
         # A coach with an active link neither.
         from tests.test_activity_fusion import _coach_of
 
         async with _coach_of(db_session, ann_id) as coach:
-            assert (await coach.patch(f"/athletes/{ann_id}", json={"leaderboard_opt_in": False})).status_code == 403
+            assert (await coach.put(consent, json={"opt_in": False})).status_code == 403
             assert (await coach.patch(f"/athletes/{ann_id}", json={"height_cm": 170})).status_code == 200  # the rest still works
-        assert (await ann.patch(f"/athletes/{ann_id}", json={"leaderboard_opt_in": None})).status_code == 422
+        assert (await ann.put(consent, json={"opt_in": None})).status_code == 422
     finally:
         await _close(riders)
 
@@ -190,13 +190,16 @@ async def test_a_club_admin_decides_for_a_managed_athlete(client, db_session):
     await _signup(client, "boss@example.com", "Boss")
     club = await _club(client)
     managed = (await client.post(f"/clubs/{club['id']}/athletes", json={"display_name": "Junior"})).json()
-    assert (await _opt_in(client, managed["id"]))["leaderboard_opt_in"] is True
-    assert (await _opt_in(client, managed["id"], False))["leaderboard_opt_in"] is False
+    assert (await _opt_in(client, managed["id"], club["id"]))["leaderboard_club_ids"] == [club["id"]]
+    assert (await _opt_in(client, managed["id"], club["id"], False))["leaderboard_club_ids"] == []
 
 
-async def test_opting_in_needs_a_club(client):
+async def test_opting_in_needs_the_club(client):
     await _signup(client, "solo@example.com")
-    resp = await client.patch(f"/athletes/{await _my_athlete(client)}", json={"leaderboard_opt_in": True})
+    other = (await client.post("/clubs", json={"name": "Elsewhere", "timezone": "UTC"})).json()
+    # The creator is an admin there, not on its athlete roster.
+    athlete_id = await _my_athlete(client)
+    resp = await client.put(f"/athletes/{athlete_id}/clubs/{other['id']}/leaderboard", json={"opt_in": True})
     assert resp.status_code == 422
 
 
@@ -206,31 +209,44 @@ async def test_leaving_a_club_withdraws_the_consent_for_good(client, db_session)
         ann = riders[0]
         ann_id = await _my_athlete(ann)
         await _result(ann, ann_id, track["id"], 70_000)
-        await _opt_in(ann, ann_id)
+        await _opt_in(ann, ann_id, club["id"])
         members = (await client.get(f"/clubs/{club['id']}/members")).json()
         membership = next(m["id"] for m in members if m["display_name"] == "Ann")
 
         assert (await client.delete(f"/clubs/{club['id']}/members/{membership}")).status_code == 204
-        assert (await ann.get("/athletes/me")).json()["leaderboard_opt_in"] is False
+        assert (await ann.get("/athletes/me")).json()["leaderboard_club_ids"] == []
 
         await _join(ann, client, club["id"], "athlete")  # back again
-        assert (await ann.get("/athletes/me")).json()["leaderboard_opt_in"] is False
+        assert (await ann.get("/athletes/me")).json()["leaderboard_club_ids"] == []
         url, params = _board(club["id"], track["id"])
         assert (await client.get(url, params=params)).json()["entries"] == []
     finally:
         await _close(riders)
 
 
-async def test_consent_does_not_follow_the_athlete_to_another_club(client, db_session):
+async def test_consent_is_per_club(client, db_session):
+    """An athlete on two rosters appears only on the board of the club she agreed to."""
     club, track, riders = await _club_with_riders(client, db_session)
     try:
         ann = riders[0]
         ann_id = await _my_athlete(ann)
-        await _opt_in(ann, ann_id)
+        await _result(ann, ann_id, track["id"], 70_000)
         other = (await client.post("/clubs", json={"name": "Other", "timezone": "UTC"})).json()
-        # Moved by hand (a roster change that didn't go through the leave flow).
-        await _set_profile(db_session, ann_id, club_id=uuid.UUID(other["id"]))
-        assert (await ann.get("/athletes/me")).json()["leaderboard_opt_in"] is False
+        await _link_facility(db_session, other["id"], track["id"])
+        await _join(ann, client, other["id"], "athlete")
+        assert set((await ann.get("/athletes/me")).json()["club_ids"]) == {club["id"], other["id"]}
+
+        await _opt_in(ann, ann_id, club["id"])
+        url, params = _board(club["id"], track["id"])
+        assert [e["display_name"] for e in (await client.get(url, params=params)).json()["entries"]] == ["Ann"]
+        url, params = _board(other["id"], track["id"])
+        assert (await client.get(url, params=params)).json()["entries"] == []
+
+        # Leaving one club leaves the other roster, and its consent, alone.
+        members = (await client.get(f"/clubs/{other['id']}/members")).json()
+        assert (await client.delete(f"/clubs/{other['id']}/members/{next(m['id'] for m in members if m['display_name'] == 'Ann')}")).status_code == 204
+        me = (await ann.get("/athletes/me")).json()
+        assert (me["club_ids"], me["leaderboard_club_ids"]) == ([club["id"]], [club["id"]])
     finally:
         await _close(riders)
 
@@ -255,19 +271,3 @@ async def test_who_may_read_the_leaderboard(client, db_session):
         assert flying["start_type"] == "flying"
     finally:
         await _close(riders)
-
-
-async def test_deleting_a_club_clears_every_athlete_pointing_at_it(client, db_session):
-    """A one-person club goes with its owner's account. An athlete who once opted in there and
-    has since moved on still points at it, and must not block the deletion."""
-    await _signup(client, "solo-admin@example.com")
-    club = await _club(client)
-    async with _client() as stray:
-        await _signup(stray, "stray@example.com")
-        stray_id = await _my_athlete(stray)
-        await _set_profile(db_session, stray_id, club_id=None, leaderboard_club_id=uuid.UUID(club["id"]))
-
-        assert (await client.post("/auth/delete-account", json={"password": "Correcthorse123!"})).status_code == 204
-        async with db_session() as session:
-            row = await session.get(Athlete, uuid.UUID(stray_id))
-            assert row is not None and row.leaderboard_club_id is None

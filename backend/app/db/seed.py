@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.db.models  # noqa: F401 -- registers all models on Base.metadata
-from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus
+from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus, on_roster_of
 from app.auth.models import User
 from app.clubs.models import Club, ClubMembership, ClubRole
 from app.core.config import get_settings
@@ -67,13 +67,14 @@ async def seed() -> None:
         await session.flush()
 
         athlete_user_athlete = await session.scalar(select(Athlete).where(Athlete.user_id == athlete_user.id))
-        athlete_user_athlete.club_id = club.id
+        athlete_user_athlete.join_club(club.id)
 
         junior = await session.scalar(
-            select(Athlete).where(Athlete.display_name == "Junior Athlete", Athlete.club_id == club.id)
+            select(Athlete).where(Athlete.display_name == "Junior Athlete", on_roster_of([club.id]))
         )
         if junior is None:
-            junior = Athlete(user_id=None, club_id=club.id, display_name="Junior Athlete")
+            junior = Athlete(user_id=None, display_name="Junior Athlete")
+            junior.join_club(club.id)
             session.add(junior)
             await session.flush()
 

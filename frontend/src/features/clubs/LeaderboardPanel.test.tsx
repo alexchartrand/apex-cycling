@@ -23,7 +23,7 @@ const board: Leaderboard = {
   ],
 };
 
-const me = { id: "a1", user_id: "u1", club_id: "c1", display_name: "Bob", birthdate: null, sex: null, height_cm: null, category: null, leaderboard_opt_in: false };
+const me = { id: "a1", user_id: "u1", club_ids: ["c1"], display_name: "Bob", birthdate: null, sex: null, height_cm: null, category: null, leaderboard_club_ids: [] };
 
 const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import i18n from "../../i18n";
-import { ageCategoryLabel } from "./ageCategory";
+import { ageCategoryLabel, ageCategoryRank } from "./ageCategory";
 
 describe("ageCategoryLabel", () => {
   const t = i18n.getFixedT("en", "common");
@@ -18,5 +18,12 @@ describe("ageCategoryLabel", () => {
 
   it("falls back to the raw code for one it doesn't know", () => {
     expect(ageCategoryLabel("U9", t)).toBe("U9");
+  });
+});
+
+describe("ageCategoryRank", () => {
+  it("orders youth, then elite, then masters bands", () => {
+    const codes = ["M40", "ELITE", "U17", "M30", "U23", "U11"];
+    expect([...codes].sort((a, b) => ageCategoryRank(a) - ageCategoryRank(b))).toEqual(["U11", "U17", "U23", "ELITE", "M30", "M40"]);
   });
 });

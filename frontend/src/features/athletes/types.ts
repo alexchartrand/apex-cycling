@@ -1,15 +1,16 @@
 export interface Athlete {
   id: string;
   user_id: string | null;
-  club_id: string | null;
+  /** The clubs whose roster the athlete is on (a managed athlete is on one). */
+  club_ids: string[];
   display_name: string;
   birthdate: string | null;
   sex: Sex | null;
   height_cm: number | null;
   /** UCI age category code (U11…U23, ELITE, M30, M35…), from the birthdate. */
   category: string | null;
-  /** Whether the athlete's best times show on their club's leaderboard (their own choice). */
-  leaderboard_opt_in: boolean;
+  /** The clubs, among club_ids, whose leaderboard the athlete's best times show on (their own choice). */
+  leaderboard_club_ids: string[];
 }
 
 export type Sex = "female" | "male";
@@ -19,8 +20,6 @@ export interface AthleteUpdate {
   birthdate?: string | null;
   sex?: Sex | null;
   height_cm?: number | null;
-  /** Only the athlete (or a club admin for a managed athlete) may change this. */
-  leaderboard_opt_in?: boolean;
 }
 
 export const METRIC_FIELDS = ["weight_kg", "ftp_w", "max_hr", "resting_hr"] as const;

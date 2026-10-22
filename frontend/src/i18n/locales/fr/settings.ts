@@ -8,8 +8,8 @@ export default {
     title: "Confidentialité",
     description: "Vos données sont privées. Seul ce que vous choisissez ici est partagé avec les autres.",
     leaderboard: {
-      label: "Afficher mes meilleurs temps au classement de mon club",
-      hint: "Les membres du club peuvent alors voir votre nom, votre meilleur temps par piste et par épreuve, et votre catégorie d'âge. Désactivez à tout moment et vous disparaissez du classement aussitôt. Quitter le club le désactive aussi.",
+      label: "Afficher mes meilleurs temps au classement de {{club}}",
+      hint: "Les membres du club peuvent alors voir votre nom, votre meilleur temps par piste et par épreuve, et votre catégorie d'âge. Désactivez à tout moment et vous disparaissez du classement aussitôt. Quitter un club le désactive aussi pour ce club.",
       noClub: "Vous ne figurez pas encore sur la liste d'un club.",
       toClubs: "Aller aux clubs",
       notYours: "Seul l'athlète décide de ce réglage.",

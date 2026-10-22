@@ -61,6 +61,8 @@ export default {
     title: "Athlètes",
     name: "Nom",
     kind: "Type",
+    category: "Catégorie d'âge",
+    allCategories: "Tous les âges",
     managed: "Profil géré",
     member: "Membre",
     view: "Voir les données",

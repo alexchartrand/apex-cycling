@@ -6,7 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.athletes.models import Athlete
+from app.athletes.categories import age_category
+from app.athletes.models import Athlete, on_roster_of
 from app.athletes.schemas import AthleteRead, Sex
 from app.auth.account import delete_athlete
 from app.auth.deps import get_current_user, require_club_admin, require_club_member
@@ -191,6 +192,7 @@ def _roster_athlete(athlete: Athlete) -> RosterAthlete:
         managed=athlete.user_id is None,
         birthdate=athlete.birthdate,
         sex=athlete.sex,
+        category=category.code if (category := age_category(athlete.birthdate)) else None,
     )
 
 
@@ -203,7 +205,7 @@ async def roster(
     if membership.role == ClubRole.ATHLETE:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Coach or club admin access required")
     athletes = await db.scalars(
-        select(Athlete).where(Athlete.club_id == membership.club_id).order_by(Athlete.display_name)
+        select(Athlete).where(on_roster_of([membership.club_id])).order_by(Athlete.display_name)
     )
     return [_roster_athlete(a) for a in athletes]
 
@@ -216,7 +218,8 @@ async def add_managed_athlete(
 ) -> Athlete:
     """A profile with no login (a junior, say) that the club's admins run:
     edit it and add transponders through the usual athlete endpoints."""
-    athlete = Athlete(user_id=None, club_id=membership.club_id, **payload.model_dump())
+    athlete = Athlete(user_id=None, **payload.model_dump())
+    athlete.join_club(membership.club_id)
     db.add(athlete)
     await db.commit()
     await db.refresh(athlete)
@@ -230,7 +233,7 @@ async def delete_managed_athlete(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     athlete = await db.get(Athlete, athlete_id)
-    if athlete is None or athlete.club_id != membership.club_id or athlete.user_id is not None:
+    if athlete is None or membership.club_id not in athlete.club_ids or athlete.user_id is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Managed athlete not found")
     await delete_athlete(db, athlete)
     await db.commit()

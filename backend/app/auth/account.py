@@ -22,7 +22,7 @@ from app.activities import streams
 from app.activities.models import Activity, ActivityPowerCurve, ActivityStream
 from app.activities.storage import delete_originals_after_commit
 from app.aero.models import AeroTest
-from app.athletes.models import Athlete, AthleteMetric, CoachAthlete
+from app.athletes.models import Athlete, AthleteClub, AthleteMetric, CoachAthlete
 from app.auth.models import PasswordResetToken, User
 from app.clubs.models import ClubInvite, ClubMembership
 from app.clubs.service import delete_empty_clubs_of
@@ -300,6 +300,7 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     await db.execute(delete(RawSnapshot).where(RawSnapshot.ingestion_run_id.in_(run_ids)))
     await db.execute(delete(IngestionRun).where(IngestionRun.data_source_connection_id.in_(connection_ids)))
     await db.execute(delete(DataSourceConnection).where(DataSourceConnection.athlete_id == athlete.id))
+    await db.execute(delete(AthleteClub).where(AthleteClub.athlete_id == athlete.id))
     await db.execute(delete(Athlete).where(Athlete.id == athlete.id))
 
 

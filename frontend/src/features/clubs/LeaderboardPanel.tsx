@@ -40,7 +40,7 @@ export function LeaderboardPanel({ club }: { club: Club }) {
   }, [category, categories]);
 
   const allowedStarts = EVENT_START_TYPES[eventKey];
-  const onRoster = me.data?.club_id === club.id;
+  const onRoster = me.data?.club_ids.includes(club.id) ?? false;
   const columns: DataTableColumn<LeaderboardEntry>[] = [
     { id: "rank", header: t("leaderboard.rank"), cell: (entry) => entry.rank, sortValue: (entry) => entry.rank, width: "4rem", primary: true },
     {
@@ -136,7 +136,7 @@ export function LeaderboardPanel({ club }: { club: Club }) {
       {board.data && (
         <p className="club-muted">
           {t("leaderboard.participants", { count: board.data.participants })}{" "}
-          {onRoster && me.data && !me.data.leaderboard_opt_in && (
+          {onRoster && me.data && !me.data.leaderboard_club_ids.includes(club.id) && (
             <Link to="/settings/privacy">{t("leaderboard.joinIn")}</Link>
           )}
         </p>

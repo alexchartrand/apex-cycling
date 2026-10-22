@@ -97,7 +97,7 @@ async def test_invite_link_joins_the_club_and_the_roster(client, db_session):
         resp = await joiner.post("/invites/accept", json={"token": _token(invite)})
         assert resp.status_code == 200
         assert (resp.json()["id"], resp.json()["role"]) == (club["id"], "athlete")
-        assert (await _athlete_of(db_session, user["id"])).club_id == uuid.UUID(club["id"])
+        assert (await _athlete_of(db_session, user["id"])).club_ids == [uuid.UUID(club["id"])]
         assert [c["id"] for c in (await joiner.get("/clubs")).json()] == [club["id"]]
 
         # One use: the link is spent for the next person, and the used count shows.
@@ -179,23 +179,49 @@ async def test_invite_emails_go_out_when_smtp_is_set(client, monkeypatch):
     assert to == "new@example.com" and "CNCB" in subject and _token(invite) in body and "Bonjour" in body
 
 
-async def test_athlete_in_another_club_cannot_join_as_an_athlete(client, db_session):
+async def test_an_athlete_can_ride_for_two_clubs(client, db_session):
     await _signup(client, "admin@example.com")
     club_a = await _club(client, "Club A")
     club_b = await _club(client, "Club B")
     async with _client() as rider:
-        await _signup(rider, "rider@example.com")
+        user = await _signup(rider, "rider@example.com")
+        for club in (club_a, club_b):
+            invite = await _invite(client, club["id"], role="athlete", max_uses=5)
+            assert (await rider.post("/invites/accept", json={"token": _token(invite)})).status_code == 200
+        assert {c["id"] for c in (await rider.get("/clubs")).json()} == {club_a["id"], club_b["id"]}
+        me = (await rider.get("/athletes/me")).json()
+        assert set(me["club_ids"]) == {club_a["id"], club_b["id"]}
+
+        # Each club's admin sees the same profile on their roster, and may open it.
+        for club in (club_a, club_b):
+            assert [a["id"] for a in (await client.get(f"/clubs/{club['id']}/athletes")).json()] == [me["id"]]
+        assert (await client.get(f"/athletes/{me['id']}")).status_code == 200
+
+        # An admin of some unrelated club has no access to the profile.
+        async with _client() as stranger:
+            await _signup(stranger, "stranger@example.com")
+            await _club(stranger, "Club C")
+            assert (await stranger.get(f"/athletes/{me['id']}")).status_code == 403
+
+        # Leaving one club keeps the other roster.
+        members = (await client.get(f"/clubs/{club_b['id']}/members")).json()
+        membership = next(m["id"] for m in members if m["user_id"] == user["id"])
+        assert (await client.delete(f"/clubs/{club_b['id']}/members/{membership}")).status_code == 204
+        assert (await _athlete_of(db_session, user["id"])).club_ids == [uuid.UUID(club_a["id"])]
+        assert (await client.get(f"/clubs/{club_b['id']}/athletes")).json() == []
+
+
+async def test_coaching_elsewhere_does_not_touch_the_roster(client, db_session):
+    await _signup(client, "admin@example.com")
+    club_a = await _club(client, "Club A")
+    club_b = await _club(client, "Club B")
+    async with _client() as rider:
+        user = await _signup(rider, "rider@example.com")
         invite_a = await _invite(client, club_a["id"], role="athlete", max_uses=5)
-        invite_b = await _invite(client, club_b["id"], role="athlete", max_uses=5)
         coach_b = await _invite(client, club_b["id"], role="coach", max_uses=5)
         assert (await rider.post("/invites/accept", json={"token": _token(invite_a)})).status_code == 200
-        resp = await rider.post("/invites/accept", json={"token": _token(invite_b)})
-        assert resp.status_code == 409
-        # Failed joins leave no half-membership behind; coaching elsewhere is fine.
-        assert [c["id"] for c in (await rider.get("/clubs")).json()] == [club_a["id"]]
         assert (await rider.post("/invites/accept", json={"token": _token(coach_b)})).status_code == 200
-    async with db_session() as session:
-        assert (await session.scalars(select(ClubInvite).where(ClubInvite.id == uuid.UUID(invite_b["id"])))).one().use_count == 0
+    assert (await _athlete_of(db_session, user["id"])).club_ids == [uuid.UUID(club_a["id"])]
 
 
 # --- members ---------------------------------------------------------------
@@ -244,13 +270,13 @@ async def test_member_list_roles_and_removal(client, db_session):
 
         # Promoting an athlete takes them off the roster; the profile and data stay theirs.
         assert (await coach.patch(f"/clubs/{club['id']}/members/{rider_membership}", json={"role": "coach"})).status_code == 200
-        assert (await _athlete_of(db_session, rider_user["id"])).club_id is None
+        assert (await _athlete_of(db_session, rider_user["id"])).club_ids == []
         assert (await coach.patch(f"/clubs/{club['id']}/members/{rider_membership}", json={"role": "athlete"})).status_code == 200
-        assert (await _athlete_of(db_session, rider_user["id"])).club_id == uuid.UUID(club["id"])
+        assert (await _athlete_of(db_session, rider_user["id"])).club_ids == [uuid.UUID(club["id"])]
 
         # Leaving takes you off the roster too.
         assert (await rider.delete(f"/clubs/{club['id']}/members/{rider_membership}")).status_code == 204
-        assert (await _athlete_of(db_session, rider_user["id"])).club_id is None
+        assert (await _athlete_of(db_session, rider_user["id"])).club_ids == []
         assert (await rider.get(f"/clubs/{club['id']}")).status_code == 404
         assert (await coach.delete(f"/clubs/{club['id']}/members/{uuid.uuid4()}")).status_code == 404
 
@@ -267,11 +293,12 @@ async def test_admin_runs_a_managed_athlete_end_to_end(client, db_session):
     )
     assert resp.status_code == 201
     junior = resp.json()
-    assert (junior["user_id"], junior["club_id"]) == (None, club["id"])
+    assert (junior["user_id"], junior["club_ids"]) == (None, [club["id"]])
     assert junior["category"] is not None
 
     roster = (await client.get(f"/clubs/{club['id']}/athletes")).json()
     assert [(a["display_name"], a["managed"]) for a in roster] == [("Junior", True)]
+    assert roster[0]["category"] == junior["category"]  # the roster carries the age category too
 
     # The usual athlete endpoints work for the admin: profile, metrics, transponders.
     assert (await client.patch(f"/athletes/{junior['id']}", json={"display_name": "Junior B"})).status_code == 200

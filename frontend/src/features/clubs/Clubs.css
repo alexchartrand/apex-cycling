@@ -174,11 +174,16 @@
   min-width: 0;
 }
 
-.leaderboard__filters {
+.leaderboard__filters,
+.roster__filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: var(--space-4);
   margin-top: var(--space-4);
+}
+
+.roster__filters {
+  padding: 0 var(--space-5) var(--space-4);
 }
 
 .leaderboard__name {

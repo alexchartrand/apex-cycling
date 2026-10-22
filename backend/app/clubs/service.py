@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.athletes.models import Athlete
+from app.athletes.models import Athlete, AthleteClub, on_roster_of
 from app.auth.models import User
 from app.clubs.models import Club, ClubInvite, ClubMembership, ClubRole, ClubSqorzAccount
 from app.core.config import get_settings
@@ -55,15 +55,12 @@ async def admin_count(db: AsyncSession, club_id: uuid.UUID) -> int:
 
 
 async def add_member(db: AsyncSession, user_id: uuid.UUID, club: Club, role: ClubRole) -> ClubMembership:
-    """Adds the user to the club. Athletes are on a roster (`Athlete.club_id`),
-    and a profile is on one club only, so joining as an athlete fails while
-    the profile belongs to a different club. Doesn't commit."""
+    """Adds the user to the club. Joining as an athlete also puts their
+    profile on the club's roster (`Athlete.club_links`). Doesn't commit."""
     if role == ClubRole.ATHLETE:
         athlete = await self_athlete(db, user_id)
         if athlete is not None:
-            if athlete.club_id not in (None, club.id):
-                raise ClubError("Your athlete profile already belongs to another club")
-            athlete.club_id = club.id
+            athlete.join_club(club.id)
     membership = ClubMembership(user_id=user_id, club_id=club.id, role=role)
     db.add(membership)
     await db.flush()
@@ -77,12 +74,9 @@ async def change_role(db: AsyncSession, membership: ClubMembership, role: ClubRo
         raise ClubError("A club needs at least one admin")
     athlete = await self_athlete(db, membership.user_id)
     if role == ClubRole.ATHLETE and athlete is not None:
-        if athlete.club_id not in (None, membership.club_id):
-            raise ClubError("This person's athlete profile already belongs to another club")
-        athlete.club_id = membership.club_id
-    elif membership.role == ClubRole.ATHLETE and athlete is not None and athlete.club_id == membership.club_id:
-        athlete.club_id = None
-        athlete.leaderboard_club_id = None  # leaving withdraws the consent for good
+        athlete.join_club(membership.club_id)
+    elif membership.role == ClubRole.ATHLETE and athlete is not None:
+        athlete.leave_club(membership.club_id)
     membership.role = role
     await db.flush()
 
@@ -93,9 +87,8 @@ async def remove_member(db: AsyncSession, membership: ClubMembership) -> None:
     if membership.role == ClubRole.CLUB_ADMIN and await admin_count(db, membership.club_id) <= 1:
         raise ClubError("A club needs at least one admin")
     athlete = await self_athlete(db, membership.user_id)
-    if athlete is not None and athlete.club_id == membership.club_id:
-        athlete.club_id = None
-        athlete.leaderboard_club_id = None  # leaving withdraws the consent for good
+    if athlete is not None:
+        athlete.leave_club(membership.club_id)
     await db.delete(membership)
     await db.flush()
 
@@ -215,7 +208,7 @@ async def clubs_left_without_admin(db: AsyncSession, user: User) -> list[Club]:
         )
         other_athletes = await db.scalar(
             select(func.count()).select_from(Athlete).where(
-                Athlete.club_id == club_id, (Athlete.user_id.is_(None)) | (Athlete.user_id != user.id)
+                on_roster_of([club_id]), (Athlete.user_id.is_(None)) | (Athlete.user_id != user.id)
             )
         )
         if other_members or other_athletes:
@@ -236,11 +229,7 @@ async def delete_empty_clubs_of(db: AsyncSession, user: User) -> None:
         )
         if others:
             continue
-        await db.execute(
-            update(Athlete)
-            .where((Athlete.club_id == club_id) | (Athlete.leaderboard_club_id == club_id))
-            .values(club_id=None, leaderboard_club_id=None)
-        )
+        await db.execute(delete(AthleteClub).where(AthleteClub.club_id == club_id))
         await db.execute(delete(ClubInvite).where(ClubInvite.club_id == club_id))
         await db.execute(delete(ClubSqorzAccount).where(ClubSqorzAccount.club_id == club_id))
         await db.execute(delete(ClubMembership).where(ClubMembership.club_id == club_id))

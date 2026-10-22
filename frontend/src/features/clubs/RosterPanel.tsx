@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Eye, HandHelping, Trash2, UserCog, UserPlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { errorMessage } from "../../api/errors";
-import { Badge, Button, Card, ConfirmDialog, DataTable, EmptyState, IconButton, SkeletonGroup, Tooltip, useToast, type DataTableColumn } from "../../components/ui";
+import { Badge, Button, Card, ConfirmDialog, DataTable, EmptyState, IconButton, Select, SkeletonGroup, Tooltip, useToast, type DataTableColumn } from "../../components/ui";
+import { ageCategoryLabel, ageCategoryRank } from "../athletes/ageCategory";
 import { useMyAthlete } from "../athletes/useAthlete";
 import { useViewAthlete } from "../athletes/useViewAthlete";
 import { useCoachedAthletes, useRequestCoachLink } from "../coaching/useCoaching";
@@ -26,7 +27,15 @@ export function RosterPanel({ club }: { club: Club }) {
   const [coaching, setCoaching] = useState<RosterAthlete | null>(null);
   const [deleting, setDeleting] = useState<RosterAthlete | null>(null);
   const [asking, setAsking] = useState<string | null>(null);
+  const [category, setCategory] = useState("");
   const isAdmin = club.role === "club_admin";
+
+  // Only the categories somebody on the roster is in, youngest first.
+  const categories = useMemo(
+    () => [...new Set((roster.data ?? []).flatMap((a) => (a.category ? [a.category] : [])))].sort((a, b) => ageCategoryRank(a) - ageCategoryRank(b)),
+    [roster.data],
+  );
+  const shown = useMemo(() => (category ? (roster.data ?? []).filter((a) => a.category === category) : roster.data), [roster.data, category]);
 
   const linkOf = (athleteId: string) => coached.data?.find((link) => link.athlete_id === athleteId);
 
@@ -53,6 +62,13 @@ export function RosterPanel({ club }: { club: Club }) {
           <strong>{a.display_name}</strong>
         </span>
       ),
+    },
+    {
+      id: "category",
+      header: t("roster.category"),
+      hideOnMobile: true,
+      sortValue: (a) => (a.category ? ageCategoryRank(a.category) : Number.MAX_SAFE_INTEGER),
+      cell: (a) => (a.category ? ageCategoryLabel(a.category, tc) : "—"),
     },
     {
       id: "kind",
@@ -117,10 +133,22 @@ export function RosterPanel({ club }: { club: Club }) {
     >
       {roster.isLoading && <SkeletonGroup lines={4} />}
       {roster.isError && <p role="alert">{tc("loadError")}</p>}
-      {roster.data && (
+      {categories.length > 0 && (
+        <div className="roster__filters">
+          <Select label={t("roster.category")} value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="">{t("roster.allCategories")}</option>
+            {categories.map((code) => (
+              <option key={code} value={code}>
+                {ageCategoryLabel(code, tc)}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
+      {shown && (
         <DataTable
           columns={columns}
-          rows={roster.data}
+          rows={shown}
           getRowId={(a) => a.id}
           caption={t("roster.title")}
           initialSort={{ columnId: "name", direction: "asc" }}

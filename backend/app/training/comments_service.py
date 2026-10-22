@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.athletes.coaching import admin_club_ids, speaks_for_athlete
-from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus
+from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus, on_roster_of
 from app.auth.models import User
 from app.training.models import SessionComment, SessionCommentRead, TrainingEvent
 from app.training.schemas import CommentInboxItem, CommentRead
@@ -130,7 +130,7 @@ async def inbox(db: AsyncSession, user: User) -> list[CommentInboxItem]:
     reachable = or_(
         Athlete.user_id == user.id,
         Athlete.id.in_(coached),
-        Athlete.club_id.in_(admin_clubs),
+        on_roster_of(admin_clubs),
     )
     author_profile = aliased(Athlete)
     rows = await db.execute(

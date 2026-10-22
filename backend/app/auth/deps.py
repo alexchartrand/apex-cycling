@@ -69,13 +69,15 @@ async def require_athlete_access(
     if coach_link is not None:
         return athlete
 
-    if athlete.club_id is not None:
+    if athlete.club_ids:
         membership = await db.scalar(
-            select(ClubMembership).where(
+            select(ClubMembership.id)
+            .where(
                 ClubMembership.user_id == current_user.id,
-                ClubMembership.club_id == athlete.club_id,
+                ClubMembership.club_id.in_(athlete.club_ids),
                 ClubMembership.role == ClubRole.CLUB_ADMIN,
             )
+            .limit(1)
         )
         if membership is not None:
             return athlete

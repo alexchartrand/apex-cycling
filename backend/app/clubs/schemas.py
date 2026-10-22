@@ -56,6 +56,8 @@ class RosterAthlete(BaseModel):
     managed: bool
     birthdate: date | None
     sex: Sex | None
+    # UCI age category code as of today (U11…U23, ELITE, M30…), null without a birthdate.
+    category: str | None
 
 
 class ManagedAthleteCreate(BaseModel):

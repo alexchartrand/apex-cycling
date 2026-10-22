@@ -36,8 +36,10 @@ _MAX_SESSION_S = 6 * 3600
 
 async def athlete_timezone(db: AsyncSession, athlete: Athlete) -> ZoneInfo:
     """The club's zone: an evening ride must land on the day it was ridden, not
-    on tomorrow's UTC date. Athletes outside a club fall back to UTC."""
-    name = await db.scalar(select(Club.timezone).where(Club.id == athlete.club_id)) if athlete.club_id else None
+    on tomorrow's UTC date. With several clubs it is the one joined first; athletes
+    outside a club fall back to UTC."""
+    club_ids = athlete.club_ids
+    name = await db.scalar(select(Club.timezone).where(Club.id == club_ids[0])) if club_ids else None
     try:
         return ZoneInfo(name or "UTC")
     except ZoneInfoNotFoundError:
