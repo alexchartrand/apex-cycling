@@ -111,10 +111,6 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
   - Why: Backend business logic is tightly coupled to the database layer. Which make maintenance and testting difficult.
   - Notes: Adding manual dependency injection. Use of the repository pattern and DTO
 
-- [ ] 🟢 Long lap tables on phones — *added 10/19*
-  - Why: the Laps tab turns every lap into a card on a phone, so a 69-lap session is a very long page.
-  - Notes: collapse after N laps / "show more", or a compact single-line row mode.
-
 - [ ] 🟢 Same-named tracks on the records board — *added 10/19*
   - Why: sqorz re-creates the Bromont track under new ids (the LS-03407 export has several "Tour complet"), so the board can list the same place name twice, and records don't carry over between the copies.
   - Notes: needs a way to merge tracks (T3.5 track settings is the natural home); distinct ids are kept apart on purpose until then.
@@ -131,6 +127,7 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
   - Notes: only if plain-Postgres progression queries get slow.
 
 ## ✅ Done
+- [x] Long lap tables on phones — *added 10/19, resolved 10/22 (phones show the first 12 laps with a "Show all N laps" toggle; CSV and desktop untouched)*
 - [x] Frontend test suite times out under CPU load — *added 10/20, fixed 10/21*
 - [x] M4b — Roster management + coach dashboard — *added 7/23, resolved 10/19 (Phase 4, T4.1–T4.4)*
 - [x] Fuller `.env`-based config for dev compose — *resolved 10/19 (T0.4)* — *added 7/23*

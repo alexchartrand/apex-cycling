@@ -60,6 +60,8 @@ export default {
     include: "Inclure le tour {{n}}",
     excludedBadge: "Exclu",
     excludedHint: "Les tours exclus restent dans le tableau mais ne comptent ni pour les meilleurs temps, ni pour les records, ni pour la progression.",
+    showAll: "Afficher les {{total}} tours",
+    showFewer: "Afficher moins de tours",
     editLabel: "Nommer le tour {{n}}",
     labelTitle: "Nom du tour {{n}}",
     labelField: "Nom",

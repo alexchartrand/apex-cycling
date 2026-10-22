@@ -57,6 +57,8 @@ export default {
     include: "Include lap {{n}}",
     excludedBadge: "Excluded",
     excludedHint: "Excluded laps stay in the table but don't count toward bests, records or progression.",
+    showAll: "Show all {{total}} laps",
+    showFewer: "Show fewer laps",
     editLabel: "Label lap {{n}}",
     labelTitle: "Label for lap {{n}}",
     labelField: "Label",

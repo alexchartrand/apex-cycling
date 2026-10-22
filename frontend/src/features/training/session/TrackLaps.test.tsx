@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider, TooltipProvider } from "../../../components/ui";
 import type { LapDetail, SegmentDetail, TrackSessionDetail, TrackSummary } from "../types";
-import { TrackLaps } from "./TrackLaps";
+import { PHONE_LAP_LIMIT, TrackLaps } from "./TrackLaps";
 
 const seg = (loopId: string, name: string, index: number, ms: number): SegmentDetail => ({
   sequence_index: index,
@@ -131,5 +131,51 @@ describe("TrackLaps", () => {
     [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("/api/athletes/a1/laps/l2");
     expect(JSON.parse(init.body)).toEqual({ excluded: false });
+  });
+
+  describe("on a phone", () => {
+    const manyLaps: TrackSessionDetail = {
+      ...track,
+      laps: Array.from({ length: PHONE_LAP_LIMIT + 8 }, (_, i) => lap(`m${i}`, 27000 + i)),
+    };
+
+    beforeEach(() => {
+      vi.stubGlobal("matchMedia", (query: string) => ({
+        matches: true,
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }));
+    });
+
+    function renderMany(detail: TrackSessionDetail) {
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <ToastProvider>
+            <TooltipProvider>
+              <TrackLaps athleteId="a1" sessionTitle="Session" track={detail} meta={meta} />
+            </TooltipProvider>
+          </ToastProvider>
+        </QueryClientProvider>,
+      );
+    }
+
+    it("collapses a long lap list until asked", async () => {
+      renderMany(manyLaps);
+      const user = userEvent.setup();
+      const list = () => screen.getByRole("list", { name: "Laps on Tour complet" });
+      expect(within(list()).getAllByRole("listitem")).toHaveLength(PHONE_LAP_LIMIT);
+
+      await user.click(screen.getByRole("button", { name: `Show all ${manyLaps.laps.length} laps` }));
+      expect(within(list()).getAllByRole("listitem")).toHaveLength(manyLaps.laps.length);
+
+      await user.click(screen.getByRole("button", { name: "Show fewer laps" }));
+      expect(within(list()).getAllByRole("listitem")).toHaveLength(PHONE_LAP_LIMIT);
+    });
+
+    it("leaves a short session alone", () => {
+      renderMany(track);
+      expect(screen.queryByRole("button", { name: /Show all/ })).not.toBeInTheDocument();
+    });
   });
 });

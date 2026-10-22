@@ -14,6 +14,7 @@ import {
   useToast,
   type DataTableColumn,
 } from "../../../components/ui";
+import { PHONE_QUERY, useMediaQuery } from "../../../hooks/useMediaQuery";
 import { useFormat } from "../../../i18n/useFormat";
 import { lapSpeedKmh, lapsToCsv, recordingColumns, splitColumns, splitMs } from "../lapTable";
 import {
@@ -27,6 +28,8 @@ import { VelodromeDiagram } from "../VelodromeDiagram";
 import "./TrackLaps.css";
 
 const SPLIT_PREFIX = "split:";
+/** On a phone every lap is a card, so a long session starts collapsed to this many. */
+export const PHONE_LAP_LIMIT = 12;
 
 type LapRow = { lap: LapDetail; n: number };
 
@@ -68,6 +71,8 @@ export function TrackLaps({
   const updateLap = useUpdateLap(athleteId);
   const [selectedLoopId, setSelectedLoopId] = useState<string | null>(null);
   const [labelling, setLabelling] = useState<LapRow | null>(null);
+  const [showAllLaps, setShowAllLaps] = useState(false);
+  const isPhone = useMediaQuery(PHONE_QUERY);
 
   const lengthM = meta?.length_m;
   const speedLengthM = lengthM ?? DEFAULT_LAP_DISTANCE_M;
@@ -89,6 +94,8 @@ export function TrackLaps({
     () => track.laps.map((lap, index) => ({ lap, n: lapNumber(lap, index) })),
     [track.laps],
   );
+  const collapsed = isPhone && !showAllLaps && rows.length > PHONE_LAP_LIMIT;
+  const visibleRows = collapsed ? rows.slice(0, PHONE_LAP_LIMIT) : rows;
   const highlighted =
     selectedLoopId && columns.some((c) => c.loopId === selectedLoopId)
       ? `${SPLIT_PREFIX}${selectedLoopId}`
@@ -291,7 +298,7 @@ export function TrackLaps({
         <DataTable
           caption={t("laps.caption", { track: track.track_name })}
           columns={tableColumns}
-          rows={rows}
+          rows={visibleRows}
           getRowId={({ lap }) => lap.lap_id}
           rowTone={({ lap }) => (lap.excluded ? "muted" : undefined)}
           highlightedColumnId={highlighted}
@@ -299,6 +306,17 @@ export function TrackLaps({
           dense
         />
       </div>
+      {isPhone && rows.length > PHONE_LAP_LIMIT && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setShowAllLaps((open) => !open)}
+        >
+          {collapsed
+            ? t("laps.showAll", { total: rows.length })
+            : t("laps.showFewer")}
+        </Button>
+      )}
       <p className="track-laps__hint">
         {t("laps.splitsHint")} {t("laps.excludedHint")}
       </p>

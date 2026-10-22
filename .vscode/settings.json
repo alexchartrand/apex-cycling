@@ -31,6 +31,15 @@
     ],
     "postman.settings.dotenv-detection-notification-visibility": false,
     "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/bin/python",
+    "python.analysis.include": [
+        "backend"
+    ],
+    "python.analysis.exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+        "**/.*",
+        "backend/.venv"
+    ],
     "python.testing.pytestArgs": [
         "backend"
     ],
