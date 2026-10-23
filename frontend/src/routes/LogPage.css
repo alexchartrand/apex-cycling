@@ -253,6 +253,14 @@
   text-overflow: ellipsis;
 }
 
+.log-calendar__chip-icon {
+  width: 10px;
+  height: 10px;
+  margin-right: 2px;
+  vertical-align: -1px;
+  color: var(--color-accent);
+}
+
 .log-calendar__empty {
   padding: var(--space-4);
   text-align: center;
@@ -291,7 +299,8 @@
     background: var(--color-positive-soft);
   }
 
-  .log-calendar__chip-text {
+  .log-calendar__chip-text,
+  .log-calendar__chip-icon {
     display: none;
   }
 }

@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Badge, Button, ButtonLink, Card, EmptyState, IconButton, PageHeader, SegmentedControl, SkeletonGroup } from "../components/ui";
 import { localDay, mpsToKmh } from "../features/activities/format";
 import { groupItemsByMonth, mergeLog, monthCalendar, type LogItem } from "../features/activities/logItems";
+import type { Activity } from "../features/activities/types";
 import { useActivities } from "../features/activities/useActivities";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { PlanDetailDialog } from "../features/plan/PlanDetailDialog";
@@ -154,8 +155,7 @@ function LogRow({ item }: { item: LogItem }) {
 
   if (item.kind === "session") {
     const date = parseLocalDate(item.session.event_date);
-    const power = item.activities.some((a) => a.has_power);
-    const heartRate = item.activities.some((a) => a.has_heart_rate);
+    const recorded = recordedWith(item.activities);
     return (
       <>
         <DateBlock date={date} />
@@ -165,12 +165,12 @@ function LogRow({ item }: { item: LogItem }) {
             {item.session.track_names.map((name) => (
               <Badge key={name}>{name}</Badge>
             ))}
-            {power && (
+            {recorded === "power" && (
               <Badge tone="accent" icon={<Zap aria-hidden />}>
                 {t("activities:log.withPower")}
               </Badge>
             )}
-            {!power && heartRate && (
+            {recorded === "heartRate" && (
               <Badge tone="accent" icon={<HeartPulse aria-hidden />}>
                 {t("activities:log.withHeartRate")}
               </Badge>
@@ -254,19 +254,24 @@ function Calendar({ year, monthIndex, items, plans, onOpenPlan }: { year: number
           >
             <span className="log-calendar__number">{Number(day.day.slice(8))}</span>
             <ul className="log-calendar__items">
-              {day.items.map((item) => (
-                <li key={itemKey(item)}>
-                  <Link
-                    to={itemHref(item)}
-                    className={`log-calendar__chip log-calendar__chip--${item.kind}`}
-                    title={item.kind === "session" ? item.session.event_name : (item.activity.name ?? t("activities:log.ride"))}
-                  >
-                    <span className="log-calendar__chip-text">
-                      {item.kind === "session" ? item.session.event_name : (item.activity.name ?? t("activities:log.ride"))}
-                    </span>
-                  </Link>
-                </li>
-              ))}
+              {day.items.map((item) => {
+                const name = item.kind === "session" ? item.session.event_name : (item.activity.name ?? t("activities:log.ride"));
+                // A session carrying a recording says so, since the recording has no chip of its own.
+                const recorded = item.kind === "session" ? recordedWith(item.activities) : null;
+                return (
+                  <li key={itemKey(item)}>
+                    <Link
+                      to={itemHref(item)}
+                      className={`log-calendar__chip log-calendar__chip--${item.kind}`}
+                      title={recorded ? `${name} · ${t(recorded === "power" ? "activities:log.withPower" : "activities:log.withHeartRate")}` : name}
+                    >
+                      {recorded === "power" && <Zap className="log-calendar__chip-icon" aria-hidden />}
+                      {recorded === "heartRate" && <HeartPulse className="log-calendar__chip-icon" aria-hidden />}
+                      <span className="log-calendar__chip-text">{name}</span>
+                    </Link>
+                  </li>
+                );
+              })}
               {(plansByDay.get(day.day) ?? []).map((plan) => (
                 <li key={plan.id}>
                   <button
@@ -286,4 +291,11 @@ function Calendar({ year, monthIndex, items, plans, onOpenPlan }: { year: number
       {!inMonth && <p className="log-calendar__empty ui-card__hint">{t("activities:log.nothingThisMonth")}</p>}
     </Card>
   );
+}
+
+/** What a session's linked recordings add, for its badge or calendar icon. */
+function recordedWith(activities: Activity[]): "power" | "heartRate" | null {
+  if (activities.some((a) => a.has_power)) return "power";
+  if (activities.some((a) => a.has_heart_rate)) return "heartRate";
+  return null;
 }

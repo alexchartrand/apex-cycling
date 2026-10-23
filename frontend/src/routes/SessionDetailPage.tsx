@@ -1,9 +1,14 @@
+import { useMemo } from "react";
 import { ChevronLeft, ChevronRight, SearchX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/client";
-import { ButtonLink, EmptyState, PageHeader, SkeletonGroup, TabPanel, Tabs, Tooltip, type TabItem } from "../components/ui";
-import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
+import { ButtonLink, EmptyState, PageHeader, SegmentedControl, SkeletonGroup, TabPanel, Tabs, Tooltip, type TabItem } from "../components/ui";
+import { RecordingActions } from "../features/activities/RecordingActions";
+import { RecordingStreams, RecordingView } from "../features/activities/RecordingView";
+import { effortBands, lapSpeeds, recordingClockStart, sessionGearing, type SessionOverlay } from "../features/activities/sessionOverlay";
+import { useActivity } from "../features/activities/useActivities";
+import { useActiveAthlete, useViewingOther } from "../features/athletes/useActiveAthlete";
 import { CommentsTab } from "../features/comments/CommentsTab";
 import { GearPicker } from "../features/equipment/GearPicker";
 import { useBikes, useSessionGear } from "../features/equipment/useEquipment";
@@ -19,7 +24,7 @@ import { useSessionDetail, useSessionEfforts, useSessions, useTracks } from "../
 import { useFormat } from "../i18n/useFormat";
 import "./SessionDetailPage.css";
 
-const TABS = ["overview", "laps", "efforts", "notes", "comments"] as const;
+const TABS = ["overview", "laps", "efforts", "ride", "notes", "comments"] as const;
 type SessionTab = (typeof TABS)[number];
 
 const isTab = (value: string | null): value is SessionTab => TABS.includes(value as SessionTab);
@@ -31,9 +36,11 @@ export function SessionDetailPage() {
   const { eventId = "" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
-  const tab: SessionTab = isTab(requestedTab) ? requestedTab : "overview";
 
   const athleteId = useActiveAthlete().data?.id ?? "";
+  const { viewing } = useViewingOther();
+  // A coach reads a recording; the athlete (or a club admin for a managed athlete) edits it.
+  const canEditRecording = !viewing || viewing.user_id === null;
   const detail = useSessionDetail(athleteId, eventId);
   const sessions = useSessions(athleteId);
   const tracks = useTracks(athleteId);
@@ -53,6 +60,24 @@ export function SessionDetailPage() {
   const notFound = detail.error instanceof ApiError && detail.error.status === 404;
   const session = detail.data;
 
+  // The Ride tab: the recordings linked to this session (head unit, power meter), one at a time.
+  const recordings = session?.activities ?? [];
+  const recording = recordings.find((r) => r.id === searchParams.get("recording")) ?? recordings[0];
+  const recordingActivity = useActivity(athleteId, recording?.id ?? "");
+  const overlay = useMemo((): SessionOverlay | undefined => {
+    if (!session || !recording) return undefined;
+    const lengths = new Map((tracks.data ?? []).flatMap((track) => (track.length_m ? [[track.id, track.length_m] as const] : [])));
+    return {
+      clockStartMs: recordingClockStart(recording),
+      bands: effortBands(efforts.data ?? [], recording),
+      laps: lapSpeeds(session.tracks, lengths, recording),
+      gearing: sessionGearing(session.gear_setup_id, efforts.data ?? [], bikes.data ?? [], recording),
+    };
+  }, [session, recording, tracks.data, efforts.data, bikes.data]);
+
+  const tab: SessionTab =
+    !isTab(requestedTab) || (requestedTab === "ride" && session && recordings.length === 0) ? "overview" : requestedTab;
+
   const navButton = (target: typeof older, label: string, icon: React.ReactNode) =>
     target ? (
       <Tooltip content={label}>
@@ -66,13 +91,28 @@ export function SessionDetailPage() {
     { value: "overview", label: t("session.tabs.overview") },
     { value: "laps", label: t("session.tabs.laps"), count: session?.tracks.reduce((sum, track) => sum + track.laps.length, 0) },
     { value: "efforts", label: t("session.tabs.efforts"), count: efforts.data?.length },
+    ...(recordings.length > 0 ? [{ value: "ride" as const, label: t("session.tabs.ride") }] : []),
     { value: "notes", label: t("session.tabs.notes") },
     { value: "comments", label: t("session.tabs.comments"), count: comments.data?.length || undefined },
   ];
 
+  // The chosen recording follows from tab to tab (Overview shows its streams, Ride the rest).
   function selectTab(next: SessionTab) {
-    setSearchParams(next === "overview" ? {} : { tab: next }, { replace: true });
+    const chosen = searchParams.get("recording");
+    setSearchParams({ ...(next === "overview" ? {} : { tab: next }), ...(chosen ? { recording: chosen } : {}) }, { replace: true });
   }
+
+  const recordingPicker = recordings.length > 1 && recording && (
+    <SegmentedControl
+      size="sm"
+      aria-label={t("session.recording")}
+      value={recording.id}
+      onChange={(id) => setSearchParams({ ...(tab === "overview" ? {} : { tab }), recording: id }, { replace: true })}
+      options={recordings.map((r) => ({ value: r.id, label: r.name ?? fmt.time(r.start_time) }))}
+    />
+  );
+
+  const rideHref = (id: string) => `/sessions/${encodeURIComponent(eventId)}?tab=ride&recording=${encodeURIComponent(id)}`;
 
   return (
     <>
@@ -82,6 +122,14 @@ export function SessionDetailPage() {
         title={session?.event_name ?? summary?.event_name ?? " "}
         actions={
           <>
+            {tab === "ride" && recordingActivity.data && (
+              <RecordingActions
+                athleteId={athleteId}
+                activity={recordingActivity.data}
+                canEdit={canEditRecording}
+                onDeleted={() => setSearchParams({ tab: "ride" }, { replace: true })}
+              />
+            )}
             {navButton(older, t("session.previous"), <ChevronLeft aria-hidden />)}
             {navButton(newer, t("session.next"), <ChevronRight aria-hidden />)}
           </>
@@ -96,7 +144,7 @@ export function SessionDetailPage() {
         <p className="session-detail__recordings">
           <span>{t("session.recordings")}</span>
           {session.activities.map((recording) => (
-            <Link key={recording.id} to={`/activities/${recording.id}`} className="session-detail__recording">
+            <Link key={recording.id} to={rideHref(recording.id)} className="session-detail__recording">
               {recording.name ?? fmt.time(recording.start_time)}
             </Link>
           ))}
@@ -139,6 +187,12 @@ export function SessionDetailPage() {
                   )}
                 />
               ))}
+              {recording && (
+                <>
+                  {recordingPicker}
+                  <RecordingStreams key={recording.id} athleteId={athleteId} activityId={recording.id} session={overlay} />
+                </>
+              )}
             </div>
           </TabPanel>
 
@@ -173,6 +227,17 @@ export function SessionDetailPage() {
                   trackLengthM={tracks.data?.find((candidate) => candidate.id === effort.track_id)?.length_m ?? null}
                 />
               ))}
+            </div>
+          </TabPanel>
+
+          <TabPanel value="ride">
+            <div className="session-detail">
+              {recordingPicker}
+              {recordingActivity.isLoading && <SkeletonGroup lines={6} />}
+              {recordingActivity.isError && <p role="alert">{t("session.loadError")}</p>}
+              {recordingActivity.data && (
+                <RecordingView key={recordingActivity.data.id} athleteId={athleteId} activity={recordingActivity.data} canEdit={canEditRecording} streams={false} />
+              )}
             </div>
           </TabPanel>
 

@@ -137,6 +137,9 @@ export default {
       zoomHint: "Faites glisser les poignées sous le graphique pour zoomer.",
       selection: "Sélection",
       noStreams: "Cette activité n'a aucun échantillon enregistré à afficher.",
+      sqorzSpeed: "Vitesse au tour sqorz",
+      effort: "E{{n}}",
+      estCadence: "Cadence selon le braquet (tr/min)",
     },
     zones: {
       power: "Temps par zone de puissance",
@@ -175,7 +178,6 @@ export default {
       title: "Séance sqorz",
       linked: "Liée à {{name}}",
       linkedDescription: "La puissance, la fréquence cardiaque et la cadence de cette sortie s'affichent tour par tour dans cette séance.",
-      open: "Ouvrir la séance",
       unlinked: "Non liée à une séance sqorz.",
       suggestion: "Cette sortie ressemble à {{name}}.",
       linkIt: "La lier",

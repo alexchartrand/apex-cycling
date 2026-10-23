@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link2, Link2Off } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { errorMessage } from "../../api/errors";
 import { Badge, Button, Card, Input, useToast } from "../../components/ui";
 import { useSessions } from "../training/useTraining";
@@ -11,11 +11,13 @@ import { useLinkActivitySession, useSessionSuggestion, useUnlinkActivitySession 
 /**
  * Which sqorz session this ride contains, and how far the device clock is
  * from sqorz's. Linking puts the ride's power, heart rate and cadence on the
- * session's lap table.
+ * session's lap table, and the ride itself on the session's Ride tab (where
+ * this panel then sits): unlinking sends it back to its own page.
  */
 export function SessionLinkPanel({ athleteId, activity, canEdit }: { athleteId: string; activity: Activity; canEdit: boolean }) {
   const { t } = useTranslation(["activities", "common"]);
   const { toast } = useToast();
+  const navigate = useNavigate();
   const sessions = useSessions(athleteId);
   const suggestion = useSessionSuggestion(athleteId, activity.id, canEdit && activity.external_event_id === null);
   const link = useLinkActivitySession(athleteId, activity.id);
@@ -44,7 +46,6 @@ export function SessionLinkPanel({ athleteId, activity, canEdit }: { athleteId: 
         <div className="session-link">
           <div className="source-card__status">
             <Badge tone="positive">{t("activity.session.linked", { name: linked?.event_name ?? "…" })}</Badge>
-            <Link to={`/sessions/${activity.external_event_id}`}>{t("activity.session.open")}</Link>
           </div>
           <p className="source-card__note">{t("activity.session.linkedDescription")}</p>
           {canEdit && (
@@ -77,7 +78,12 @@ export function SessionLinkPanel({ athleteId, activity, canEdit }: { athleteId: 
                 variant="ghost"
                 icon={<Link2Off aria-hidden />}
                 loading={unlink.isPending}
-                onClick={() => run(() => unlink.mutateAsync(), t("activity.session.toasts.unlinked"))}
+                onClick={() =>
+                  run(async () => {
+                    await unlink.mutateAsync();
+                    navigate(`/activities/${activity.id}`);
+                  }, t("activity.session.toasts.unlinked"))
+                }
               >
                 {t("activity.session.unlink")}
               </Button>

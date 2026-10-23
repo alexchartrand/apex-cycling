@@ -84,7 +84,7 @@ export function usePowerCurve(athleteId: string, range: { start?: string; end?: 
 function useInvalidateActivities() {
   const queryClient = useQueryClient();
   return () => {
-    for (const key of ["activities", "activity", "activity-analysis", "activity-streams", "training-load", "power-curve", "session-detail"]) {
+    for (const key of ["activities", "activity", "activity-analysis", "activity-streams", "training-load", "power-curve", "session-detail", "session-efforts"]) {
       queryClient.invalidateQueries({ queryKey: [key] });
     }
   };
@@ -108,18 +108,33 @@ export function useDeleteActivity(athleteId: string) {
   return useMutation({ mutationFn: (activityId: string) => deleteActivity(athleteId, activityId), onSuccess: invalidate });
 }
 
+// Linking moves the ride between its own page and the session's Ride tab, which
+// redirect on `external_event_id`: the answer goes into the cache at once so
+// neither page acts on the stale copy while the refetch runs.
+
 export function useLinkActivitySession(athleteId: string, activityId: string) {
+  const queryClient = useQueryClient();
   const invalidate = useInvalidateActivities();
   return useMutation({
     mutationFn: (payload: { external_event_id: string; clock_offset_s?: number | null }) =>
       linkActivitySession(athleteId, activityId, payload),
-    onSuccess: invalidate,
+    onSuccess: (activity) => {
+      queryClient.setQueryData(["activity", athleteId, activityId], activity);
+      invalidate();
+    },
   });
 }
 
 export function useUnlinkActivitySession(athleteId: string, activityId: string) {
+  const queryClient = useQueryClient();
   const invalidate = useInvalidateActivities();
-  return useMutation({ mutationFn: () => unlinkActivitySession(athleteId, activityId), onSuccess: invalidate });
+  return useMutation({
+    mutationFn: () => unlinkActivitySession(athleteId, activityId),
+    onSuccess: (activity) => {
+      queryClient.setQueryData(["activity", athleteId, activityId], activity);
+      invalidate();
+    },
+  });
 }
 
 // --- connections -----------------------------------------------------------------------

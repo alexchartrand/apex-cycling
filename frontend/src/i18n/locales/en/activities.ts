@@ -134,6 +134,9 @@ export default {
       zoomHint: "Drag the handles below the chart to zoom.",
       selection: "Selection",
       noStreams: "This activity has no recorded samples to chart.",
+      sqorzSpeed: "sqorz lap speed",
+      effort: "E{{n}}",
+      estCadence: "Cadence from gear (rpm)",
     },
     zones: {
       power: "Time in power zones",
@@ -172,7 +175,6 @@ export default {
       title: "Sqorz session",
       linked: "Linked to {{name}}",
       linkedDescription: "This ride's power, heart rate and cadence are shown lap by lap in that session.",
-      open: "Open the session",
       unlinked: "Not linked to a sqorz session.",
       suggestion: "This ride looks like {{name}}.",
       linkIt: "Link it",
