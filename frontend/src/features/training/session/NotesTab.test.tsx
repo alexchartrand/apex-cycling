@@ -16,6 +16,7 @@ const session: SessionDetail = {
   notes: "Felt flat",
   rpe: 7,
   tags: ["track"],
+  is_race: false,
   tracks: [],
 };
 
@@ -24,6 +25,7 @@ const draft = (over: Partial<Parameters<typeof changesFrom>[1]> = {}) => ({
   rpe: "7",
   notes: "Felt flat",
   tags: ["track"],
+  isRace: false,
   ...over,
 });
 
@@ -40,6 +42,7 @@ describe("changesFrom", () => {
       notes: null,
     });
     expect(changesFrom(session, draft({ rpe: "9", tags: ["track", "kilo"] }))).toEqual({ rpe: 9, tags: ["track", "kilo"] });
+    expect(changesFrom(session, draft({ isRace: true }))).toEqual({ is_race: true });
   });
 });
 
@@ -56,9 +59,9 @@ describe("NotesTab", () => {
     fetchMock.mockReset();
   });
 
-  function renderTab() {
+  function renderTab(client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })) {
     render(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}>
+      <QueryClientProvider client={client}>
         <ToastProvider>
           <NotesTab athleteId="a1" session={session} />
         </ToastProvider>
@@ -88,5 +91,20 @@ describe("NotesTab", () => {
     expect(url).toBe("/api/athletes/a1/sessions/evt1");
     expect(init.method).toBe("PATCH");
     expect(JSON.parse(init.body)).toEqual({ title_override: "Kilo day", rpe: 9 });
+  });
+
+  it("marking the session as a race refreshes the race calendar and the season tiles", async () => {
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    renderTab(client);
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText("This session was a race"));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ is_race: true }));
+    await waitFor(() => {
+      const keys = invalidate.mock.calls.map(([filters]) => (filters as { queryKey: unknown[] }).queryKey[0]);
+      expect(keys).toEqual(expect.arrayContaining(["competitions", "season-summary", "sessions", "session-detail"]));
+    });
   });
 });

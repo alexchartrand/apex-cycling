@@ -74,6 +74,7 @@ class SessionDetail(BaseModel):
     notes: str | None
     rpe: int | None
     tags: list[str]
+    is_race: bool = False
     tracks: list[TrackSessionDetail]
     # Recordings (head unit, power meter) linked to this session.
     activities: list[LinkedActivity] = []
@@ -89,6 +90,7 @@ class SessionSummary(BaseModel):
     track_names: list[str]
     rpe: int | None
     tags: list[str]
+    is_race: bool = False
     # First lap start / last lap start for this athlete — not sqorz's
     # event window, which spans the whole day for every rider.
     first_lap_at: datetime | None
@@ -288,11 +290,19 @@ class SessionUpdate(BaseModel):
     notes: str | None = Field(default=None, max_length=5000)
     rpe: int | None = Field(default=None, ge=1, le=10)
     tags: list[str] | None = Field(default=None, max_length=20)
+    is_race: bool | None = None
 
     @field_validator("title_override", "notes")
     @classmethod
     def _blank_is_none(cls, value: str | None) -> str | None:
         return _clean_text(value)
+
+    @field_validator("is_race")
+    @classmethod
+    def _race_not_null(cls, value: bool | None) -> bool:
+        if value is None:
+            raise ValueError("This value can't be cleared")
+        return value
 
     @field_validator("tags")
     @classmethod
@@ -321,6 +331,7 @@ class SessionMeta(BaseModel):
     notes: str | None
     rpe: int | None
     tags: list[str]
+    is_race: bool = False
 
 
 class LapUpdate(BaseModel):

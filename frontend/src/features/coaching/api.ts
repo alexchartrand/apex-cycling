@@ -1,5 +1,5 @@
 import { apiFetch } from "../../api/client";
-import type { AthleteCard, CoachLink, CoachLinkRequest, CommentInboxItem } from "./types";
+import type { AthleteCard, CoachLink, CoachLinkRequest, CommentInboxItem, Squad } from "./types";
 
 export function listCoachedAthletes(): Promise<CoachLink[]> {
   return apiFetch<CoachLink[]>("/coach-links/athletes");
@@ -15,6 +15,12 @@ export function listCoachInbox(): Promise<CoachLink[]> {
 
 export function fetchDashboard(): Promise<AthleteCard[]> {
   return apiFetch<AthleteCard[]>("/coach-links/dashboard");
+}
+
+export function fetchSquad(eventKey: string, startType: string, trackId: string): Promise<Squad> {
+  const query = new URLSearchParams({ event_key: eventKey, start_type: startType });
+  if (trackId) query.set("track_id", trackId);
+  return apiFetch<Squad>(`/coach-links/squad?${query.toString()}`);
 }
 
 export function requestCoachLink(payload: CoachLinkRequest): Promise<{ requested: boolean }> {

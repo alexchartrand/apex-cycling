@@ -135,6 +135,7 @@ async def test_session_edits_show_up_in_detail_and_list(client, db_session):
         "notes": "Felt flat early",
         "rpe": 7,
         "tags": ["Track", "openers"],  # trimmed, blanks and case-duplicates dropped
+        "is_race": False,
     }
 
     detail = (await client.get(f"/athletes/{athlete_id}/sessions/{_EVENT_ID}")).json()

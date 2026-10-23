@@ -276,6 +276,7 @@ async def get_session_detail(db: AsyncSession, athlete_id: uuid.UUID, external_e
         notes=event.notes,
         rpe=event.rpe,
         tags=event.tags or [],
+        is_race=event.is_race,
         tracks=list(laps_by_track.values()),
     )
 
@@ -384,6 +385,7 @@ async def list_athlete_sessions(db: AsyncSession, athlete_id: uuid.UUID) -> list
                 TrainingEvent.title_override,
                 TrainingEvent.rpe,
                 TrainingEvent.tags,
+                TrainingEvent.is_race,
                 TrainingEvent.event_date,
                 func.count(TrainingLap.id),
                 func.min(TrainingLap.start_time),
@@ -420,10 +422,11 @@ async def list_athlete_sessions(db: AsyncSession, athlete_id: uuid.UUID) -> list
             track_names=tracks_by_event.get(event_id, []),
             rpe=rpe,
             tags=tags or [],
+            is_race=is_race,
             first_lap_at=first_lap_at,
             last_lap_at=last_lap_at,
         )
-        for event_id, external_id, name, title_override, rpe, tags, event_date, lap_count, first_lap_at, last_lap_at in lap_stats
+        for event_id, external_id, name, title_override, rpe, tags, is_race, event_date, lap_count, first_lap_at, last_lap_at in lap_stats
     ]
 
 

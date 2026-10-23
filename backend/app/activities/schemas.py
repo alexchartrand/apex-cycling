@@ -59,6 +59,33 @@ class PowerCurvePoint(BaseModel):
     start_time: datetime
 
 
+class CriticalPowerRead(BaseModel):
+    cp_w: float
+    w_prime_j: float
+    r_squared: float
+    # Efforts (standard durations between 3 and 20 min) the line went through.
+    points: int
+
+
+class FtpSuggestion(BaseModel):
+    ftp_w: float
+    # The effort it comes from: 95 % of the best power over `source_duration_s`.
+    source_duration_s: int
+    source_activity_id: uuid.UUID
+    source_power_w: float
+
+
+class PowerProfile(BaseModel):
+    """What the last `days` days of power say about threshold. Each part is
+    null when the data can't support it."""
+
+    days: int
+    critical_power: CriticalPowerRead | None
+    ftp_current_w: float | None
+    # Set only when it differs from the current FTP by more than a couple of percent.
+    ftp_suggestion: FtpSuggestion | None
+
+
 class TrainingLoadDay(BaseModel):
     day: date
     tss: float

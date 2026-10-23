@@ -1,8 +1,13 @@
 """The coach dashboard: one summary card per athlete the user actively
 coaches — what they last did, how the last week compares with the one
-before, new records, failing syncs and comments waiting for the coach.
-"Form" here is recent load (sessions, laps, perceived effort), not a
-fitness/fatigue model.
+before, new records, failing syncs and comments waiting for the coach, and
+(v2) their fitness/fatigue/form, how much of the plan they followed, the
+goal that is closest and the next race. The week comparison is recent load
+(sessions, laps, perceived effort); `form` is the CTL/ATL/TSB model, which
+needs power or rated sessions to say anything.
+
+Everything is read as the coach, so an athlete's Strava activities stay out
+of the load and the bests (`visible_conditions`, records from sqorz only).
 """
 
 import uuid
@@ -12,15 +17,26 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.activities.metrics_service import training_load
 from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus
 from app.auth.models import User
 from app.connections.models import IngestionRunStatus
 from app.connections.service import list_ingestion_runs_for_athlete
+from app.goals.models import Goal
+from app.goals.service import progress_towards
+from app.planning.models import PlannedSession, PlanStatus
+from app.seasons import planning as race_planning
+from app.seasons.models import Competition
 from app.training import comments_service
+from app.training.efforts import StartType
 from app.training.models import EventTrack, PersonalRecord, TrainingEvent, TrainingLap
+from app.training.records_service import best_entry, get_records_board
 
 WINDOW_DAYS = 7
 RECORD_WINDOW_DAYS = 14
+# How far back a plan counts towards "followed the plan", and how far ahead "coming up" looks.
+COMPLIANCE_DAYS = 28
+UPCOMING_DAYS = 7
 
 
 class LastSession(BaseModel):
@@ -37,6 +53,47 @@ class WeekLoad(BaseModel):
     avg_rpe: float | None
 
 
+class Form(BaseModel):
+    """Fitness, fatigue and form on the last day with load data."""
+
+    ctl: float
+    atl: float
+    tsb: float
+
+
+class PlanCompliance(BaseModel):
+    """The plans of the last `COMPLIANCE_DAYS` days: done, skipped, or still
+    unanswered once their day has passed (`missed`)."""
+
+    done: int
+    skipped: int
+    missed: int
+    # done / (done + skipped + missed); null when nothing was planned.
+    compliance: float | None
+    upcoming: int
+
+
+class GoalProgress(BaseModel):
+    goal_id: uuid.UUID
+    event_key: str
+    start_type: StartType
+    target_time_ms: int
+    target_date: date
+    days_left: int
+    best_ms: int | None
+    progress: float | None
+    achieved: bool
+
+
+class NextRace(BaseModel):
+    competition_id: uuid.UUID
+    name: str
+    competition_date: date
+    priority: str
+    days_until: int
+    phase: str
+
+
 class AthleteCard(BaseModel):
     athlete_id: uuid.UUID
     athlete_name: str
@@ -47,6 +104,11 @@ class AthleteCard(BaseModel):
     # Transponders whose most recent sync failed.
     failing_transponders: list[str]
     unread_comments: int
+    form: Form | None = None
+    plan: PlanCompliance | None = None
+    # The open goal with the nearest date, else the latest reached one, else the one that lapsed last.
+    goal: GoalProgress | None = None
+    next_race: NextRace | None = None
 
 
 def _load(events: list[TrainingEvent], laps_by_event: dict[uuid.UUID, int], start: date, end: date) -> WeekLoad:
@@ -77,6 +139,86 @@ async def _failing_transponders(db: AsyncSession, athlete_id: uuid.UUID) -> list
     for run, code in runs:  # newest first: the first run seen per transponder is its latest
         latest.setdefault(code, run.status)
     return sorted(code for code, status in latest.items() if status == IngestionRunStatus.FAILED)
+
+
+async def _form(db: AsyncSession, athlete: Athlete, coach: User, today: date) -> Form | None:
+    series = (await training_load(db, athlete, coach, through=today, days=1)).days
+    return Form(ctl=series[-1].ctl, atl=series[-1].atl, tsb=series[-1].tsb) if series else None
+
+
+async def _plan_compliance(db: AsyncSession, athlete_id: uuid.UUID, today: date) -> PlanCompliance | None:
+    plans = list(
+        await db.scalars(
+            select(PlannedSession).where(
+                PlannedSession.athlete_id == athlete_id,
+                PlannedSession.planned_date >= today - timedelta(days=COMPLIANCE_DAYS),
+                PlannedSession.planned_date <= today + timedelta(days=UPCOMING_DAYS),
+            )
+        )
+    )
+    if not plans:
+        return None
+    past = [p for p in plans if p.planned_date < today]
+    done = sum(1 for p in past if p.status == PlanStatus.DONE.value)
+    skipped = sum(1 for p in past if p.status == PlanStatus.SKIPPED.value)
+    missed = sum(1 for p in past if p.status == PlanStatus.PLANNED.value)
+    answered = done + skipped + missed
+    return PlanCompliance(
+        done=done,
+        skipped=skipped,
+        missed=missed,
+        compliance=done / answered if answered else None,
+        upcoming=sum(1 for p in plans if p.planned_date >= today and p.status == PlanStatus.PLANNED.value),
+    )
+
+
+async def _goal_progress(db: AsyncSession, athlete_id: uuid.UUID, today: date) -> GoalProgress | None:
+    goals = list(await db.scalars(select(Goal).where(Goal.athlete_id == athlete_id).order_by(Goal.target_date)))
+    if not goals:
+        return None
+    board = await get_records_board(db, athlete_id)
+    reads = []
+    for goal in goals:
+        best = best_entry(board, goal.event_key, goal.start_type, goal.track_id)
+        reads.append(
+            GoalProgress(
+                goal_id=goal.id,
+                event_key=goal.event_key,
+                start_type=StartType(goal.start_type),
+                target_time_ms=goal.target_time_ms,
+                target_date=goal.target_date,
+                days_left=(goal.target_date - today).days,
+                best_ms=best.time_ms if best else None,
+                progress=progress_towards(goal, best),
+                achieved=best is not None and best.time_ms <= goal.target_time_ms,
+            )
+        )
+    open_goals = [g for g in reads if not g.achieved and g.days_left >= 0]
+    if open_goals:
+        return open_goals[0]  # goals are ordered by date: the nearest one still to reach
+    reached = [g for g in reads if g.achieved]
+    # Nothing open: the latest goal reached, else the one that lapsed most recently (days_left < 0).
+    return reached[-1] if reached else reads[-1]
+
+
+async def _next_race(db: AsyncSession, athlete_id: uuid.UUID, today: date) -> NextRace | None:
+    race = await db.scalar(
+        select(Competition)
+        .where(Competition.athlete_id == athlete_id, Competition.competition_date >= today)
+        .order_by(Competition.competition_date)
+        .limit(1)
+    )
+    if race is None:
+        return None
+    count = race_planning.countdown(race.competition_date, race.priority, today)
+    return NextRace(
+        competition_id=race.id,
+        name=race.name,
+        competition_date=race.competition_date,
+        priority=race.priority,
+        days_until=count.days_until,
+        phase=count.phase,
+    )
 
 
 async def coach_dashboard(db: AsyncSession, coach: User, today: date | None = None) -> list[AthleteCard]:
@@ -156,6 +298,10 @@ async def coach_dashboard(db: AsyncSession, coach: User, today: date | None = No
                 new_records=new_records.get(athlete.id, 0),
                 failing_transponders=await _failing_transponders(db, athlete.id),
                 unread_comments=unread.get(athlete.id, 0),
+                form=await _form(db, athlete, coach, today),
+                plan=await _plan_compliance(db, athlete.id, today),
+                goal=await _goal_progress(db, athlete.id, today),
+                next_race=await _next_race(db, athlete.id, today),
             )
         )
     return cards

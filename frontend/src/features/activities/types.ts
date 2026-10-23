@@ -98,6 +98,29 @@ export interface PowerCurvePoint {
   start_time: string;
 }
 
+export interface CriticalPower {
+  cp_w: number;
+  w_prime_j: number;
+  r_squared: number;
+  /** Efforts between 3 and 20 minutes the line went through. */
+  points: number;
+}
+
+export interface FtpSuggestion {
+  ftp_w: number;
+  source_duration_s: number;
+  source_activity_id: string;
+  source_power_w: number;
+}
+
+/** What the recent power says about threshold; each part is null when the data can't support it. */
+export interface PowerProfile {
+  days: number;
+  critical_power: CriticalPower | null;
+  ftp_current_w: number | null;
+  ftp_suggestion: FtpSuggestion | null;
+}
+
 export interface TrainingLoadDay {
   day: string;
   tss: number;

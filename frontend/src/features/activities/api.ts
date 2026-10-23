@@ -6,6 +6,7 @@ import type {
   ActivityUpdate,
   IntervalsStatus,
   PowerCurvePoint,
+  PowerProfile,
   SessionSuggestion,
   StravaStatus,
   TrainingLoad,
@@ -80,6 +81,10 @@ export function getPowerCurve(athleteId: string, range: { start?: string; end?: 
   if (range.end) query.set("end", range.end);
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
   return apiFetch<PowerCurvePoint[]>(`${base(athleteId)}/power-curve${suffix}`);
+}
+
+export function getPowerProfile(athleteId: string, days: number): Promise<PowerProfile> {
+  return apiFetch<PowerProfile>(`${base(athleteId)}/power-profile?days=${days}`);
 }
 
 // --- Intervals.icu -----------------------------------------------------------------

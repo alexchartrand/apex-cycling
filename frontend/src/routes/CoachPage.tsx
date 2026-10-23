@@ -5,11 +5,12 @@ import { Card, PageHeader, TabPanel, Tabs, useToast, type TabItem } from "../com
 import { AskByEmail } from "../features/coaching/AskByEmail";
 import { AthleteCards } from "../features/coaching/AthleteCards";
 import { MyCoaches } from "../features/coaching/MyCoaches";
+import { SquadPanel } from "../features/coaching/SquadPanel";
 import { useCoachedAthletes, useRequestCoachLink } from "../features/coaching/useCoaching";
 import { WaitingForYou } from "../features/coaching/WaitingForYou";
 import "../features/coaching/Coaching.css";
 
-const TABS = ["athletes", "coaches"] as const;
+const TABS = ["athletes", "squad", "coaches"] as const;
 type CoachTab = (typeof TABS)[number];
 
 const isTab = (value: string | null): value is CoachTab => TABS.includes(value as CoachTab);
@@ -26,6 +27,7 @@ export function CoachPage() {
 
   const items: TabItem<CoachTab>[] = [
     { value: "athletes", label: t("tabs.athletes"), count: coached.data?.filter((link) => link.status === "active").length },
+    { value: "squad", label: t("tabs.squad") },
     { value: "coaches", label: t("tabs.coaches") },
   ];
 
@@ -65,6 +67,9 @@ export function CoachPage() {
                 </div>
               </Card>
             </div>
+          </TabPanel>
+          <TabPanel value="squad">
+            <SquadPanel />
           </TabPanel>
           <TabPanel value="coaches">
             <MyCoaches />

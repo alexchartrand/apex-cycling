@@ -7,7 +7,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.activities.metrics_service import athlete_timezone, best_power_curve, local_day
@@ -20,10 +20,11 @@ from app.equipment.models import Bike
 from app.goals.models import Goal
 from app.goals.prediction import pick_power, predict_time_s
 from app.goals.schemas import GoalBest, GoalPrediction, GoalRead, GoalUpdate, GoalWrite
+from app.seasons.models import Competition
 from app.training.distances import STANDARD_EVENTS_BY_KEY
 from app.training.efforts import StartType
 from app.training.models import Track
-from app.training.records_service import UnknownTrackError, get_records_board
+from app.training.records_service import UnknownTrackError, best_entry, get_records_board
 from app.training.schemas import RecordEntry
 
 # Power older than this says little about today's form.
@@ -86,18 +87,6 @@ async def _inputs(db: AsyncSession, athlete: Athlete, viewer: User) -> _Inputs:
     )
 
 
-def _best(board: list[RecordEntry], event_key: str, start_type: str, track_id: uuid.UUID | None) -> RecordEntry | None:
-    """The best result at the event, on the goal's track or, with none, anywhere."""
-    candidates = [
-        entry
-        for entry in board
-        if entry.event_key == event_key
-        and entry.start_type.value == start_type
-        and (track_id is None or entry.track_id == track_id)
-    ]
-    return min(candidates, key=lambda entry: entry.time_ms, default=None)
-
-
 async def _predict(
     inputs: _Inputs, goal: Goal, best: RecordEntry | None
 ) -> tuple[GoalPrediction | None, str | None]:
@@ -151,7 +140,7 @@ async def _predict(
     )
 
 
-def _progress(goal: Goal, best: RecordEntry | None) -> float | None:
+def progress_towards(goal: Goal, best: RecordEntry | None) -> float | None:
     if best is None or goal.baseline_ms is None or goal.baseline_ms <= goal.target_time_ms:
         return None
     done = (goal.baseline_ms - best.time_ms) / (goal.baseline_ms - goal.target_time_ms)
@@ -159,7 +148,7 @@ def _progress(goal: Goal, best: RecordEntry | None) -> float | None:
 
 
 async def _read(inputs: _Inputs, goal: Goal) -> GoalRead:
-    best = _best(inputs.board, goal.event_key, goal.start_type, goal.track_id)
+    best = best_entry(inputs.board, goal.event_key, goal.start_type, goal.track_id)
     prediction, problem = await _predict(inputs, goal, best)
     track = inputs.tracks.get(goal.track_id) if goal.track_id else None
     bike = inputs.bikes.get(goal.bike_id) if goal.bike_id else None
@@ -181,7 +170,7 @@ async def _read(inputs: _Inputs, goal: Goal) -> GoalRead:
         else None,
         gap_ms=best.time_ms - goal.target_time_ms if best else None,
         achieved=best is not None and best.time_ms <= goal.target_time_ms,
-        progress=_progress(goal, best),
+        progress=progress_towards(goal, best),
         days_left=(goal.target_date - inputs.today).days,
         prediction=prediction,
         prediction_problem=problem,
@@ -225,7 +214,7 @@ async def create_goal(db: AsyncSession, athlete: Athlete, viewer: User, payload:
     await _check_track(db, payload.track_id)
     await _check_bike(db, athlete.id, payload.bike_id)
     inputs = await _inputs(db, athlete, viewer)
-    baseline = _best(inputs.board, payload.event_key, payload.start_type.value, payload.track_id)
+    baseline = best_entry(inputs.board, payload.event_key, payload.start_type, payload.track_id)
     goal = Goal(
         athlete_id=athlete.id,
         event_key=payload.event_key,
@@ -261,6 +250,8 @@ async def delete_goal(db: AsyncSession, athlete_id: uuid.UUID, goal_id: uuid.UUI
     goal = await _own_goal(db, athlete_id, goal_id)
     if goal is None:
         return False
+    # A race aiming for this goal just loses the target.
+    await db.execute(update(Competition).where(Competition.goal_id == goal_id).values(goal_id=None))
     await db.delete(goal)
     await db.commit()
     return True

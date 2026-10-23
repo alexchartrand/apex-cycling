@@ -1,5 +1,6 @@
 export default {
   log: {
+    race: "Race",
     title: "Log",
     description: "Every track session and ride, newest first.",
     emptyTitle: "Nothing logged yet",
@@ -111,6 +112,7 @@ export default {
   notes: {
     title: "Session title",
     titleHint: "Leave empty to use the sqorz name: {{name}}.",
+    isRace: "This session was a race",
     rpe: "Perceived effort (RPE)",
     rpeNone: "Not rated",
     rpeLevels: {

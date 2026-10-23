@@ -1,4 +1,4 @@
-import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, CloudDownload, HeartPulse, Zap } from "lucide-react";
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, CloudDownload, Flag, HeartPulse, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -162,6 +162,11 @@ function LogRow({ item }: { item: LogItem }) {
         <span className="log__main">
           <span className="log__name">{item.session.event_name}</span>
           <span className="log__tracks">
+            {item.session.is_race && (
+              <Badge tone="highlight" icon={<Flag aria-hidden />}>
+                {t("log.race")}
+              </Badge>
+            )}
             {item.session.track_names.map((name) => (
               <Badge key={name}>{name}</Badge>
             ))}

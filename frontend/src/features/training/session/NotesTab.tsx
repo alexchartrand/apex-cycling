@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { errorMessage } from "../../../api/errors";
-import { Button, Card, Input, Select, Textarea, useToast } from "../../../components/ui";
+import { Button, Card, Checkbox, Input, Select, Textarea, useToast } from "../../../components/ui";
 import type { SessionDetail } from "../types";
 import { useUpdateSession } from "../useTraining";
 import { changesFrom, draftOf } from "./notesDraft";
@@ -41,6 +41,7 @@ export function NotesTab({ athleteId, session }: { athleteId: string; session: S
           placeholder={session.original_name}
           onChange={(e) => setDraft({ ...draft, title: e.target.value })}
         />
+        <Checkbox label={t("notes.isRace")} checked={draft.isRace} onChange={(e) => setDraft({ ...draft, isRace: e.target.checked })} />
         <Select label={t("notes.rpe")} value={draft.rpe} onChange={(e) => setDraft({ ...draft, rpe: e.target.value })}>
           <option value="">{t("notes.rpeNone")}</option>
           {RPE_LEVELS.map((level) => (

@@ -7,7 +7,7 @@ that knows about activities, FTP history, sqorz sessions and time zones.
 import asyncio
 import uuid
 from collections.abc import Sequence
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import delete, select
@@ -17,18 +17,25 @@ from app.activities import streams
 from app.activities.models import Activity, ActivityPowerCurve, ActivitySource, ActivityStream
 from app.activities.schemas import (
     ActivityAnalysis,
+    CriticalPowerRead,
     CurvePoint,
+    FtpSuggestion,
+    PowerProfile,
     PowerCurvePoint,
     TrainingLoadDay,
     TrainingLoadRead,
     ZoneDistribution,
 )
-from app.analysis import metrics
+from app.analysis import critical_power, metrics
 from app.athletes.models import Athlete, AthleteMetric
-from app.athletes.service import DatedValue, metrics_as_of
+from app.athletes.service import DatedValue, metrics_as_of, metrics_at
 from app.auth.models import User
 from app.clubs.models import Club
 from app.training.models import TrainingEvent
+
+# Load older than this before the first day shown is left out: CTL fades with a
+# 42-day time constant, so six of them (252 days) leave under 0.25 % of it.
+_LOAD_HORIZON_DAYS = 6 * metrics.CTL_DAYS
 
 # A sqorz session window longer than this is a whole-day booking, not training time.
 _MAX_SESSION_S = 6 * 3600
@@ -160,15 +167,24 @@ async def training_load(
     A day's load is, per activity, its power-based TSS, else duration x RPE,
     else nothing; plus duration x RPE for each sqorz session the athlete rated
     — unless a recording of that session already counted.
-    The curves are computed from the first day with load, so the window shows
-    the state those days really had."""
+    The curves are computed from the first day with load inside the horizon
+    (`_LOAD_HORIZON_DAYS` before the window), so the window shows the state
+    those days really had, and a long history isn't read for a short window."""
     zone = await athlete_timezone(db, athlete)
+    first_shown = through - timedelta(days=days - 1)
+    horizon = first_shown - timedelta(days=_LOAD_HORIZON_DAYS)
     daily: dict[date, float] = {}
     unrated_by_day: list[date] = []
     sessions_with_load: set[uuid.UUID] = set()
 
-    for activity in await db.scalars(select(Activity).where(*visible_conditions(athlete, viewer))):
+    # A day of slack on the instant: the cut is on the local day, checked below.
+    since = datetime.combine(horizon - timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
+    for activity in await db.scalars(
+        select(Activity).where(*visible_conditions(athlete, viewer), Activity.start_time >= since)
+    ):
         day = local_day(activity.start_time, zone)
+        if day < horizon:
+            continue
         if activity.tss is not None:
             load = activity.tss
         elif activity.rpe is not None:
@@ -181,7 +197,9 @@ async def training_load(
             sessions_with_load.add(activity.training_event_id)
 
     rated_sessions = await db.scalars(
-        select(TrainingEvent).where(TrainingEvent.athlete_id == athlete.id, TrainingEvent.rpe.is_not(None))
+        select(TrainingEvent).where(
+            TrainingEvent.athlete_id == athlete.id, TrainingEvent.rpe.is_not(None), TrainingEvent.event_date >= horizon
+        )
     )
     for event in rated_sessions:
         if event.id in sessions_with_load:
@@ -190,7 +208,6 @@ async def training_load(
         if seconds is not None:
             daily[event.event_date] = daily.get(event.event_date, 0.0) + metrics.srpe_training_stress(event.rpe, seconds)
 
-    first_shown = through - timedelta(days=days - 1)
     series = [d for d in metrics.training_load(daily, through) if d.day >= first_shown]
     return TrainingLoadRead(
         days=[TrainingLoadDay(day=d.day, tss=d.tss, ctl=d.ctl, atl=d.atl, tsb=d.tsb) for d in series],
@@ -219,6 +236,41 @@ async def best_power_curve(
                 duration_s=duration_s, power_w=power_w, activity_id=activity_id, start_time=start_time
             )
     return [best[duration] for duration in sorted(best)]
+
+
+async def power_profile(db: AsyncSession, athlete: Athlete, viewer: User, *, days: int) -> PowerProfile:
+    """Critical power / W′ and an FTP suggestion from the best power of the last
+    `days` days. The FTP suggestion is left out when it is within a couple of
+    percent of the FTP already in force."""
+    now = datetime.now(timezone.utc)
+    curve = await best_power_curve(db, athlete, viewer, start=now - timedelta(days=days), end=None)
+    pairs = [(point.duration_s, point.power_w) for point in curve]
+
+    fit = critical_power.fit_critical_power(pairs)
+    today = local_day(now, await athlete_timezone(db, athlete))
+    current = (await metrics_at(db, athlete.id, today))["ftp_w"]
+    current_w = float(current.value) if current is not None else None
+
+    suggestion = None
+    suggested = critical_power.suggest_ftp(pairs)
+    if suggested is not None and critical_power.worth_suggesting(suggested[0], current_w):
+        source = next(point for point in curve if point.duration_s == suggested[1])
+        suggestion = FtpSuggestion(
+            ftp_w=suggested[0],
+            source_duration_s=suggested[1],
+            source_activity_id=source.activity_id,
+            source_power_w=source.power_w,
+        )
+    return PowerProfile(
+        days=days,
+        critical_power=CriticalPowerRead(
+            cp_w=fit.cp_w, w_prime_j=fit.w_prime_j, r_squared=fit.r_squared, points=fit.points
+        )
+        if fit
+        else None,
+        ftp_current_w=current_w,
+        ftp_suggestion=suggestion,
+    )
 
 
 async def analyze_activity(db: AsyncSession, athlete: Athlete, activity: Activity) -> ActivityAnalysis:

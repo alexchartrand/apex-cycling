@@ -41,6 +41,7 @@ function session(date: string, laps: number, first?: string, last?: string): Ses
     track_names: ["Tour complet"],
     rpe: null,
     tags: [],
+    is_race: false,
     first_lap_at: first ?? null,
     last_lap_at: last ?? null,
   };

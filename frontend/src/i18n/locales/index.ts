@@ -15,6 +15,7 @@ import enNotifications from "./en/notifications";
 import enPlan from "./en/plan";
 import enRecords from "./en/records";
 import enShare from "./en/share";
+import enSeason from "./en/season";
 import enSettings from "./en/settings";
 import enShell from "./en/shell";
 import enTools from "./en/tools";
@@ -36,6 +37,7 @@ import frNotifications from "./fr/notifications";
 import frPlan from "./fr/plan";
 import frRecords from "./fr/records";
 import frShare from "./fr/share";
+import frSeason from "./fr/season";
 import frSettings from "./fr/settings";
 import frShell from "./fr/shell";
 import frTools from "./fr/tools";
@@ -64,6 +66,7 @@ export const resources = {
     insights: enInsights,
     share: enShare,
     notifications: enNotifications,
+    season: enSeason,
   },
   fr: {
     common: frCommon,
@@ -87,6 +90,7 @@ export const resources = {
     insights: frInsights,
     share: frShare,
     notifications: frNotifications,
+    season: frSeason,
   },
 } as const;
 

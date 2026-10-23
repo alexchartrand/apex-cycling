@@ -9,6 +9,7 @@ import {
   getActivityStreams,
   getIntervalsStatus,
   getPowerCurve,
+  getPowerProfile,
   getSessionSuggestion,
   getStravaAuthorizeUrl,
   getStravaStatus,
@@ -80,11 +81,19 @@ export function usePowerCurve(athleteId: string, range: { start?: string; end?: 
   });
 }
 
+export function usePowerProfile(athleteId: string, days: number) {
+  return useQuery({
+    queryKey: ["power-profile", athleteId, days],
+    queryFn: () => getPowerProfile(athleteId, days),
+    enabled: athleteId !== "",
+  });
+}
+
 /** Everything derived from activities refetches when they change. */
 function useInvalidateActivities() {
   const queryClient = useQueryClient();
   return () => {
-    for (const key of ["activities", "activity", "activity-analysis", "activity-streams", "training-load", "power-curve", "session-detail", "session-efforts"]) {
+    for (const key of ["activities", "activity", "activity-analysis", "activity-streams", "training-load", "power-curve", "power-profile", "session-detail", "session-efforts"]) {
       queryClient.invalidateQueries({ queryKey: [key] });
     }
   };

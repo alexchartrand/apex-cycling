@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, Eye, MessageSquare, Trophy, UserMinus } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, Eye, Flag, MessageSquare, Trophy, UserMinus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { errorMessage } from "../../api/errors";
-import { Avatar, Badge, Button, Card, ConfirmDialog, EmptyState, SkeletonGroup, useToast } from "../../components/ui";
+import { Avatar, Badge, Button, Card, ConfirmDialog, EmptyState, ProgressBar, SkeletonGroup, useToast } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
+import { FORM_TONE, formState } from "../activities/fitness";
 import { useViewAthlete } from "../athletes/useViewAthlete";
+import { formatRecordTime } from "../records/timeInput";
+import type { StandardEventKey } from "../records/types";
+import { compliancePercent } from "./squad";
 import { loadChange, signed } from "./loadChange";
 import type { AthleteCard, CoachLink } from "./types";
 import { useCoachDashboard, useCoachedAthletes, useRevokeCoachLink } from "./useCoaching";
@@ -17,6 +21,8 @@ function Trend({ direction }: { direction: ReturnType<typeof loadChange>["direct
 
 function AthleteCardView({ card, onStop }: { card: AthleteCard; onStop: () => void }) {
   const { t } = useTranslation("coach");
+  const { t: tr } = useTranslation("records");
+  const { t: ta } = useTranslation("activities");
   const fmt = useFormat();
   const view = useViewAthlete();
   const change = loadChange(card.this_week, card.previous_week);
@@ -43,6 +49,14 @@ function AthleteCardView({ card, onStop }: { card: AthleteCard; onStop: () => vo
         {card.unread_comments > 0 && (
           <Badge tone="accent" icon={<MessageSquare aria-hidden />}>
             {t("cards.unread", { count: card.unread_comments })}
+          </Badge>
+        )}
+        {card.next_race && (
+          <Badge tone={card.next_race.phase === "taper" || card.next_race.phase === "race_day" ? "highlight" : "neutral"} icon={<Flag aria-hidden />}>
+            {t(`cards.race.${card.next_race.phase === "race_day" ? "today" : card.next_race.phase === "taper" ? "taper" : "in"}`, {
+              name: card.next_race.name,
+              count: card.next_race.days_until,
+            })}
           </Badge>
         )}
       </div>
@@ -78,6 +92,57 @@ function AthleteCardView({ card, onStop }: { card: AthleteCard; onStop: () => vo
           <div>
             <dt>{t("cards.effort")}</dt>
             <dd>{t("cards.rpe", { value: fmt.number(card.this_week.avg_rpe, 1) })}</dd>
+          </div>
+        )}
+        {card.form && (
+          <div>
+            <dt>{t("cards.form")}</dt>
+            <dd>
+              <Badge tone={FORM_TONE[formState(card.form.tsb)]}>{ta(`fitness.states.${formState(card.form.tsb)}`)}</Badge>
+              <span className="coach-card__sub">
+                {t("cards.formNumbers", {
+                  ctl: fmt.number(card.form.ctl, 0),
+                  atl: fmt.number(card.form.atl, 0),
+                  tsb: `${card.form.tsb > 0 ? "+" : card.form.tsb < 0 ? "−" : ""}${fmt.number(Math.abs(card.form.tsb), 0)}`,
+                })}
+              </span>
+            </dd>
+          </div>
+        )}
+        {card.plan && (
+          <div>
+            <dt>{t("cards.plan")}</dt>
+            <dd>
+              {compliancePercent(card.plan.compliance) == null
+                ? t("cards.planNothingDue")
+                : t("cards.planFollowed", {
+                    percent: compliancePercent(card.plan.compliance),
+                    done: card.plan.done,
+                    due: card.plan.done + card.plan.skipped + card.plan.missed,
+                  })}
+              {card.plan.upcoming > 0 && <span className="coach-card__sub">{t("cards.planUpcoming", { count: card.plan.upcoming })}</span>}
+            </dd>
+          </div>
+        )}
+        {card.goal && (
+          <div>
+            <dt>{t("cards.goal")}</dt>
+            <dd>
+              {tr(`events.${card.goal.event_key as StandardEventKey}`)} · {formatRecordTime(card.goal.target_time_ms, fmt)}
+              <span className="coach-card__sub">
+                {card.goal.achieved
+                  ? t("cards.goalReached")
+                  : card.goal.days_left < 0
+                    ? t("cards.goalOverdue", { best: card.goal.best_ms == null ? "—" : formatRecordTime(card.goal.best_ms, fmt) })
+                    : t("cards.goalStatus", {
+                        best: card.goal.best_ms == null ? "—" : formatRecordTime(card.goal.best_ms, fmt),
+                        count: card.goal.days_left,
+                      })}
+              </span>
+              {card.goal.progress != null && (
+                <ProgressBar value={card.goal.progress} label={t("cards.goalProgress", { athlete: card.athlete_name })} tone={card.goal.achieved ? "positive" : "goal"} />
+              )}
+            </dd>
           </div>
         )}
       </dl>

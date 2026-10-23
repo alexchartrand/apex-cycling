@@ -4,7 +4,7 @@ import { groupItemsByMonth, mergeLog, monthCalendar } from "./logItems";
 import type { Activity } from "./types";
 
 function session(id: string, date: string): SessionSummary {
-  return { external_event_id: id, event_name: id, event_date: date, lap_count: 10, track_names: [], rpe: null, tags: [], first_lap_at: `${date}T18:00:00Z`, last_lap_at: null };
+  return { external_event_id: id, event_name: id, event_date: date, lap_count: 10, track_names: [], rpe: null, tags: [], is_race: false, first_lap_at: `${date}T18:00:00Z`, last_lap_at: null };
 }
 
 function activity(id: string, startLocal: [number, number, number], eventId: string | null = null): Activity {

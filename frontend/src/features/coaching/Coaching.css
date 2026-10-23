@@ -157,3 +157,30 @@
 .coach-trend--down {
   color: var(--color-negative);
 }
+
+.squad__filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+@media (max-width: 40rem) {
+  .squad__filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.squad__name {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--color-accent);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.squad__name:hover {
+  text-decoration: underline;
+}

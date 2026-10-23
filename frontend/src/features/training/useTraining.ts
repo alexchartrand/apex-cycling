@@ -68,10 +68,15 @@ export function useUpdateSession(athleteId: string, eventId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: SessionUpdate) => updateSession(athleteId, eventId, payload),
-    // The title shows in the list and the header too.
+    // The title shows in the list and the header too, and the race mark feeds the race calendar and the season tiles.
     onSuccess: () =>
       Promise.all(
-        [["session-detail", athleteId, eventId], ["sessions", athleteId]].map((queryKey) =>
+        [
+          ["session-detail", athleteId, eventId],
+          ["sessions", athleteId],
+          ["competitions", athleteId],
+          ["season-summary", athleteId],
+        ].map((queryKey) =>
           queryClient.invalidateQueries({ queryKey }),
         ),
       ),

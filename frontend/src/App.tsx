@@ -26,6 +26,7 @@ const LogPage = lazy(() => import("./routes/LogPage").then((m) => ({ default: m.
 const ProgressPage = lazy(() => import("./routes/ProgressPage").then((m) => ({ default: m.ProgressPage })));
 const RecordsPage = lazy(() => import("./routes/RecordsPage").then((m) => ({ default: m.RecordsPage })));
 const PursuitBoardPage = lazy(() => import("./routes/PursuitBoardPage").then((m) => ({ default: m.PursuitBoardPage })));
+const SeasonPage = lazy(() => import("./routes/SeasonPage").then((m) => ({ default: m.SeasonPage })));
 const SessionDetailPage = lazy(() => import("./routes/SessionDetailPage").then((m) => ({ default: m.SessionDetailPage })));
 const SettingsPage = lazy(() => import("./routes/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 const ToolsPage = lazy(() => import("./routes/ToolsPage").then((m) => ({ default: m.ToolsPage })));
@@ -71,6 +72,7 @@ export function App() {
           <Route path="/records" element={<RecordsPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/power" element={<PowerCurvePage />} />
+          <Route path="/season" element={<SeasonPage />} />
           <Route path="/tools/*" element={<ToolsPage />} />
           <Route path="/aero" element={<AeroPage />} />
           <Route path="/equipment" element={<EquipmentPage />} />

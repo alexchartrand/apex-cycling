@@ -7,6 +7,7 @@ export default {
     log: "Journal",
     records: "Records",
     progress: "Progression",
+    season: "Saison",
     power: "Puissance",
     tools: "Outils",
     aero: "Labo aéro",

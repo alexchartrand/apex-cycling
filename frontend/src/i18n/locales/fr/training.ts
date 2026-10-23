@@ -3,6 +3,7 @@ import type en from "../en/training";
 
 export default {
   log: {
+    race: "Course",
     title: "Journal",
     description: "Toutes vos séances sur piste et sorties, de la plus récente à la plus ancienne.",
     emptyTitle: "Rien d'enregistré pour l'instant",
@@ -114,6 +115,7 @@ export default {
   notes: {
     title: "Titre de la séance",
     titleHint: "Laissez vide pour utiliser le nom sqorz : {{name}}.",
+    isRace: "Cette séance était une course",
     rpe: "Effort perçu (RPE)",
     rpeNone: "Non évalué",
     rpeLevels: {

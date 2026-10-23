@@ -436,3 +436,31 @@ async def test_records_are_private_to_the_athlete(client, db_session):
             mine = await session.scalar(select(Athlete).where(Athlete.user_id == uuid.UUID(other["id"])))
         assert (await stranger.delete(f"/athletes/{mine.id}/manual-results/{result_id}")).status_code == 404
     assert len((await client.get(f"/athletes/{athlete_id}/manual-results")).json()) == 1
+
+
+def test_best_entry_is_the_fastest_and_the_earlier_on_a_tie():
+    import uuid as _uuid
+    from datetime import date as _date
+
+    from app.training.efforts import StartType as _StartType
+    from app.training.records_service import best_entry
+    from app.training.schemas import RecordEntry
+
+    track, other = _uuid.uuid4(), _uuid.uuid4()
+
+    def entry(time_ms, day, track_id=track, event="500m", start=_StartType.STANDING):
+        return RecordEntry(place="P", track_id=track_id, event_key=event, start_type=start, time_ms=time_ms,
+                           achieved_on=day, source="sqorz")  # fmt: skip
+
+    board = [
+        entry(36_000, _date(2026, 5, 1)),
+        entry(35_000, _date(2026, 6, 1)),
+        entry(35_000, _date(2026, 4, 1)),  # same time, earlier
+        entry(34_000, _date(2026, 6, 1), track_id=other),
+        entry(33_000, _date(2026, 6, 1), start=_StartType.FLYING),
+        entry(32_000, _date(2026, 6, 1), event="1km"),
+    ]
+    assert best_entry(board, "500m", "standing", track).achieved_on == _date(2026, 4, 1)
+    assert best_entry(board, "500m", _StartType.STANDING, None).time_ms == 34_000  # anywhere
+    assert best_entry(board, "500m", "flying", None).time_ms == 33_000
+    assert best_entry(board, "2km", "standing", None) is None

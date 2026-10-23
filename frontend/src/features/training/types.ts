@@ -7,6 +7,8 @@ export interface SessionSummary {
   track_names: string[];
   rpe: number | null;
   tags: string[];
+  /** The athlete marked this session as a race. */
+  is_race: boolean;
   first_lap_at: string | null;
   last_lap_at: string | null;
 }
@@ -71,6 +73,7 @@ export interface SessionDetail {
   notes: string | null;
   rpe: number | null;
   tags: string[];
+  is_race: boolean;
   tracks: TrackSessionDetail[];
   /** Recordings linked to this session. */
   activities?: LinkedActivity[];
@@ -84,6 +87,7 @@ export interface SessionUpdate {
   notes?: string | null;
   rpe?: number | null;
   tags?: string[] | null;
+  is_race?: boolean;
 }
 
 export interface SessionMeta {
@@ -94,6 +98,7 @@ export interface SessionMeta {
   notes: string | null;
   rpe: number | null;
   tags: string[];
+  is_race: boolean;
 }
 
 export interface LapUpdate {

@@ -228,6 +228,20 @@ async def get_records_board(db: AsyncSession, athlete_id: uuid.UUID) -> list[Rec
     return sorted(best.values(), key=_entry_sort_key)
 
 
+def best_entry(
+    board: list[RecordEntry], event_key: str, start_type: StartType | str, track_id: uuid.UUID | None
+) -> RecordEntry | None:
+    """The fastest entry of a records board at one event and start, on `track_id`
+    or, with None, anywhere. Equal times go to the earlier one."""
+    start = StartType(start_type)
+    candidates = [
+        entry
+        for entry in board
+        if entry.event_key == event_key and entry.start_type == start and (track_id is None or entry.track_id == track_id)
+    ]
+    return min(candidates, key=lambda entry: (entry.time_ms, entry.achieved_on), default=None)
+
+
 async def get_record_history(
     db: AsyncSession,
     athlete_id: uuid.UUID,

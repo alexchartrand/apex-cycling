@@ -153,6 +153,8 @@ class TrainingEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     rpe: Mapped[int | None] = mapped_column(Integer, nullable=True)  # rate of perceived exertion, 1-10
     tags: Mapped[list[str]] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    # The athlete marked this session as a race (sync never touches it).
+    is_race: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     # Gear ridden by default in this session (an effort may override it).
     gear_setup_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("gear_setups.id"), nullable=True)
 

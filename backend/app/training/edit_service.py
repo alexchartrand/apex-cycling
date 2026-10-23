@@ -23,6 +23,7 @@ def _session_meta(event: TrainingEvent) -> SessionMeta:
         notes=event.notes,
         rpe=event.rpe,
         tags=event.tags or [],
+        is_race=event.is_race,
     )
 
 

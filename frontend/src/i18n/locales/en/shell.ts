@@ -4,6 +4,7 @@ export default {
     log: "Log",
     records: "Records",
     progress: "Progress",
+    season: "Season",
     power: "Power",
     tools: "Tools",
     aero: "Aero lab",

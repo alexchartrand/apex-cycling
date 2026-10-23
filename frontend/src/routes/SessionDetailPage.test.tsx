@@ -20,7 +20,7 @@ const linked = (id: string, name: string): LinkedActivity => ({
 function detail(activities: LinkedActivity[]): SessionDetail {
   return {
     external_event_id: "e1", event_name: "Saturday", original_name: "Saturday", title_override: null, event_date: "2026-04-04",
-    notes: null, rpe: null, tags: [], tracks: [{ track_id: "t1", track_name: "Bromont", laps: [] }], activities,
+    notes: null, rpe: null, tags: [], is_race: false, tracks: [{ track_id: "t1", track_name: "Bromont", laps: [] }], activities,
   } as SessionDetail;
 }
 

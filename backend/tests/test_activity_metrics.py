@@ -223,6 +223,20 @@ async def test_training_load_window_keeps_the_history_behind_it(client, db_sessi
     assert load["unrated_activities"] == 0
 
 
+async def test_training_load_ignores_history_beyond_the_horizon(client, db_session):
+    athlete_id = await _rider(client)
+    # A hard ride long before the window (more than six time constants of CTL), and a recent one.
+    await _add_activity(db_session, athlete_id, datetime(2025, 1, 10, 12, tzinfo=timezone.utc), rpe=9)
+    far = (await client.get(f"/athletes/{athlete_id}/training-load", params={"through": "2026-06-20", "days": 5})).json()
+    assert far == {"days": [], "unrated_activities": 0}  # it can't be felt any more
+
+    await _add_activity(db_session, athlete_id, datetime(2026, 6, 1, 12, tzinfo=timezone.utc), rpe=7)
+    with_old = (await client.get(f"/athletes/{athlete_id}/training-load", params={"through": "2026-06-20", "days": 5})).json()
+    # Same numbers as without the old ride: the recent load alone sets the curve.
+    alone = metrics.training_load({date(2026, 6, 1): metrics.srpe_training_stress(7, 3600)}, date(2026, 6, 20))
+    assert with_old["days"][-1]["ctl"] == pytest.approx(alone[-1].ctl, rel=1e-6)
+
+
 async def test_training_load_with_nothing_is_empty(client):
     athlete_id = await _rider(client)
     resp = await client.get(f"/athletes/{athlete_id}/training-load")

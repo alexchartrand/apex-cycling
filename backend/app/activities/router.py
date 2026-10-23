@@ -14,6 +14,7 @@ from app.activities.schemas import (
     ActivityStreamsRead,
     ActivityUpdate,
     PowerCurvePoint,
+    PowerProfile,
     SessionLinkWrite,
     SessionSuggestion,
     TrainingLoadRead,
@@ -277,3 +278,14 @@ async def get_power_curve(
     exclusive), each with the activity that set it. Call twice to compare
     ranges."""
     return await metrics_service.best_power_curve(db, athlete, current_user, start=start, end=end)
+
+
+@analysis_router.get("/power-profile", response_model=PowerProfile)
+async def get_power_profile(
+    days: int = Query(default=90, ge=14, le=365),
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> PowerProfile:
+    """Critical power, W′ and an FTP suggestion from the last `days` days."""
+    return await metrics_service.power_profile(db, athlete, current_user, days=days)

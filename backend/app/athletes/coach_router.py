@@ -1,18 +1,21 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.athletes import coaching
 from app.athletes.coaching import CoachLinkError, NotAllowed
 from app.athletes.dashboard import AthleteCard, coach_dashboard
 from app.athletes.models import Athlete
+from app.athletes.squad import Squad, build_squad
 from app.athletes.schemas import CoachLinkRead, CoachLinkRequest, CoachLinkRequested
 from app.auth.deps import get_current_user
 from app.auth.models import User
 from app.clubs.models import ClubRole
 from app.core.rate_limit import limiter
 from app.db.session import get_db
+from app.training.distances import STANDARD_EVENTS_BY_KEY
+from app.training.efforts import StartType
 
 router = APIRouter(prefix="/coach-links", tags=["coaching"])
 
@@ -115,6 +118,21 @@ async def dashboard(
 ) -> list[AthleteCard]:
     """One summary card per athlete I actively coach."""
     return await coach_dashboard(db, current_user)
+
+
+@router.get("/squad", response_model=Squad)
+async def squad(
+    event_key: str,
+    start_type: StartType,
+    track_id: uuid.UUID | None = Query(default=None, description="Only results on this track; omitted = anywhere"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Squad:
+    """Every athlete I actively coach, ranked by their best at one event and start."""
+    event = STANDARD_EVENTS_BY_KEY.get(event_key)
+    if event is None or start_type not in event.start_types:
+        raise HTTPException(422, "Unknown event or start")
+    return await build_squad(db, current_user, event_key, start_type, track_id)
 
 
 @router.post("/{link_id}/accept", response_model=CoachLinkRead)

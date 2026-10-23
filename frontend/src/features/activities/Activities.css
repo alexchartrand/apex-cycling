@@ -335,3 +335,39 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.power-profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.power-profile__suggestion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+}
+
+.power-profile__suggestion p {
+  margin: 0;
+}
+
+.power-profile__basis {
+  color: var(--color-text-2);
+}
+
+.power-profile__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.power-profile__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-3);
+}

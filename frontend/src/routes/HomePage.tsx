@@ -12,6 +12,7 @@ import { useFirstRunChecklist } from "../features/onboarding/useFirstRunChecklis
 import { WhatsNewCard } from "../features/insights/WhatsNewCard";
 import { PlannedSessionsCard } from "../features/plan/PlannedSessionsCard";
 import { GoalsCard } from "../features/goals/GoalsCard";
+import { NextRaceCard } from "../features/season/NextRaceCard";
 import { useIngestionRuns, useTransponderAssignments } from "../features/connections/useConnections";
 import { bestLap, DEFAULT_LAP_DISTANCE_M, flying200Ms, startOfWeek, summarizeWeek } from "../features/training/sessionStats";
 import { useSessionDetail, useSessions } from "../features/training/useTraining";
@@ -93,6 +94,8 @@ export function HomePage() {
       {athleteId !== "" && <WhatsNewCard athleteId={athleteId} />}
 
       {athleteId !== "" && <FitnessCard athleteId={athleteId} hideWhenEmpty />}
+
+      {athleteId !== "" && <NextRaceCard athleteId={athleteId} />}
 
       {athleteId !== "" && <PlannedSessionsCard athleteId={athleteId} />}
 

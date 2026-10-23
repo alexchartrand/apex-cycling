@@ -18,6 +18,7 @@ from app.goals.models import Goal  # noqa: F401
 from app.notifications.models import Notification, NotificationPreference, PushSubscription  # noqa: F401
 from app.ops.models import WorkerHeartbeat  # noqa: F401
 from app.planning.models import PlannedSession  # noqa: F401
+from app.seasons.models import CalendarFeed, Competition, Season  # noqa: F401
 from app.training.models import (  # noqa: F401
     EventClass,
     EventTrack,

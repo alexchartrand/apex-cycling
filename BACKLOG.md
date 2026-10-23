@@ -111,8 +111,8 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
   - Notes: `training_events(athlete_id, event_date)`, `activities(athlete_id, start_time)`, `ingestion_runs(data_source_connection_id, requested_at)`, `raw_snapshots(external_ref, fetched_at)`, `personal_records(track_id, event_key, start_type)`, FKs `aero_tests.track_id`, `goals.track_id/bike_id`, `planned_sessions.training_event_id`.
 - [x] 🟡 A4 Frontend ships as one big chunk and refetches on every focus — *added 10/22, done 10/22 (every page behind `React.lazy` with a skeleton fallback in the shell, entry chunk 241 KB; `staleTime` 60 s)*
   - Notes: `React.lazy` per route in `App.tsx`; default `staleTime` (~60 s) in `main.tsx`.
-- [ ] 🟡 A5 Slow read paths — *added 10/22*
-  - Notes: goals fit every aero test (decoding streams) to use the newest (`goals/service.py`); coach dashboard N+1 (last session, failing transponders per athlete); training load has no lower date bound; `/sessions` and `/progression` unpaginated.
+- [ ] 🟡 A5 Slow read paths — *added 10/22; training-load horizon done 10/23*
+  - Notes: goals fit every aero test (decoding streams) to use the newest (`goals/service.py`); coach dashboard N+1 (last session, failing transponders, load, plans, goal and race per athlete — still several queries per athlete, sequential); `/sessions` and `/progression` unpaginated. Done: `training_load` only reads activities/rated sessions from 252 days (6 × the CTL constant) before the window, so it no longer scans the whole history (older load is under 0.25 % of the curve).
 - [x] 🟡 B1 Session insights & PR moments — *added 10/22, done 10/23 (`training/insights.py` pure + `insights_service.py`; `GET /athletes/{id}/insights` and `…/sessions/{event}/insights`; computed on read like the record history, no table)*
   - Done: personal records (with the round time they broke — "first time under 1:10"), season bests (calendar year, needs an earlier result that season), best Nth lap of the season (efforts of ≥ 4 laps, the biggest improvement per session and track), most consistent effort (lap-time spread, comparable lap counts). A first result is never a "record". Banner on the session page, "What's new" card on Home (30 days, 3 sessions, 4 each), toast after "Sync now".
   - Open: insights are sqorz-only (manual results don't count); they load every lap of the athlete on each read, like the record history — fold them into A5's slow-path work if it shows.
@@ -135,12 +135,15 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 - [x] 🟢 C4 Sprint metrics from segment times — *added 10/22, done 10/23 (`training/sprint.py` pure; `EffortDetail.peak_speed_kmh / launch_*`)*
   - Done: top speed = the fastest stretch (≥ 20 m) between two placed checkpoints of a non-excluded lap; launch = time to the first placed checkpoint of a standing start, with the average acceleration from rest (2·d/t²). Gates are placed by the loop's `distance_m` when sqorz sent one, else by name: `NNNm` = distance left to the finish, `Finish` = the line (the real LS-03407 export has no distances). The launch needs the track length.
   - Open: the launch assumes the lap timer starts at the gate, and peak speed is an average over ≥ 20 m, not an instantaneous one; none of it checked against a real standing-start session.
-- [ ] 🟡 D1 Coach dashboard v2 — *added 10/22*
-  - Notes: CTL/ATL/TSB, plan compliance and goal progress per athlete; squad view of every athlete's best on one event/track (no Strava). Supersedes "Coach dashboard form is recent load only" below.
-- [ ] 🟢 D2 Seasons, competitions, ICS feed — *added 10/22*
-  - Notes: mark a session as a race, season start dates + season bests, race calendar tied to goals with taper countdown; ICS feed of planned sessions.
-- [ ] 🟢 D3 CP/W′ and FTP suggestion from the power curve — *added 10/22*
-  - Notes: fit on `mean_maximal_power`; "your data suggests FTP ≈ X, update?".
+- [x] 🟡 D1 Coach dashboard v2 — *added 10/22, done 10/23 (`athletes/dashboard.py`, `athletes/squad.py`; `GET /coach-links/squad`)*
+  - Done: each athlete card also shows fitness/fatigue/form (CTL/ATL/TSB as the coach sees it, so no Strava), how much of the last 28 days' plans were followed (done / done + skipped + unanswered) with what is coming up, the nearest open goal with its progress bar, and the next race with the taper. A "Squad" tab ranks every actively coached athlete by their best at one event, start and (optionally) track — sqorz laps and hand-entered results only, equal times share a rank, athletes without a time are listed last. Supersedes "Coach dashboard form is recent load only".
+  - Open: the dashboard still does a few queries per athlete (A5); plans don't notify the coach when missed; the squad has no sex/category filter yet.
+- [x] 🟢 D2 Seasons, competitions, ICS feed — *added 10/22, done 10/23 (migration 0019; `app/seasons/`, `/season` page)*
+  - Done: a session can be marked as a race (Notes tab; badge in the Log; `training_events.is_race`, never written by sync). Races (`competitions`: name, date, A/B/C priority, place, notes, optional goal) with a days-to-go countdown and a taper (A 10 days, B 5, C none) — a "Next race" card on Home. Seasons are just start dates (a season lasts until the next starts); each shows its sessions, races and the best per place/event/start against the best before the season began (`improved`). Phone calendar: a secret `/api/calendar/<token>.ics` link (only the hash is stored, shown once, replace or turn off; only the athlete or a club admin for a managed athlete) with the athlete's non-skipped plans (targets in the description), races and the taper start, as all-day events.
+  - Open: no race entry on the Log calendar; the ICS has no time of day (plans have none); a race isn't linked to its session beyond "same day"; coaches can add races for an athlete but can't open the calendar link.
+- [x] 🟢 D3 CP/W′ and FTP suggestion from the power curve — *added 10/22, done 10/23 (`analysis/critical_power.py` pure; `GET /athletes/{id}/power-profile?days=`; card on `/power`)*
+  - Done: two-parameter CP fit (least squares of work on time) over the best efforts of 3–20 minutes in the last 90 days — it needs one effort of 6 min or less and one of 12 min or more, else no fit; and "your data suggests FTP ≈ X" = 95 % of the best 20 minutes, offered only when it differs from the FTP in force by more than 2 % ("Set FTP to X W" records it as today's FTP; "Not now" is remembered per rider and value).
+  - Open: the 95 % rule is the usual field-test rule, not a physiological test; CP isn't used for zones or the goal prediction.
 - [ ] 🟢 Smaller suggestions — *added 10/22*
   - Pursuit board: works offline cold (precache inputs), landscape allowed (manifest locks portrait), vibrate on tap, confirm Reset/undo.
   - Wellness check-in (sleep, soreness, optional HRV) next to RPE; conditions-adjusted times (air density, weather for outdoor tracks).
@@ -148,7 +151,7 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 
 - [x] 🟡 Email notifications for coaching — *added 10/19, done 10/23 (part of B3: coaching requests and comments email when SMTP is set, per-user opt-out)*
 
-- [ ] 🟢 Coach dashboard "form" is recent load only — *added 10/19*
+- [x] 🟢 Coach dashboard "form" is recent load only — *added 10/19, resolved 10/23 (D1: the cards carry CTL/ATL/TSB)*
   - Why: the cards show sessions, laps and mean RPE for the last 7 days against the 7 before. A real fitness/fatigue/form model (CTL/ATL/TSB) needs power or HR data, which arrives with the import phases.
   - Notes: `app/athletes/dashboard.py` is the one place to extend.
 

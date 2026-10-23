@@ -1,0 +1,149 @@
+.season__hint,
+.season__empty,
+.season__sub,
+.season__notes {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}
+
+.season__notes {
+  white-space: pre-wrap;
+}
+
+.season__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.season__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.season__item:first-child {
+  border-top: 0;
+}
+
+.season__item--past {
+  opacity: 0.75;
+}
+
+.season__item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.season__item-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.season__actions {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.season__badges {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.season__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.season__picker {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.season__picker > :first-child {
+  flex: 1;
+}
+
+.season__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3);
+}
+
+.season__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.season__form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 40rem) {
+  .season__form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.season__error {
+  margin: 0;
+  color: var(--color-negative);
+}
+
+.season__link {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.season__link > :first-child {
+  flex: 1;
+}
+
+.season__actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.season__next {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.season__next-icon {
+  flex: none;
+  color: var(--color-accent);
+}
+
+.season__next-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.season__page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}

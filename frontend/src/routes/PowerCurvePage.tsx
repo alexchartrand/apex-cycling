@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Card, EmptyState, PageHeader, SegmentedControl, Select, SkeletonGroup } from "../components/ui";
 import { CurveChart } from "../features/activities/CurveChart";
+import { PowerProfileCard } from "../features/activities/PowerProfileCard";
 import { durationLabel } from "../features/activities/format";
 import { changePercent, compareCurves, headlinePowers, rangeBounds, type RangeKey } from "../features/activities/powerCurve";
 import { usePowerCurve } from "../features/activities/useActivities";
@@ -95,6 +96,8 @@ export function PowerCurvePage() {
               emptyMessage={t("power.empty")}
             />
           </Card>
+
+          <PowerProfileCard athleteId={athleteId} />
 
           <Card title={t("power.headline")}>
             <ul className="power-page__headline">
