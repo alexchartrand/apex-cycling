@@ -13,6 +13,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: false,
+      // Moving between pages shouldn't refetch what was just shown; mutations
+      // invalidate the keys they change, and a reload always starts fresh.
+      staleTime: 60_000,
     },
   },
 });

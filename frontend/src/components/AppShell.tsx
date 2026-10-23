@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { ChevronsLeft, ChevronsRight, Download, Languages, LogOut, Monitor, Moon, MoreHorizontal, Palette, Settings, ShieldCheck, Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -17,6 +17,7 @@ import type { ThemeMode } from "../theme/theme";
 import { useTheme } from "../theme/useTheme";
 import { LanguageSwitcher, ThemeSwitcher } from "./preferences/PreferenceSwitchers";
 import { AthleteSwitcher } from "./shell/AthleteSwitcher";
+import { RouteFallback } from "./RouteFallback";
 import { ViewingBanner } from "./shell/ViewingBanner";
 import {
   activeNavItem,
@@ -133,7 +134,9 @@ export function AppShell() {
 
         <main id="main-content" className="shell__main" tabIndex={-1}>
           <div className="shell__content">
-            <Outlet />
+            <Suspense fallback={<RouteFallback />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
 
