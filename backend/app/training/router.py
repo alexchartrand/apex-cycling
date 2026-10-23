@@ -43,10 +43,14 @@ router = APIRouter(prefix="/athletes/{athlete_id}", tags=["training"])
 @router.get("/sessions", response_model=list[SessionSummary])
 async def sessions(
     athlete_id: uuid.UUID,
+    from_date: date | None = Query(default=None, alias="from"),
+    to_date: date | None = Query(default=None, alias="to"),
+    limit: int | None = Query(default=None, ge=1, le=1000),
     athlete: Athlete = Depends(require_athlete_access),
     db: AsyncSession = Depends(get_db),
 ) -> list[SessionSummary]:
-    return await list_athlete_sessions(db, athlete.id)
+    """Newest first. All of the athlete's sessions unless bounded by `from` / `to` (inclusive) or `limit` (the newest N)."""
+    return await list_athlete_sessions(db, athlete.id, from_date=from_date, to_date=to_date, limit=limit)
 
 
 @router.get("/tracks", response_model=list[TrackSummary])

@@ -9,7 +9,7 @@ the rider's weight from their profile.
 """
 
 import uuid
-from collections.abc import Collection
+from collections.abc import AsyncIterator, Collection
 from dataclasses import dataclass
 from datetime import date
 
@@ -280,8 +280,9 @@ async def _session_of(db: AsyncSession, athlete: Athlete, viewer: User, test: Ae
     return data
 
 
-async def list_tests(db: AsyncSession, athlete: Athlete, viewer: User) -> list[AeroTestRead]:
-    """Newest session first; each session is loaded once for all its tests."""
+async def _iter_tests(db: AsyncSession, athlete: Athlete, viewer: User) -> AsyncIterator[AeroTestRead]:
+    """Newest session first; each session is loaded once for all its tests, and
+    only when the consumer gets as far as its first test."""
     rows = await db.execute(
         select(AeroTest, TrainingEvent.external_event_id)
         .join(TrainingEvent, TrainingEvent.id == AeroTest.training_event_id)
@@ -289,14 +290,25 @@ async def list_tests(db: AsyncSession, athlete: Athlete, viewer: User) -> list[A
         .order_by(TrainingEvent.event_date.desc(), AeroTest.created_at)
     )
     sessions: dict[str, SessionData] = {}
-    reads = []
     for test, external_event_id in rows:
         if external_event_id not in sessions:
             loaded = await load_session(db, athlete, viewer, external_event_id)
             assert loaded is not None
             sessions[external_event_id] = loaded
-        reads.append(_test_read(test, sessions[external_event_id], detail=False))
-    return reads
+        yield _test_read(test, sessions[external_event_id], detail=False)
+
+
+async def list_tests(db: AsyncSession, athlete: Athlete, viewer: User) -> list[AeroTestRead]:
+    return [read async for read in _iter_tests(db, athlete, viewer)]
+
+
+async def newest_fitted_test(db: AsyncSession, athlete: Athlete, viewer: User) -> AeroTestRead | None:
+    """The newest test that has a CdA fit. Stops at the first one, so the
+    streams of older sessions are never decoded."""
+    async for read in _iter_tests(db, athlete, viewer):
+        if read.fit is not None:
+            return read
+    return None
 
 
 async def get_test(db: AsyncSession, athlete: Athlete, test_id: uuid.UUID) -> AeroTest | None:

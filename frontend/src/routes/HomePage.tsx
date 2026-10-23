@@ -15,7 +15,8 @@ import { GoalsCard } from "../features/goals/GoalsCard";
 import { NextRaceCard } from "../features/season/NextRaceCard";
 import { useIngestionRuns, useTransponderAssignments } from "../features/connections/useConnections";
 import { bestLap, DEFAULT_LAP_DISTANCE_M, flying200Ms, startOfWeek, summarizeWeek } from "../features/training/sessionStats";
-import { useSessionDetail, useSessions } from "../features/training/useTraining";
+import { useSessionDetail, useSessionsRange } from "../features/training/useTraining";
+import { localIsoDate } from "../i18n/format";
 import { useFormat } from "../i18n/useFormat";
 import "./HomePage.css";
 
@@ -31,12 +32,22 @@ function delta(current: number, previous: number): { label: string; direction: D
   return { label: `${diff > 0 ? "+" : diff < 0 ? "−" : "±"}${Math.abs(diff)}`, direction: diff > 0 ? "better" : diff < 0 ? "worse" : "neutral" };
 }
 
+// How many of the newest sessions the "recent" list shows.
+const RECENT_SESSIONS = 5;
+
 export function HomePage() {
   const { t } = useTranslation(["home", "training", "shell"]);
   const fmt = useFormat();
   const athlete = useActiveAthlete();
   const athleteId = athlete.data?.id ?? "";
-  const sessions = useSessions(athleteId);
+  // Home only needs the last two weeks (the week tiles) and the newest few; not the whole history.
+  const previousWeekStart = useMemo(() => {
+    const start = startOfWeek(new Date());
+    start.setDate(start.getDate() - 7);
+    return start;
+  }, []);
+  const weeks = useSessionsRange(athleteId, { from: localIsoDate(previousWeekStart) });
+  const sessions = useSessionsRange(athleteId, { limit: RECENT_SESSIONS });
   const activities = useActivities(athleteId);
   const runs = useIngestionRuns(athleteId);
   const assignments = useTransponderAssignments(athleteId);
@@ -49,13 +60,11 @@ export function HomePage() {
 
   const { thisWeek, lastWeek } = useMemo(() => {
     const weekStart = startOfWeek(new Date());
-    const previousStart = new Date(weekStart);
-    previousStart.setDate(previousStart.getDate() - 7);
     return {
-      thisWeek: summarizeWeek(sessions.data ?? [], weekStart),
-      lastWeek: summarizeWeek(sessions.data ?? [], previousStart),
+      thisWeek: summarizeWeek(weeks.data ?? [], weekStart),
+      lastWeek: summarizeWeek(weeks.data ?? [], previousWeekStart),
     };
-  }, [sessions.data]);
+  }, [weeks.data, previousWeekStart]);
 
   const latestBests = useMemo(() => {
     const laps = latestDetail.data?.tracks.flatMap((track) => track.laps) ?? [];
@@ -78,7 +87,7 @@ export function HomePage() {
         </ButtonLink>
       </header>
 
-      {(athlete.isLoading || sessions.isLoading) && <SkeletonGroup lines={6} />}
+      {(athlete.isLoading || sessions.isLoading || weeks.isLoading) && <SkeletonGroup lines={6} />}
 
       {firstRun.visible && firstRun.checklist && <FirstRunChecklist checklist={firstRun.checklist} onHide={firstRun.hide} />}
 
@@ -189,7 +198,7 @@ export function HomePage() {
                 }
               >
                 <ul className="home__recent">
-                  {sessions.data.slice(0, 5).map((session) => (
+                  {sessions.data.map((session) => (
                     <li key={session.external_event_id}>
                       <Link to={`/sessions/${session.external_event_id}`} className="home__recent-row">
                         <span className="home__recent-date">{fmt.date(session.event_date, "dayMonth")}</span>

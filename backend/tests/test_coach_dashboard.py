@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import select
@@ -87,6 +87,28 @@ async def test_dashboard_reports_failing_syncs_unread_comments_and_rpe(client, d
             coach_row = await session.scalar(select(User).where(User.email == "coach@example.com"))
             [direct] = await coach_dashboard(session, coach_row, today=TODAY)
         assert direct.this_week.avg_rpe == 7.0
+    finally:
+        await _close(coach_c)
+
+
+async def test_dashboard_stops_reporting_a_transponder_once_a_later_sync_succeeds(client, db_session):
+    coach_c, coach, athlete_id = await _coach_of(client, db_session)
+    try:
+        async with db_session() as session:
+            connection = await session.scalar(select(DataSourceConnection))
+            now = datetime.now(timezone.utc)
+            for offset, status in ((2, IngestionRunStatus.FAILED), (1, IngestionRunStatus.SUCCESS)):
+                session.add(
+                    IngestionRun(
+                        data_source_connection_id=connection.id,
+                        requested_at=now - timedelta(hours=offset),
+                        status=status,
+                    )
+                )
+            await session.commit()
+
+        [card] = (await coach_c.get("/coach-links/dashboard")).json()
+        assert card["failing_transponders"] == []
     finally:
         await _close(coach_c)
 

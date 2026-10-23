@@ -12,8 +12,16 @@ import type {
   TrackUpdate,
 } from "./types";
 
-export function listSessions(athleteId: string): Promise<SessionSummary[]> {
-  return apiFetch<SessionSummary[]>(`/athletes/${athleteId}/sessions`);
+export type SessionsRange = { from?: string; to?: string; limit?: number };
+
+/** Newest first; every session unless bounded by dates (`YYYY-MM-DD`, inclusive) or by `limit` (the newest N). */
+export function listSessions(athleteId: string, range: SessionsRange = {}): Promise<SessionSummary[]> {
+  const query = new URLSearchParams();
+  if (range.from) query.set("from", range.from);
+  if (range.to) query.set("to", range.to);
+  if (range.limit != null) query.set("limit", String(range.limit));
+  const suffix = query.size > 0 ? `?${query.toString()}` : "";
+  return apiFetch<SessionSummary[]>(`/athletes/${athleteId}/sessions${suffix}`);
 }
 
 export function listTracks(athleteId: string): Promise<TrackSummary[]> {

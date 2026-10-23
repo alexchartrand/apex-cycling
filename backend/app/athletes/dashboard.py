@@ -20,8 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.activities.metrics_service import training_load
 from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus
 from app.auth.models import User
-from app.connections.models import IngestionRunStatus
-from app.connections.service import list_ingestion_runs_for_athlete
+from app.connections.models import IngestionRun, IngestionRunStatus, TransponderAssignment, DataSourceConnection
 from app.goals.models import Goal
 from app.goals.service import progress_towards
 from app.planning.models import PlannedSession, PlanStatus
@@ -133,12 +132,32 @@ async def _lap_counts(db: AsyncSession, event_ids: list[uuid.UUID]) -> dict[uuid
     return dict(rows.all())
 
 
-async def _failing_transponders(db: AsyncSession, athlete_id: uuid.UUID) -> list[str]:
-    runs = await list_ingestion_runs_for_athlete(db, athlete_id=athlete_id, limit=50)
-    latest: dict[str, IngestionRunStatus] = {}
-    for run, code in runs:  # newest first: the first run seen per transponder is its latest
-        latest.setdefault(code, run.status)
-    return sorted(code for code, status in latest.items() if status == IngestionRunStatus.FAILED)
+async def _failing_transponders(db: AsyncSession, athlete_ids: list[uuid.UUID]) -> dict[uuid.UUID, list[str]]:
+    """Per athlete, the transponders whose latest run failed."""
+    latest = (
+        select(
+            IngestionRun.data_source_connection_id.label("connection_id"),
+            IngestionRun.status.label("status"),
+            func.row_number()
+            .over(partition_by=IngestionRun.data_source_connection_id, order_by=IngestionRun.requested_at.desc())
+            .label("rank"),
+        )
+    ).subquery()
+    rows = await db.execute(
+        select(TransponderAssignment.athlete_id, DataSourceConnection.external_id)
+        .join(DataSourceConnection, DataSourceConnection.id == TransponderAssignment.data_source_connection_id)
+        .join(latest, latest.c.connection_id == DataSourceConnection.id)
+        .where(
+            TransponderAssignment.athlete_id.in_(athlete_ids),
+            latest.c.rank == 1,
+            latest.c.status == IngestionRunStatus.FAILED,
+        )
+        .distinct()
+    )
+    failing: dict[uuid.UUID, list[str]] = {}
+    for athlete_id, code in rows:
+        failing.setdefault(athlete_id, []).append(code)
+    return {athlete_id: sorted(codes) for athlete_id, codes in failing.items()}
 
 
 async def _form(db: AsyncSession, athlete: Athlete, coach: User, today: date) -> Form | None:
@@ -146,79 +165,90 @@ async def _form(db: AsyncSession, athlete: Athlete, coach: User, today: date) ->
     return Form(ctl=series[-1].ctl, atl=series[-1].atl, tsb=series[-1].tsb) if series else None
 
 
-async def _plan_compliance(db: AsyncSession, athlete_id: uuid.UUID, today: date) -> PlanCompliance | None:
-    plans = list(
-        await db.scalars(
-            select(PlannedSession).where(
-                PlannedSession.athlete_id == athlete_id,
-                PlannedSession.planned_date >= today - timedelta(days=COMPLIANCE_DAYS),
-                PlannedSession.planned_date <= today + timedelta(days=UPCOMING_DAYS),
-            )
+async def _plan_compliance(
+    db: AsyncSession, athlete_ids: list[uuid.UUID], today: date
+) -> dict[uuid.UUID, PlanCompliance]:
+    plans_by_athlete: dict[uuid.UUID, list[PlannedSession]] = {}
+    for plan in await db.scalars(
+        select(PlannedSession).where(
+            PlannedSession.athlete_id.in_(athlete_ids),
+            PlannedSession.planned_date >= today - timedelta(days=COMPLIANCE_DAYS),
+            PlannedSession.planned_date <= today + timedelta(days=UPCOMING_DAYS),
         )
-    )
-    if not plans:
-        return None
-    past = [p for p in plans if p.planned_date < today]
-    done = sum(1 for p in past if p.status == PlanStatus.DONE.value)
-    skipped = sum(1 for p in past if p.status == PlanStatus.SKIPPED.value)
-    missed = sum(1 for p in past if p.status == PlanStatus.PLANNED.value)
-    answered = done + skipped + missed
-    return PlanCompliance(
-        done=done,
-        skipped=skipped,
-        missed=missed,
-        compliance=done / answered if answered else None,
-        upcoming=sum(1 for p in plans if p.planned_date >= today and p.status == PlanStatus.PLANNED.value),
-    )
+    ):
+        plans_by_athlete.setdefault(plan.athlete_id, []).append(plan)
 
-
-async def _goal_progress(db: AsyncSession, athlete_id: uuid.UUID, today: date) -> GoalProgress | None:
-    goals = list(await db.scalars(select(Goal).where(Goal.athlete_id == athlete_id).order_by(Goal.target_date)))
-    if not goals:
-        return None
-    board = await get_records_board(db, athlete_id)
-    reads = []
-    for goal in goals:
-        best = best_entry(board, goal.event_key, goal.start_type, goal.track_id)
-        reads.append(
-            GoalProgress(
-                goal_id=goal.id,
-                event_key=goal.event_key,
-                start_type=StartType(goal.start_type),
-                target_time_ms=goal.target_time_ms,
-                target_date=goal.target_date,
-                days_left=(goal.target_date - today).days,
-                best_ms=best.time_ms if best else None,
-                progress=progress_towards(goal, best),
-                achieved=best is not None and best.time_ms <= goal.target_time_ms,
-            )
+    result = {}
+    for athlete_id, plans in plans_by_athlete.items():
+        past = [p for p in plans if p.planned_date < today]
+        done = sum(1 for p in past if p.status == PlanStatus.DONE.value)
+        skipped = sum(1 for p in past if p.status == PlanStatus.SKIPPED.value)
+        missed = sum(1 for p in past if p.status == PlanStatus.PLANNED.value)
+        answered = done + skipped + missed
+        result[athlete_id] = PlanCompliance(
+            done=done,
+            skipped=skipped,
+            missed=missed,
+            compliance=done / answered if answered else None,
+            upcoming=sum(1 for p in plans if p.planned_date >= today and p.status == PlanStatus.PLANNED.value),
         )
-    open_goals = [g for g in reads if not g.achieved and g.days_left >= 0]
-    if open_goals:
-        return open_goals[0]  # goals are ordered by date: the nearest one still to reach
-    reached = [g for g in reads if g.achieved]
-    # Nothing open: the latest goal reached, else the one that lapsed most recently (days_left < 0).
-    return reached[-1] if reached else reads[-1]
+    return result
 
 
-async def _next_race(db: AsyncSession, athlete_id: uuid.UUID, today: date) -> NextRace | None:
-    race = await db.scalar(
+async def _goal_progress(db: AsyncSession, athlete_ids: list[uuid.UUID], today: date) -> dict[uuid.UUID, GoalProgress]:
+    goals_by_athlete: dict[uuid.UUID, list[Goal]] = {}
+    for goal in await db.scalars(select(Goal).where(Goal.athlete_id.in_(athlete_ids)).order_by(Goal.target_date)):
+        goals_by_athlete.setdefault(goal.athlete_id, []).append(goal)
+
+    result = {}
+    for athlete_id, goals in goals_by_athlete.items():
+        board = await get_records_board(db, athlete_id)
+        reads = []
+        for goal in goals:
+            best = best_entry(board, goal.event_key, goal.start_type, goal.track_id)
+            reads.append(
+                GoalProgress(
+                    goal_id=goal.id,
+                    event_key=goal.event_key,
+                    start_type=StartType(goal.start_type),
+                    target_time_ms=goal.target_time_ms,
+                    target_date=goal.target_date,
+                    days_left=(goal.target_date - today).days,
+                    best_ms=best.time_ms if best else None,
+                    progress=progress_towards(goal, best),
+                    achieved=best is not None and best.time_ms <= goal.target_time_ms,
+                )
+            )
+        open_goals = [g for g in reads if not g.achieved and g.days_left >= 0]
+        if open_goals:
+            result[athlete_id] = open_goals[0]  # goals are ordered by date: the nearest one still to reach
+            continue
+        reached = [g for g in reads if g.achieved]
+        # Nothing open: the latest goal reached, else the one that lapsed most recently (days_left < 0).
+        result[athlete_id] = reached[-1] if reached else reads[-1]
+    return result
+
+
+async def _next_race(db: AsyncSession, athlete_ids: list[uuid.UUID], today: date) -> dict[uuid.UUID, NextRace]:
+    races: dict[uuid.UUID, Competition] = {}
+    for race in await db.scalars(
         select(Competition)
-        .where(Competition.athlete_id == athlete_id, Competition.competition_date >= today)
+        .where(Competition.athlete_id.in_(athlete_ids), Competition.competition_date >= today)
         .order_by(Competition.competition_date)
-        .limit(1)
-    )
-    if race is None:
-        return None
-    count = race_planning.countdown(race.competition_date, race.priority, today)
-    return NextRace(
-        competition_id=race.id,
-        name=race.name,
-        competition_date=race.competition_date,
-        priority=race.priority,
-        days_until=count.days_until,
-        phase=count.phase,
-    )
+    ):
+        races.setdefault(race.athlete_id, race)  # ordered by date: the first per athlete is the next one
+    result = {}
+    for athlete_id, race in races.items():
+        count = race_planning.countdown(race.competition_date, race.priority, today)
+        result[athlete_id] = NextRace(
+            competition_id=race.id,
+            name=race.name,
+            competition_date=race.competition_date,
+            priority=race.priority,
+            days_until=count.days_until,
+            phase=count.phase,
+        )
+    return result
 
 
 async def coach_dashboard(db: AsyncSession, coach: User, today: date | None = None) -> list[AthleteCard]:
@@ -247,16 +277,25 @@ async def coach_dashboard(db: AsyncSession, coach: User, today: date | None = No
     for event in recent_events:
         events_by_athlete.setdefault(event.athlete_id, []).append(event)
 
-    last_sessions: dict[uuid.UUID, TrainingEvent] = {}
-    for athlete_id in ids:
-        last = await db.scalar(
-            select(TrainingEvent)
-            .where(TrainingEvent.athlete_id == athlete_id)
-            .order_by(TrainingEvent.event_date.desc(), TrainingEvent.start_timestamp.desc().nulls_last())
-            .limit(1)
+    ranked = (
+        select(
+            TrainingEvent.id.label("id"),
+            func.row_number()
+            .over(
+                partition_by=TrainingEvent.athlete_id,
+                order_by=(TrainingEvent.event_date.desc(), TrainingEvent.start_timestamp.desc().nulls_last()),
+            )
+            .label("rank"),
         )
-        if last is not None:
-            last_sessions[athlete_id] = last
+        .where(TrainingEvent.athlete_id.in_(ids))
+        .subquery()
+    )
+    last_sessions = {
+        event.athlete_id: event
+        for event in await db.scalars(
+            select(TrainingEvent).join(ranked, ranked.c.id == TrainingEvent.id).where(ranked.c.rank == 1)
+        )
+    }
 
     laps_by_event = await _lap_counts(db, [e.id for e in recent_events] + [e.id for e in last_sessions.values()])
 
@@ -277,6 +316,11 @@ async def coach_dashboard(db: AsyncSession, coach: User, today: date | None = No
     for item in await comments_service.inbox(db, coach):
         unread[item.athlete_id] = unread.get(item.athlete_id, 0) + item.unread_count
 
+    failing = await _failing_transponders(db, ids)
+    plans = await _plan_compliance(db, ids, today)
+    goals = await _goal_progress(db, ids, today)
+    races = await _next_race(db, ids, today)
+
     cards = []
     for athlete in athletes:
         events = events_by_athlete.get(athlete.id, [])
@@ -296,12 +340,12 @@ async def coach_dashboard(db: AsyncSession, coach: User, today: date | None = No
                 this_week=_load(events, laps_by_event, this_start, today),
                 previous_week=_load(events, laps_by_event, previous_start, this_start - timedelta(days=1)),
                 new_records=new_records.get(athlete.id, 0),
-                failing_transponders=await _failing_transponders(db, athlete.id),
+                failing_transponders=failing.get(athlete.id, []),
                 unread_comments=unread.get(athlete.id, 0),
                 form=await _form(db, athlete, coach, today),
-                plan=await _plan_compliance(db, athlete.id, today),
-                goal=await _goal_progress(db, athlete.id, today),
-                next_race=await _next_race(db, athlete.id, today),
+                plan=plans.get(athlete.id),
+                goal=goals.get(athlete.id),
+                next_race=races.get(athlete.id),
             )
         )
     return cards

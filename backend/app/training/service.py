@@ -372,39 +372,54 @@ def _effort_detail(
     )
 
 
-async def list_athlete_sessions(db: AsyncSession, athlete_id: uuid.UUID) -> list[SessionSummary]:
+async def list_athlete_sessions(
+    db: AsyncSession,
+    athlete_id: uuid.UUID,
+    *,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    limit: int | None = None,
+) -> list[SessionSummary]:
     """Newest first, with per-session aggregates for list views. Two grouped
-    queries (lap stats, track names) rather than loading every lap.
+    queries (lap stats, track names) rather than loading every lap. `from_date`
+    / `to_date` (inclusive) and `limit` (the newest N) bound the list.
     """
-    lap_stats = (
-        await db.execute(
-            select(
-                TrainingEvent.id,
-                TrainingEvent.external_event_id,
-                TrainingEvent.name,
-                TrainingEvent.title_override,
-                TrainingEvent.rpe,
-                TrainingEvent.tags,
-                TrainingEvent.is_race,
-                TrainingEvent.event_date,
-                func.count(TrainingLap.id),
-                func.min(TrainingLap.start_time),
-                func.max(TrainingLap.start_time),
-            )
-            .join(EventTrack, EventTrack.training_event_id == TrainingEvent.id)
-            .join(TrainingLap, TrainingLap.event_track_id == EventTrack.id)
-            .where(TrainingLap.athlete_id == athlete_id)
-            .group_by(TrainingEvent.id)
-            .order_by(TrainingEvent.event_date.desc(), func.min(TrainingLap.start_time).desc())
+    stats_query = (
+        select(
+            TrainingEvent.id,
+            TrainingEvent.external_event_id,
+            TrainingEvent.name,
+            TrainingEvent.title_override,
+            TrainingEvent.rpe,
+            TrainingEvent.tags,
+            TrainingEvent.is_race,
+            TrainingEvent.event_date,
+            func.count(TrainingLap.id),
+            func.min(TrainingLap.start_time),
+            func.max(TrainingLap.start_time),
         )
-    ).all()
+        .join(EventTrack, EventTrack.training_event_id == TrainingEvent.id)
+        .join(TrainingLap, TrainingLap.event_track_id == EventTrack.id)
+        .where(TrainingLap.athlete_id == athlete_id)
+        .group_by(TrainingEvent.id)
+        .order_by(TrainingEvent.event_date.desc(), func.min(TrainingLap.start_time).desc())
+    )
+    if from_date is not None:
+        stats_query = stats_query.where(TrainingEvent.event_date >= from_date)
+    if to_date is not None:
+        stats_query = stats_query.where(TrainingEvent.event_date <= to_date)
+    if limit is not None:
+        stats_query = stats_query.limit(limit)
+    lap_stats = (await db.execute(stats_query)).all()
+    if not lap_stats:
+        return []
 
     track_rows = (
         await db.execute(
             select(EventTrack.training_event_id, Track.name)
             .join(Track, Track.id == EventTrack.track_id)
             .join(TrainingLap, TrainingLap.event_track_id == EventTrack.id)
-            .where(TrainingLap.athlete_id == athlete_id)
+            .where(TrainingLap.athlete_id == athlete_id, EventTrack.training_event_id.in_([row[0] for row in lap_stats]))
             .distinct()
             .order_by(Track.name)
         )

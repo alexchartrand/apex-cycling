@@ -58,11 +58,8 @@ class _Inputs:
         """The CdA of the newest saved aero test that has a fit, with its label
         and the bike weight it was worked out with."""
         if self._cda is False:
-            self._cda = None
-            for test in await aero_service.list_tests(self.db, self.athlete, self.viewer):
-                if test.fit is not None:
-                    self._cda = (test.fit.cda_m2, test.label, test.conditions.bike_kg)
-                    break
+            test = await aero_service.newest_fitted_test(self.db, self.athlete, self.viewer)
+            self._cda = (test.fit.cda_m2, test.label, test.conditions.bike_kg) if test is not None else None
         return self._cda
 
     async def weight(self) -> float | None:

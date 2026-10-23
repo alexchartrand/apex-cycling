@@ -529,6 +529,16 @@ async def test_list_sessions_and_tracks_endpoints(client, db_session):
     assert sessions_body[0]["track_names"] == ["Test Track"]
     assert sessions_body[0]["first_lap_at"].startswith("2026-06-20T10:00:00")
 
+    newest = await client.get(f"/athletes/{athlete_id}/sessions", params={"limit": 1})
+    assert [s["external_event_id"] for s in newest.json()] == ["evt2"]
+    newest_date = sessions_body[0]["event_date"]
+    since = await client.get(f"/athletes/{athlete_id}/sessions", params={"from": newest_date})
+    assert [s["external_event_id"] for s in since.json()] == ["evt2"]
+    assert since.json()[0]["track_names"] == ["Test Track"]
+    before = await client.get(f"/athletes/{athlete_id}/sessions", params={"to": "2000-01-01"})
+    assert before.json() == []
+    assert (await client.get(f"/athletes/{athlete_id}/sessions", params={"limit": 0})).status_code == 422
+
     tracks_resp = await client.get(f"/athletes/{athlete_id}/tracks")
     assert tracks_resp.status_code == 200
     tracks_body = tracks_resp.json()

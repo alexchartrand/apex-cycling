@@ -5,6 +5,7 @@ import {
   labelEffort,
   listEfforts,
   listSessions,
+  type SessionsRange,
   listTracks,
   updateLap,
   updateSession,
@@ -16,6 +17,15 @@ export function useSessions(athleteId: string) {
   return useQuery({
     queryKey: ["sessions", athleteId],
     queryFn: () => listSessions(athleteId),
+    enabled: athleteId !== "",
+  });
+}
+
+/** A bounded slice of the list, for pages that don't need the whole history. Under the same `["sessions", athleteId]` prefix, so anything that invalidates the list refreshes it. */
+export function useSessionsRange(athleteId: string, range: SessionsRange) {
+  return useQuery({
+    queryKey: ["sessions", athleteId, range],
+    queryFn: () => listSessions(athleteId, range),
     enabled: athleteId !== "",
   });
 }
