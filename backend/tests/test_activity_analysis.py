@@ -113,6 +113,18 @@ async def test_analysis_of_a_ride_at_ftp(client):
     assert curve[1] == 250 and curve[600] == 250 and 3600 not in curve
 
 
+async def test_analysis_of_a_ride_older_than_the_first_max_hr_uses_the_oldest(client):
+    athlete_id = await _rider(client)
+    for effective_date, max_hr in (("2026-08-01", 190), ("2026-09-01", 180)):
+        await client.post(f"/athletes/{athlete_id}/metrics", json={"effective_date": effective_date, "max_hr": max_hr})
+    activity = await _upload(client, athlete_id)  # June 1st, before any entry
+
+    analysis = (await client.get(f"/athletes/{athlete_id}/activities/{activity['id']}/analysis")).json()
+
+    assert analysis["max_hr"] == 190
+    assert analysis["hr_zones"]["seconds"] == [0, 0, 600, 0, 0]  # 140 of 190 bpm
+
+
 async def test_analysis_without_physiology_or_power_says_what_it_cannot(client):
     athlete_id = await _rider(client)
     with_power = await _upload(client, athlete_id)
