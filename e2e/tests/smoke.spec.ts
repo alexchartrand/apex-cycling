@@ -112,7 +112,9 @@ test.describe("user journey", () => {
     await page.getByRole("button", { name: "Sign up" }).click();
     created = true;
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { name: "Welcome to ApexCycling" })).toBeVisible();
+    // A new account has no data, so Home shows the first-run checklist (the "Welcome" empty
+    // state only appears once that checklist is hidden or complete).
+    await expect(page.getByRole("heading", { name: "Set up ApexCycling" })).toBeVisible();
   });
 
   test("the main pages render", async () => {
