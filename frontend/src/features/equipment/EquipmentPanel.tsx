@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { errorMessage } from "../../api/errors";
 import { Button, Card, ConfirmDialog, Dialog, EmptyState, IconButton, Input, SkeletonGroup, Textarea, Tooltip, useToast } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
-import { gearName, parseNumber } from "./gear";
+import { bikeRolloutMm, gearName, parseNumber } from "./gear";
 import { RolloutPresetSelect } from "./RolloutPresetSelect";
 import { TireSelect } from "./TireSelect";
 import { DEFAULT_ROLLOUT_MM, GEAR_BOUNDS, type Bike, type Gear } from "./types";
@@ -261,7 +261,7 @@ function GearDialog({ athleteId, bike, gear, onClose }: { athleteId: string; bik
   const save = useSaveGear(athleteId);
   const [chainring, setChainring] = useState(gear ? String(gear.chainring_teeth) : "");
   const [cog, setCog] = useState(gear ? String(gear.cog_teeth) : "");
-  const [rollout, setRollout] = useState(String(gear?.rollout_mm ?? DEFAULT_ROLLOUT_MM));
+  const [rollout, setRollout] = useState(String(gear?.rollout_mm ?? bikeRolloutMm(bike) ?? DEFAULT_ROLLOUT_MM));
   const values = { chainring_teeth: parseNumber(chainring), cog_teeth: parseNumber(cog), rollout_mm: parseNumber(rollout) };
   const valid =
     values.chainring_teeth != null &&

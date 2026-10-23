@@ -70,7 +70,11 @@ export function RiderCard({ inputs }: { inputs: ToolInputs }) {
         <BikeSelect
           bikes={bikes}
           value={bike?.id ?? null}
-          onChange={(picked) => picked?.weight_kg != null && inputs.set("bikeKg", String(picked.weight_kg))}
+          onChange={(picked) => {
+            if (picked?.weight_kg == null) return;
+            inputs.set("bikeKg", String(picked.weight_kg));
+            if (picked.crr != null) inputs.set("crr", String(picked.crr));
+          }}
           emptyLabel={t("rider.typedBike")}
           emptyDisabled={bike != null}
         />

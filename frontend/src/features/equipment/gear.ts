@@ -68,6 +68,23 @@ export function rolloutPresetOf(rolloutMm: number | null): (typeof ROLLOUT_PRESE
   return ROLLOUT_PRESETS.find((preset) => Math.abs(preset.rolloutMm - rolloutMm) < 0.5) ?? null;
 }
 
+/** The tire width in mm a bike runs: the listed tire's size, else a "23 mm" typed in its tire name; null when unknown. */
+export function bikeTireSizeMm(bike: Pick<Bike, "tire">): number | null {
+  const key = bike.tire?.trim().replace(/\s+/g, " ").toLowerCase();
+  if (!key) return null;
+  const listed = STANDARD_TIRES.find((tire) => tire.label.toLowerCase() === key);
+  if (listed) return listed.size;
+  const typed = /(\d{2})\s*mm\b/.exec(key);
+  return typed ? Number(typed[1]) : null;
+}
+
+/** The standard rollout for the tire a bike runs; null when its width has no preset (or the tire is unknown). */
+export function bikeRolloutMm(bike: Pick<Bike, "tire">): number | null {
+  const size = bikeTireSizeMm(bike);
+  if (size == null) return null;
+  return ROLLOUT_PRESETS.find((preset) => preset.tire === `700×${size}c`)?.rolloutMm ?? null;
+}
+
 /** The listed tire with this label (ignoring case and spacing) and Crr; null once either is edited away from it. */
 export function standardTireOf(name: string, crr: number | null, list: StandardTire[] = STANDARD_TIRES): StandardTire | null {
   const key = name.trim().replace(/\s+/g, " ").toLowerCase();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import tires from "./tires.json";
-import { bikeOfWeight, gearChoices, gearName, gearOf, parseNumber, rolloutPresetOf, standardTireOf, STANDARD_TIRES, tireLabel, tiresByBrand, weighedBikes } from "./gear";
+import { bikeOfWeight, bikeRolloutMm, bikeTireSizeMm, gearChoices, gearName, gearOf, parseNumber, rolloutPresetOf, standardTireOf, STANDARD_TIRES, tireLabel, tiresByBrand, weighedBikes } from "./gear";
 import { GEAR_BOUNDS } from "./types";
 import type { Bike } from "./types";
 
@@ -95,5 +95,16 @@ describe("standard tires", () => {
       expect(tire.crr, tire.label).toBeGreaterThanOrEqual(GEAR_BOUNDS.crr.min);
       expect(tire.crr, tire.label).toBeLessThanOrEqual(GEAR_BOUNDS.crr.max);
     }
+  });
+
+  it("derives a bike's tire size and standard rollout from its tire", () => {
+    expect(bikeTireSizeMm({ tire: "Vittoria Pista Control tubular 23 mm" })).toBe(23);
+    expect(bikeTireSizeMm({ tire: "Some tire 25mm clincher" })).toBe(25);
+    expect(bikeTireSizeMm({ tire: null })).toBeNull();
+    expect(bikeTireSizeMm({ tire: "Mystery tire" })).toBeNull();
+    expect(bikeRolloutMm({ tire: "Vittoria Pista Control tubular 23 mm" })).toBe(2096);
+    expect(bikeRolloutMm({ tire: "Some tire 25 mm" })).toBe(2105);
+    expect(bikeRolloutMm({ tire: "Continental Sprinter tubular 22 mm" })).toBeNull();
+    expect(bikeRolloutMm({ tire: null })).toBeNull();
   });
 });
