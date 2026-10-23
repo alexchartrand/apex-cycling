@@ -14,6 +14,7 @@ from app.connections.models import (
     IngestionRun,
     IngestionRunStatus,
     RawSnapshot,
+    TransponderAssignment,
 )
 from app.ingestion.sqorz.dtos import DataSourceConnectionRecord, IngestionRunRecord
 
@@ -24,6 +25,8 @@ def _to_connection_record(connection: DataSourceConnection) -> DataSourceConnect
         external_id=connection.external_id,
         sqorz_account_id=connection.sqorz_account_id,
         sqorz_account_name=connection.sqorz_account_name,
+        normalized_at=connection.normalized_at,
+        normalizer_version=connection.normalizer_version,
     )
 
 
@@ -63,6 +66,24 @@ class SqlAlchemyDataSourceConnectionRepository:
             connection.sqorz_account_id = sqorz_account_id
             connection.sqorz_account_name = sqorz_account_name
         connection.last_synced_at = last_synced_at
+
+    async def assignments_changed_since(self, connection_id: uuid.UUID, since: datetime) -> bool:
+        changed = await self._db.scalar(
+            select(TransponderAssignment.id)
+            .where(
+                TransponderAssignment.data_source_connection_id == connection_id,
+                TransponderAssignment.updated_at > since,
+            )
+            .limit(1)
+        )
+        return changed is not None
+
+    async def mark_normalized(self, connection_id: uuid.UUID, *, at: datetime, version: int) -> None:
+        connection = await self._db.get(DataSourceConnection, connection_id)
+        if connection is None:
+            return
+        connection.normalized_at = at
+        connection.normalizer_version = version
 
 
 class SqlAlchemyIngestionRunRepository:
@@ -104,13 +125,13 @@ class SqlAlchemyRawSnapshotRepository:
         self._db = db
 
     async def get_latest_hash(self, external_ref: str) -> str | None:
-        latest = await self._db.scalar(
-            select(RawSnapshot)
+        # Only the hash: the snapshot's payload is the transponder's whole history.
+        return await self._db.scalar(
+            select(RawSnapshot.content_hash)
             .where(RawSnapshot.external_ref == external_ref)
             .order_by(RawSnapshot.fetched_at.desc())
             .limit(1)
         )
-        return latest.content_hash if latest is not None else None
 
     async def create(
         self,

@@ -2,11 +2,11 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import JSON, Date, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Date, DateTime, Enum, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.crypto import EncryptedJSON
-from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, utcnow
 
 
 class DataSourceProvider(str, enum.Enum):
@@ -52,6 +52,11 @@ class DataSourceConnection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         default=DataSourceConnectionStatus.ACTIVE,
     )
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # When the payload was last turned into training rows, and by which version
+    # of the normalizer (sqorz only): an unchanged payload is not normalized
+    # again unless an assignment changed since or the version moved on.
+    normalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    normalizer_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Informational only for sqorz (the facility's own account), never an FK
     # to our `clubs` table — see plan Data Model.
@@ -81,6 +86,11 @@ class TransponderAssignment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Null once the user who entered it deleted their account.
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Moves on every edit (merged range, stop): it tells the sqorz sync that
+    # laps may now belong to someone else.
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, server_default=func.now()
+    )
 
     connection: Mapped["DataSourceConnection"] = relationship(back_populates="assignments")
 
@@ -93,6 +103,9 @@ class IngestionRunStatus(str, enum.Enum):
 
 class IngestionRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "ingestion_runs"
+    # One row per poll, so this table outgrows the others: sync history and
+    # the admin page read a connection's newest runs.
+    __table_args__ = (Index("ix_ingestion_runs_connection_requested", "data_source_connection_id", "requested_at"),)
 
     data_source_connection_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("data_source_connections.id"), index=True
@@ -120,6 +133,8 @@ class RawSnapshot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """
 
     __tablename__ = "raw_snapshots"
+    # Each poll looks up the newest snapshot of its transponder.
+    __table_args__ = (Index("ix_raw_snapshots_ref_fetched", "external_ref", "fetched_at"),)
 
     ingestion_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("ingestion_runs.id"), index=True)
     provider: Mapped[DataSourceProvider] = mapped_column(

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from app.ingestion.sqorz.client import SqorzClientError
 from app.ingestion.sqorz.dtos import DataSourceConnectionRecord, IngestionRunRecord
-from app.ingestion.sqorz.service import SqorzIngestionService, _content_hash
+from app.ingestion.sqorz.service import NORMALIZER_VERSION, SqorzIngestionService, _content_hash
 
 SAMPLE_PAYLOAD = {
     "transponderCode": "LS-03407",
@@ -33,9 +33,11 @@ class FakeSqorzClient:
 
 
 class FakeConnectionRepo:
-    def __init__(self, connection: DataSourceConnectionRecord | None):
+    def __init__(self, connection: DataSourceConnectionRecord | None, *, assignments_changed: bool = False):
         self._connection = connection
+        self._assignments_changed = assignments_changed
         self.update_calls: list[dict] = []
+        self.normalized_calls: list[dict] = []
 
     async def get_by_id(self, connection_id):
         return self._connection
@@ -49,6 +51,13 @@ class FakeConnectionRepo:
                 "last_synced_at": last_synced_at,
             }
         )
+
+
+    async def assignments_changed_since(self, connection_id, since):
+        return self._assignments_changed
+
+    async def mark_normalized(self, connection_id, *, at, version):
+        self.normalized_calls.append({"connection_id": connection_id, "at": at, "version": version})
 
 
 class FakeRunRepo:
@@ -165,16 +174,109 @@ async def test_ingest_creates_snapshot_and_marks_success():
     assert uow.commits == 1
 
 
-async def test_ingest_with_unchanged_hash_still_renormalizes():
-    existing_hash = _content_hash(SAMPLE_PAYLOAD)
-    snapshot_repo = FakeSnapshotRepo(latest_hash=existing_hash)
-    normalizer = FakeNormalizer()
-    service = _build_service(client=FakeSqorzClient(), snapshot_repo=snapshot_repo, normalizer=normalizer)
+def _normalized_connection(**overrides) -> DataSourceConnectionRecord:
+    fields = dict(
+        id=CONNECTION.id,
+        external_id=CONNECTION.external_id,
+        sqorz_account_id=None,
+        sqorz_account_name=None,
+        normalized_at=datetime(2026, 10, 22, tzinfo=timezone.utc),
+        normalizer_version=NORMALIZER_VERSION,
+    )
+    return DataSourceConnectionRecord(**{**fields, **overrides})
 
-    run = await service.ingest(CONNECTION)
+
+async def test_ingest_remembers_when_it_normalized():
+    connection_repo = FakeConnectionRepo(CONNECTION)
+    service = _build_service(client=FakeSqorzClient(), connection_repo=connection_repo)
+
+    await service.ingest(CONNECTION)
+
+    assert [c["version"] for c in connection_repo.normalized_calls] == [NORMALIZER_VERSION]
+
+
+async def test_ingest_with_unchanged_hash_and_assignments_skips_normalizing():
+    connection = _normalized_connection()
+    snapshot_repo = FakeSnapshotRepo(latest_hash=_content_hash(SAMPLE_PAYLOAD))
+    normalizer, records = FakeNormalizer(), FakeRecords()
+    connection_repo = FakeConnectionRepo(connection)
+    uow = FakeUnitOfWork()
+    service = _build_service(
+        client=FakeSqorzClient(),
+        connection_repo=connection_repo,
+        snapshot_repo=snapshot_repo,
+        normalizer=normalizer,
+        records=records,
+        uow=uow,
+    )
+
+    run = await service.ingest(connection)
 
     assert run.status == "success"
     assert snapshot_repo.create_calls == []
+    assert normalizer.calls == [] and records.calls == []
+    assert connection_repo.normalized_calls == []
+    assert len(connection_repo.update_calls) == 1  # still counted as synced
+    assert uow.commits == 1
+
+
+async def test_ingest_with_unchanged_hash_renormalizes_after_an_assignment_changed():
+    connection = _normalized_connection()
+    normalizer = FakeNormalizer()
+    service = _build_service(
+        client=FakeSqorzClient(),
+        connection_repo=FakeConnectionRepo(connection, assignments_changed=True),
+        snapshot_repo=FakeSnapshotRepo(latest_hash=_content_hash(SAMPLE_PAYLOAD)),
+        normalizer=normalizer,
+    )
+
+    await service.ingest(connection)
+
+    assert normalizer.calls == [SAMPLE_PAYLOAD]
+
+
+async def test_ingest_with_unchanged_hash_renormalizes_when_the_normalizer_moved_on():
+    connection = _normalized_connection(normalizer_version=NORMALIZER_VERSION - 1)
+    normalizer = FakeNormalizer()
+    service = _build_service(
+        client=FakeSqorzClient(),
+        connection_repo=FakeConnectionRepo(connection),
+        snapshot_repo=FakeSnapshotRepo(latest_hash=_content_hash(SAMPLE_PAYLOAD)),
+        normalizer=normalizer,
+    )
+
+    await service.ingest(connection)
+
+    assert normalizer.calls == [SAMPLE_PAYLOAD]
+
+
+async def test_ingest_with_a_changed_payload_normalizes_even_when_nothing_else_changed():
+    connection = _normalized_connection()
+    normalizer = FakeNormalizer()
+    service = _build_service(
+        client=FakeSqorzClient(),
+        connection_repo=FakeConnectionRepo(connection),
+        snapshot_repo=FakeSnapshotRepo(latest_hash="an older hash"),
+        normalizer=normalizer,
+    )
+
+    await service.ingest(connection)
+
+    assert normalizer.calls == [SAMPLE_PAYLOAD]
+
+
+async def test_forced_ingest_normalizes_an_unchanged_payload():
+    connection = _normalized_connection()
+    normalizer = FakeNormalizer()
+    service = _build_service(
+        client=FakeSqorzClient(),
+        connection_repo=FakeConnectionRepo(connection),
+        snapshot_repo=FakeSnapshotRepo(latest_hash=_content_hash(SAMPLE_PAYLOAD)),
+        normalizer=normalizer,
+    )
+
+    await service.ingest_by_id(connection.id, force=True)
+
     assert normalizer.calls == [SAMPLE_PAYLOAD]
 
 

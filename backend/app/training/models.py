@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, false, text
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, false, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -134,6 +134,8 @@ class TrainingEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         UniqueConstraint(
             "athlete_id", "sqorz_account_id", "external_event_id", name="uq_event_athlete_account_external_id"
         ),
+        # The session list: one athlete's events, newest first.
+        Index("ix_training_events_athlete_date", "athlete_id", "event_date"),
     )
 
     athlete_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("athletes.id"), index=True)
@@ -263,6 +265,8 @@ class PersonalRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "personal_records"
     __table_args__ = (
         UniqueConstraint("athlete_id", "track_id", "event_key", "start_type", name="uq_personal_record_key"),
+        # The club leaderboard: every athlete's record for one event on one track.
+        Index("ix_personal_records_board", "track_id", "event_key", "start_type"),
     )
 
     athlete_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("athletes.id"), index=True)

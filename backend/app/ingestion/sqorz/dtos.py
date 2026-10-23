@@ -16,6 +16,8 @@ class DataSourceConnectionRecord:
     external_id: str
     sqorz_account_id: str | None
     sqorz_account_name: str | None
+    normalized_at: datetime | None = None
+    normalizer_version: int | None = None
 
 
 @dataclass(frozen=True)

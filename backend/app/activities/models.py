@@ -8,6 +8,7 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Index,
     Integer,
     LargeBinary,
     String,
@@ -40,6 +41,8 @@ class Activity(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         # The same file twice, or the same upstream activity synced twice.
         UniqueConstraint("athlete_id", "file_sha256", name="uq_activity_athlete_file"),
         UniqueConstraint("athlete_id", "source", "external_id", name="uq_activity_athlete_source_external"),
+        # The activity list and calendar: one athlete's rides, newest first.
+        Index("ix_activities_athlete_start", "athlete_id", "start_time"),
     )
 
     athlete_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("athletes.id"), index=True)

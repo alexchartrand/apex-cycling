@@ -16,6 +16,12 @@ from app.ingestion.sqorz.ports import (
 )
 
 
+# Bump when the normalizer or the records derived from its rows change in a way
+# that existing payloads should be re-read for: every connection is normalized
+# once more on its next sync.
+NORMALIZER_VERSION = 1
+
+
 def _content_hash(payload: dict) -> str:
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode()).hexdigest()
@@ -33,7 +39,10 @@ class SqorzIngestionService:
     """Fetches a transponder's full history, dedupes against the latest
     stored snapshot by content hash, records an IngestionRun, and triggers
     normalization into the query-friendly training tables, then refreshes
-    the personal records derived from them.
+    the personal records derived from them. The history is re-read on every
+    poll, but a payload identical to the last one is only normalized again
+    when an assignment changed or the normalizer version moved on (or the
+    caller forces it), since that work grows with the whole history.
     """
 
     def __init__(
@@ -55,7 +64,7 @@ class SqorzIngestionService:
         self._records = records
         self._unit_of_work = unit_of_work
 
-    async def ingest(self, connection: DataSourceConnectionRecord) -> IngestionRunRecord:
+    async def ingest(self, connection: DataSourceConnectionRecord, *, force: bool = False) -> IngestionRunRecord:
         run = await self._run_repo.create(connection.id, utcnow())
 
         try:
@@ -87,19 +96,27 @@ class SqorzIngestionService:
             last_synced_at=utcnow(),
         )
 
-        # Always re-normalize the freshly fetched payload (even if unchanged from
-        # the last snapshot) so a newly-added TransponderAssignment backfills
-        # attribution for laps that were previously unattributed.
-        athlete_ids = await self._normalizer.normalize(payload)
-        await self._records.recompute(athlete_ids)
+        # An unchanged payload still has to be normalized again when a
+        # TransponderAssignment was added or edited since the last pass, so
+        # laps that were unattributed get their owner.
+        if force or await self._needs_normalizing(connection, unchanged=latest_hash == content_hash):
+            started_at = utcnow()
+            athlete_ids = await self._normalizer.normalize(payload)
+            await self._records.recompute(athlete_ids)
+            await self._connection_repo.mark_normalized(connection.id, at=started_at, version=NORMALIZER_VERSION)
 
         run = await self._run_repo.mark_success(run.id, http_status=200, completed_at=utcnow())
 
         await self._unit_of_work.commit()
         return run
 
-    async def ingest_by_id(self, connection_id: uuid.UUID) -> IngestionRunRecord | None:
+    async def _needs_normalizing(self, connection: DataSourceConnectionRecord, *, unchanged: bool) -> bool:
+        if not unchanged or connection.normalized_at is None or connection.normalizer_version != NORMALIZER_VERSION:
+            return True
+        return await self._connection_repo.assignments_changed_since(connection.id, connection.normalized_at)
+
+    async def ingest_by_id(self, connection_id: uuid.UUID, *, force: bool = False) -> IngestionRunRecord | None:
         connection = await self._connection_repo.get_by_id(connection_id)
         if connection is None:
             return None
-        return await self.ingest(connection)
+        return await self.ingest(connection, force=force)

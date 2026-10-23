@@ -94,7 +94,7 @@ async def import_transponder_assignment_now(
     if assignment is None or assignment.athlete_id != athlete.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Transponder assignment not found")
 
-    run = await build_sqorz_ingestion_service(db).ingest_by_id(assignment.data_source_connection_id)
+    run = await build_sqorz_ingestion_service(db).ingest_by_id(assignment.data_source_connection_id, force=True)
     return IngestionRunRead.model_validate(run)
 
 
