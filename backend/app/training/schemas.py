@@ -161,6 +161,21 @@ class HalfLapSplitDetail(BaseModel):
     time_ms: int | None
 
 
+class PacingDetail(BaseModel):
+    """How even the effort was. Percentages are signed like a rider reads
+    them: positive = slower. `deviations_pct` has one entry per lap of the
+    effort (null for an unfinished one) against `even_pace_ms`, the mean of
+    the laps that count (a standing start's first lap and excluded laps don't).
+    """
+
+    reference_lap_count: int
+    even_pace_ms: float
+    cv_pct: float | None
+    fade_pct: float | None
+    deviations_pct: list[float | None]
+    start_lap_skipped: bool
+
+
 class EffortDetail(BaseModel):
     """One continuous block of laps. `lap_times_ms` has one entry per lap in
     `lap_ids`, null for an unfinished lap; `total_time_ms`/`distance_m` only
@@ -182,6 +197,14 @@ class EffortDetail(BaseModel):
     distance_m: float | None
     avg_speed_kmh: float | None
     half_lap_splits: list[HalfLapSplitDetail]
+    pacing: PacingDetail | None = None
+    # Fastest stretch between two placed checkpoints ("200m", "100m"…) and
+    # the lap it was on; the launch is a standing start's first stretch.
+    peak_speed_kmh: float | None = None
+    peak_speed_lap_id: uuid.UUID | None = None
+    launch_time_ms: int | None = None
+    launch_distance_m: float | None = None
+    launch_accel_ms2: float | None = None
     # Over the effort's finished laps, from a linked activity.
     avg_power_w: float | None = None
     avg_heart_rate: float | None = None

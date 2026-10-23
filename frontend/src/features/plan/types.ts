@@ -48,3 +48,28 @@ export interface PlannedSessionUpdate {
   targets?: PlannedEffort[];
   status?: PlanStatus;
 }
+
+/** How the ridden session answered one rep of the plan (backend `planning/matching.py`). */
+export type RepStatus = "hit" | "miss" | "ridden" | "not_ridden" | "free";
+
+export interface RepResult {
+  target_index: number;
+  rep: number;
+  label: string;
+  event_key: string | null;
+  target_time_ms: number | null;
+  status: RepStatus;
+  /** The effort of the session that answers it (its number in the efforts list). */
+  effort_index: number | null;
+  start_type: "standing" | "flying" | null;
+  time_ms: number | null;
+  /** time − target; negative = faster. */
+  delta_ms: number | null;
+}
+
+export interface PlanComparison {
+  reps: RepResult[];
+  /** Reps with a target time, and how many made it. */
+  measured: number;
+  hits: number;
+}

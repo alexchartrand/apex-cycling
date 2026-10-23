@@ -13,6 +13,7 @@ import { ProtectedRoute } from "./routes/ProtectedRoute";
 const AdminPage = lazy(() => import("./routes/AdminPage").then((m) => ({ default: m.AdminPage })));
 const ClubPage = lazy(() => import("./routes/ClubPage").then((m) => ({ default: m.ClubPage })));
 const ClubsPage = lazy(() => import("./routes/ClubsPage").then((m) => ({ default: m.ClubsPage })));
+const ComparePage = lazy(() => import("./routes/ComparePage").then((m) => ({ default: m.ComparePage })));
 const CoachPage = lazy(() => import("./routes/CoachPage").then((m) => ({ default: m.CoachPage })));
 const HomePage = lazy(() => import("./routes/HomePage").then((m) => ({ default: m.HomePage })));
 const ActivityPage = lazy(() => import("./routes/ActivityPage").then((m) => ({ default: m.ActivityPage })));
@@ -66,6 +67,7 @@ export function App() {
           <Route path="/log" element={<LogPage />} />
           <Route path="/sessions/:eventId" element={<SessionDetailPage />} />
           <Route path="/activities/:activityId" element={<ActivityPage />} />
+          <Route path="/compare" element={<ComparePage />} />
           <Route path="/records" element={<RecordsPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/power" element={<PowerCurvePage />} />

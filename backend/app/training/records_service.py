@@ -49,6 +49,24 @@ class SessionInput:
     view_times_ms: dict[str, dict[uuid.UUID, int | None]]
 
 
+def view_times_of(track: Track, laps: Iterable[TrainingLap]) -> dict[str, dict[uuid.UUID, int | None]]:
+    """Each lap's time for the track view that defines a view-timed standard
+    event (the flying 200), keyed by event key. Needs the track's views and
+    the laps' segment times loaded.
+    """
+    laps = list(laps)
+    view_times_ms: dict[str, dict[uuid.UUID, int | None]] = {}
+    for standard_event in STANDARD_EVENTS:
+        if standard_event.view_name is None:
+            continue
+        view = next((v for v in track.views if _normalized(v.name) == _normalized(standard_event.view_name)), None)
+        if view is None:
+            continue
+        loop_ids = [vl.track_loop_id for vl in view.view_loops]
+        view_times_ms[standard_event.key] = {lap.id: _view_time_ms(lap.segment_times, loop_ids) for lap in laps}
+    return view_times_ms
+
+
 async def load_session_inputs(db: AsyncSession, athlete_id: uuid.UUID) -> list[SessionInput]:
     """The athlete's laps grouped per session and track, ready to score."""
     laps = (
@@ -75,17 +93,7 @@ async def load_session_inputs(db: AsyncSession, athlete_id: uuid.UUID) -> list[S
         event_track = event_track_laps[0].event_track
         track, event = event_track.track, event_track.training_event
 
-        view_times_ms: dict[str, dict[uuid.UUID, int | None]] = {}
-        for standard_event in STANDARD_EVENTS:
-            if standard_event.view_name is None:
-                continue
-            view = next((v for v in track.views if _normalized(v.name) == _normalized(standard_event.view_name)), None)
-            if view is None:
-                continue
-            loop_ids = [vl.track_loop_id for vl in view.view_loops]
-            view_times_ms[standard_event.key] = {
-                lap.id: _view_time_ms(lap.segment_times, loop_ids) for lap in event_track_laps
-            }
+        view_times_ms = view_times_of(track, event_track_laps)
 
         inputs.append(
             SessionInput(

@@ -5,6 +5,7 @@ import enAuth from "./en/auth";
 import enClub from "./en/club";
 import enCoach from "./en/coach";
 import enCommon from "./en/common";
+import enCompare from "./en/compare";
 import enEquipment from "./en/equipment";
 import enGoals from "./en/goals";
 import enHome from "./en/home";
@@ -25,6 +26,7 @@ import frAuth from "./fr/auth";
 import frClub from "./fr/club";
 import frCoach from "./fr/coach";
 import frCommon from "./fr/common";
+import frCompare from "./fr/compare";
 import frEquipment from "./fr/equipment";
 import frGoals from "./fr/goals";
 import frHome from "./fr/home";
@@ -42,6 +44,7 @@ import frTraining from "./fr/training";
 export const resources = {
   en: {
     common: enCommon,
+    compare: enCompare,
     auth: enAuth,
     shell: enShell,
     home: enHome,
@@ -64,6 +67,7 @@ export const resources = {
   },
   fr: {
     common: frCommon,
+    compare: frCompare,
     auth: frAuth,
     shell: frShell,
     home: frHome,

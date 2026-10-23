@@ -1,0 +1,37 @@
+import type { LocaleNamespace } from "../types";
+import type en from "../en/compare";
+
+export default {
+  title: "Comparer",
+  eyebrow: "Efforts côte à côte",
+  intro: "Choisissez deux efforts, d'une même séance ou de deux séances, pour les voir tour par tour. Utile pour le même effort à deux dates, ou deux efforts d'une même soirée.",
+  side: "Effort {{side}}",
+  session: "Séance",
+  effort: "Effort",
+  chooseSession: "Choisir une séance",
+  pickTwo: "Choisissez un effort de chaque côté pour les comparer.",
+  sameEffort: "Les deux côtés sont le même effort. Choisissez-en un autre.",
+  figures: "Chiffres",
+  figure: "Chiffre",
+  difference: "B − A",
+  differenceHint: "Le meilleur chiffre de chaque paire est en gras. L'écart est B moins A : négatif = B est plus rapide.",
+  rows: {
+    start: "Départ",
+    laps: "Tours terminés",
+    total: "Temps",
+    bestLap: "Meilleur tour",
+    avgSpeed: "Vitesse moyenne",
+    topSpeed: "Vitesse de pointe",
+    spread: "Régularité",
+    fade: "Baisse",
+    power: "Puissance moyenne",
+    heartRate: "FC moyenne",
+  },
+  lapsTitle: "Tour par tour",
+  lapsCaption: "Tour 1 contre tour 1. Plus bas = plus rapide.",
+  gapTitle: "Écart au fil de l'effort",
+  gapSeries: "B − A",
+  gapCaption: "Au-dessus de zéro, {{b}} est derrière {{a}} à la fin de ce tour.",
+  gapEmpty: "Aucun tour n'a été terminé des deux côtés.",
+  splitsTitle: "Temps par demi-tour",
+} satisfies LocaleNamespace<typeof en>;

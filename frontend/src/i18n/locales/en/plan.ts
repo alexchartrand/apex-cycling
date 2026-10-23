@@ -23,6 +23,13 @@ export default {
     reopen: "Plan it again",
     edit: "Edit",
   },
+  results: {
+    title: "How it went",
+    loading: "Matching the efforts…",
+    error: "Couldn't compare the plan with the session.",
+    summary: "{{hits}} of {{measured}} targets made.",
+    status: { hit: "Made it", miss: "Missed", ridden: "Ridden", not_ridden: "Not ridden", free: "Not measured" },
+  },
   dialog: {
     addTitle: "Plan a session",
     editTitle: "Edit planned session",

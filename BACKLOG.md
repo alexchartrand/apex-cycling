@@ -123,14 +123,18 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
   - Open: "sync stalled" (worker hung / no successful run for a day) belongs with A2 alerting; coaches aren't told about their athletes' records; no retry for a failed email or push (marked delivered either way); push untested against a real push service.
 - [x] 🟡 B4 First-run checklist — *added 10/22, done 10/23 (`features/onboarding/`)*
   - Done: Home checklist "2 of 4" (transponder, weight, club and coach optional), hideable per browser, never shown when viewing another athlete; `/import#sqorz` scrolls to the sqorz card; "Where do I find the code?" help; after adding a transponder or "Sync now" the card says "Found N laps in M sessions" or that none have arrived yet. Manual syncs now refresh the session list and records (staleTime had hidden them for 60 s).
-- [ ] 🟡 C1 Compare sessions and efforts — *added 10/22*
-  - Notes: lap-by-lap overlay, cumulative delta, half-lap splits side by side; reuse `lapTable.ts`/`HalfLapSplitChart`; `?compare=` in the URL.
-- [ ] 🟡 C2 Pacing analysis per effort — *added 10/22*
-  - Notes: lap-time CV, fade % (last third vs first), deviation from even pace and from a pursuit schedule (`pursuitSchedule.ts`); pacing chart on effort cards.
-- [ ] 🟢 C3 Planned vs actual per planned effort — *added 10/22*
-  - Notes: match a linked plan's `PlannedEffort`s (target times) to the efforts ridden; hit/miss per rep.
-- [ ] 🟢 C4 Sprint metrics from segment times — *added 10/22*
-  - Notes: peak speed from the fastest `LapSegmentTime` segment, standing-start first segment as acceleration.
+- [x] 🟡 C1 Compare sessions and efforts — *added 10/22, done 10/23 (`features/compare/`, route `/compare?a=&ae=&b=&be=`)*
+  - Done: pick two efforts, from one session or two (session select + effort select per side; an effort is named in the URL by its first lap id, the longest one is the default). A figures table (time, best lap, speeds, spread, fade, power, HR; better figure in bold, B − A), a lap-by-lap overlay, the running gap and the half-lap splits side by side. A compare button on every effort card starts it.
+  - Open: no session-level view (it is always efforts; pick the effort you mean); the Log and session header have no entry point yet; not checked in a browser.
+- [x] 🟡 C2 Pacing analysis per effort — *added 10/22, done 10/23 (`training/pacing.py` pure; `EffortDetail.pacing`)*
+  - Done: lap-time spread (CV), fade (last third vs first), every lap's deviation from the even pace, shown as tiles and a bar chart on the effort card. The reference laps are the finished, non-excluded ones minus a standing start's first lap.
+  - Open: deviation from a *pursuit schedule* isn't on the effort card (it needs a rider setup and a target); the Pursuit tool already lays an effort over its schedule (`effortElapsedByLap`).
+- [x] 🟢 C3 Planned vs actual per planned effort — *added 10/22, done 10/23 (`planning/matching.py` pure, `planning/comparison.py`; `GET …/planned-sessions/{id}/comparison`)*
+  - Done: the plan's targets expand into reps in plan order and each takes the first later effort that has a result for its event and start (a warm-up or a failed effort is passed over); hit / miss with the gap to the target, "ridden" when the plan gave no time, "not ridden", "not measured" for a block with no event. "How it went" section in the plan dialog once a session is linked (409 before).
+  - Open: one effort answers one rep (an effort holding several reps back to back isn't split); the flying-lap events use the session's best window of that effort, not a chosen lap.
+- [x] 🟢 C4 Sprint metrics from segment times — *added 10/22, done 10/23 (`training/sprint.py` pure; `EffortDetail.peak_speed_kmh / launch_*`)*
+  - Done: top speed = the fastest stretch (≥ 20 m) between two placed checkpoints of a non-excluded lap; launch = time to the first placed checkpoint of a standing start, with the average acceleration from rest (2·d/t²). Gates are placed by the loop's `distance_m` when sqorz sent one, else by name: `NNNm` = distance left to the finish, `Finish` = the line (the real LS-03407 export has no distances). The launch needs the track length.
+  - Open: the launch assumes the lap timer starts at the gate, and peak speed is an average over ≥ 20 m, not an instantaneous one; none of it checked against a real standing-start session.
 - [ ] 🟡 D1 Coach dashboard v2 — *added 10/22*
   - Notes: CTL/ATL/TSB, plan compliance and goal progress per athlete; squad view of every athlete's best on one event/track (no Strava). Supersedes "Coach dashboard form is recent load only" below.
 - [ ] 🟢 D2 Seasons, competitions, ICS feed — *added 10/22*

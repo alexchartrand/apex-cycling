@@ -10,6 +10,7 @@ from app.auth.models import User
 from app.db.session import get_db
 from app.planning import service
 from app.planning.schemas import (
+    PlanComparison,
     PlannedSessionRead,
     PlannedSessionUpdate,
     PlannedSessionWrite,
@@ -122,3 +123,20 @@ async def unlink_planned_session(
     if unlinked is None:
         raise _NO_PLAN
     return unlinked
+
+
+@router.get("/{plan_id}/comparison", response_model=PlanComparison)
+async def planned_vs_ridden(
+    athlete_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    athlete: Athlete = Depends(require_athlete_access),
+    db: AsyncSession = Depends(get_db),
+) -> PlanComparison:
+    """Each rep of the plan against the efforts of the session linked to it."""
+    try:
+        result = await service.comparison(db, athlete, plan_id)
+    except service.NoLinkedSession:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This plan has no linked session") from None
+    if result is None:
+        raise _NO_PLAN
+    return result

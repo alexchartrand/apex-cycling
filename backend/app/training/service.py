@@ -8,12 +8,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.training.distances import best_lap_window, laps_for_distance
-from app.training.efforts import CheckpointCrossing, LapInput, StartType, detect_efforts
+from app.training.efforts import CheckpointCrossing, Effort, LapInput, StartType, detect_efforts
+from app.training.pacing import pacing
+from app.training.sprint import sprint_stats
 from app.training.models import EventTrack, LapSegmentTime, Track, TrackView, TrainingEvent, TrainingLap
 from app.training.schemas import (
     EffortDetail,
     HalfLapSplitDetail,
     LapDetail,
+    PacingDetail,
     ProgressionMetric,
     ProgressionPoint,
     SegmentDetail,
@@ -284,21 +287,18 @@ def _lap_input(lap: TrainingLap) -> LapInput:
         from_start=lap.from_start,
         excluded=lap.excluded,
         crossings=tuple(
-            CheckpointCrossing(loop_id=s.track_loop_id, loop_name=s.track_loop.name, time_ms=s.time_ms)
+            CheckpointCrossing(
+                loop_id=s.track_loop_id, loop_name=s.track_loop.name, time_ms=s.time_ms, distance_m=s.track_loop.distance_m
+            )
             for s in sorted(lap.segment_times, key=lambda s: s.sequence_index)
         ),
     )
 
 
-async def get_session_efforts(db: AsyncSession, athlete_id: uuid.UUID, external_event_id: str) -> list[EffortDetail] | None:
-    """Continuous lap blocks of one session, oldest first. Detected per
-    track — laps on different tracks are never one effort.
+def detect_session_efforts(laps: list[TrainingLap]) -> list[tuple[Track, Effort]]:
+    """The session's efforts, oldest first, each with its track — the order
+    the effort list (and its 1-based `index`) is numbered in.
     """
-    loaded = await _load_event_laps(db, athlete_id, external_event_id)
-    if loaded is None:
-        return None
-    _, laps = loaded
-
     laps_by_track: dict[uuid.UUID, list[TrainingLap]] = {}
     for lap in laps:
         laps_by_track.setdefault(lap.event_track.track_id, []).append(lap)
@@ -309,10 +309,30 @@ async def get_session_efforts(db: AsyncSession, athlete_id: uuid.UUID, external_
         for effort in detect_efforts([_lap_input(lap) for lap in track_laps], track.length_m):
             detected.append((track, effort))
     detected.sort(key=lambda pair: pair[1].start_time)
+    return detected
+
+
+async def get_session_efforts(db: AsyncSession, athlete_id: uuid.UUID, external_event_id: str) -> list[EffortDetail] | None:
+    """Continuous lap blocks of one session, oldest first. Detected per
+    track — laps on different tracks are never one effort.
+    """
+    loaded = await _load_event_laps(db, athlete_id, external_event_id)
+    if loaded is None:
+        return None
+    _, laps = loaded
+    detected = detect_session_efforts(laps)
     labels = {lap.id: lap.effort_label for lap in laps if lap.effort_label}
     gear_ids = {lap.id: lap.effort_gear_setup_id for lap in laps if lap.effort_gear_setup_id}
 
-    return [
+    return [_effort_detail(index, track, effort, labels, gear_ids) for index, (track, effort) in enumerate(detected, start=1)]
+
+
+def _effort_detail(
+    index: int, track: Track, effort: Effort, labels: dict[uuid.UUID, str], gear_ids: dict[uuid.UUID, uuid.UUID]
+) -> EffortDetail:
+    effort_pacing = pacing(effort)
+    sprint = sprint_stats(effort, track.length_m)
+    return (
         EffortDetail(
             index=index,
             track_id=track.id,
@@ -332,9 +352,23 @@ async def get_session_efforts(db: AsyncSession, athlete_id: uuid.UUID, external_
                 HalfLapSplitDetail(index=s.index, from_line=s.from_line, to_line=s.to_line, time_ms=s.time_ms)
                 for s in effort.half_lap_splits
             ],
+            pacing=PacingDetail(
+                reference_lap_count=effort_pacing.reference_lap_count,
+                even_pace_ms=effort_pacing.even_pace_ms,
+                cv_pct=effort_pacing.cv_pct,
+                fade_pct=effort_pacing.fade_pct,
+                deviations_pct=list(effort_pacing.deviations_pct),
+                start_lap_skipped=effort_pacing.start_lap_skipped,
+            )
+            if effort_pacing
+            else None,
+            peak_speed_kmh=sprint.peak_speed_kmh,
+            peak_speed_lap_id=sprint.peak_speed_lap_id,
+            launch_time_ms=sprint.launch_time_ms,
+            launch_distance_m=sprint.launch_distance_m,
+            launch_accel_ms2=sprint.launch_accel_ms2,
         )
-        for index, (track, effort) in enumerate(detected, start=1)
-    ]
+    )
 
 
 async def list_athlete_sessions(db: AsyncSession, athlete_id: uuid.UUID) -> list[SessionSummary]:

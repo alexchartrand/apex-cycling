@@ -26,6 +26,13 @@ export default {
     reopen: "La planifier à nouveau",
     edit: "Modifier",
   },
+  results: {
+    title: "Comment ça s'est passé",
+    loading: "Association des efforts…",
+    error: "Impossible de comparer le plan avec la séance.",
+    summary: "{{hits}} objectifs atteints sur {{measured}}.",
+    status: { hit: "Atteint", miss: "Manqué", ridden: "Roulé", not_ridden: "Non roulé", free: "Non mesuré" },
+  },
   dialog: {
     addTitle: "Planifier une séance",
     editTitle: "Modifier la séance planifiée",

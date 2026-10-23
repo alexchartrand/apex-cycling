@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { Pencil } from "lucide-react";
+import { GitCompare, Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { errorMessage } from "../../../api/errors";
-import { Badge, Button, Card, Dialog, IconButton, Input, StatTile, Tooltip, useToast, type BadgeTone } from "../../../components/ui";
+import { Badge, Button, ButtonLink, Card, Dialog, IconButton, Input, StatTile, Tooltip, useToast, type BadgeTone } from "../../../components/ui";
 import { useFormat } from "../../../i18n/useFormat";
 import { GearPicker } from "../../equipment/GearPicker";
 import { useEffortGear } from "../../equipment/useEquipment";
@@ -11,7 +11,9 @@ import type { Effort, StartType } from "../types";
 import { useLabelEffort } from "../useTraining";
 import { effortCardModel } from "../../share/cardModels";
 import { ShareButton } from "../../share/ShareButton";
+import { compareHref } from "../../compare/compare";
 import { HalfLapSplitChart } from "./HalfLapSplitChart";
+import { PacingChart } from "./PacingChart";
 import "./EffortCard.css";
 
 const START_TONES: Record<StartType, BadgeTone> = { standing: "highlight", flying: "accent", unknown: "neutral" };
@@ -69,6 +71,16 @@ export function EffortCard({
               }
             />
           )}
+          <Tooltip content={t("efforts.compare")}>
+            <ButtonLink
+              to={compareHref({ eventId, firstLapId: effort.lap_ids[0] })}
+              variant="ghost"
+              className="btn--icon"
+              aria-label={t("efforts.compare")}
+            >
+              <GitCompare aria-hidden />
+            </ButtonLink>
+          </Tooltip>
           <Tooltip content={t("efforts.rename")}>
             <IconButton aria-label={t("efforts.rename")} variant="ghost" onClick={() => setRenaming(true)}>
               <Pencil aria-hidden />
@@ -99,6 +111,32 @@ export function EffortCard({
           <StatTile label={t("efforts.estCadence")} value={fmt.number(effort.est_cadence_rpm, 0)} unit="rpm" />
         )}
       </div>
+      {(effort.peak_speed_kmh != null || effort.launch_accel_ms2 != null || effort.pacing?.cv_pct != null || effort.pacing?.fade_pct != null) && (
+        <div className="effort-card__stats">
+          {effort.peak_speed_kmh != null && (
+            <StatTile label={t("efforts.topSpeed")} value={fmt.number(effort.peak_speed_kmh, 1, 1)} unit="km/h" hint={t("efforts.topSpeedHint")} />
+          )}
+          {effort.launch_accel_ms2 != null && effort.launch_time_ms != null && effort.launch_distance_m != null && (
+            <StatTile
+              label={t("efforts.launch")}
+              value={fmt.seconds(effort.launch_time_ms, 2)}
+              unit="s"
+              hint={t("efforts.launchHint", { distance: fmt.distance(effort.launch_distance_m), accel: fmt.number(effort.launch_accel_ms2, 1, 1) })}
+            />
+          )}
+          {effort.pacing?.cv_pct != null && (
+            <StatTile label={t("efforts.consistency")} value={fmt.number(effort.pacing.cv_pct, 1, 1)} unit="%" hint={t("efforts.consistencyHint")} />
+          )}
+          {effort.pacing?.fade_pct != null && (
+            <StatTile
+              label={t("efforts.fade")}
+              value={`${effort.pacing.fade_pct > 0 ? "+" : ""}${fmt.number(effort.pacing.fade_pct, 1, 1)}`}
+              unit="%"
+              hint={t("efforts.fadeHint")}
+            />
+          )}
+        </div>
+      )}
       {bikes.some((bike) => bike.gears.length > 0) && (
         <GearPicker
           bikes={bikes}
@@ -111,6 +149,16 @@ export function EffortCard({
         />
       )}
       {hasUnfinishedLap && <p className="effort-card__note">{t("efforts.unfinishedNote")}</p>}
+
+      {effort.pacing && (
+        <section aria-label={t("efforts.pacingTitle")}>
+          <h4 className="effort-card__subtitle">{t("efforts.pacingTitle")}</h4>
+          <p className="effort-card__note">
+            {effort.pacing.start_lap_skipped ? t("efforts.pacingHintStanding") : t("efforts.pacingHint")}
+          </p>
+          <PacingChart effort={effort} pacing={effort.pacing} />
+        </section>
+      )}
 
       {effort.half_lap_splits.length > 0 && (
         <section aria-label={t("efforts.splitsTitle")}>

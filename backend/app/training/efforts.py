@@ -53,6 +53,8 @@ class CheckpointCrossing:
     loop_id: uuid.UUID
     loop_name: str
     time_ms: int | None
+    # Cumulative metres from the start line, when sqorz reported it.
+    distance_m: float | None = None
 
 
 @dataclass(frozen=True)

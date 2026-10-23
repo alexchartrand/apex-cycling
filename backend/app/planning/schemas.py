@@ -3,6 +3,7 @@ from datetime import date
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.planning.matching import RepStatus
 from app.planning.models import PlanStatus
 from app.training.distances import STANDARD_EVENTS_BY_KEY
 from app.training.efforts import StartType
@@ -122,3 +123,29 @@ class PlannedSessionRead(BaseModel):
     # content; only the athlete's side marks it done, skipped or linked.
     can_edit: bool
     can_mark: bool
+
+
+class RepResult(BaseModel):
+    """One rep of the plan and how the ridden session answered it."""
+
+    target_index: int
+    rep: int
+    label: str
+    event_key: str | None
+    target_time_ms: int | None
+    status: RepStatus
+    # The effort of the session that answers it (its 1-based number in the
+    # session's effort list) and what it scored; `delta_ms` = time − target.
+    effort_index: int | None = None
+    start_type: StartType | None = None
+    time_ms: int | None = None
+    delta_ms: int | None = None
+
+
+class PlanComparison(BaseModel):
+    """The plan against the session linked to it. `measured` counts the reps
+    with a target time, `hits` those that made it."""
+
+    reps: list[RepResult]
+    measured: int
+    hits: int

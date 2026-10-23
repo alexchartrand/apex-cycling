@@ -1,5 +1,5 @@
 import { apiFetch } from "../../api/client";
-import type { PlannedSession, PlannedSessionUpdate, PlannedSessionWrite } from "./types";
+import type { PlanComparison, PlannedSession, PlannedSessionUpdate, PlannedSessionWrite } from "./types";
 
 const base = (athleteId: string) => `/athletes/${athleteId}/planned-sessions`;
 
@@ -28,4 +28,8 @@ export function linkPlannedSession(athleteId: string, planId: string, externalEv
 
 export function unlinkPlannedSession(athleteId: string, planId: string): Promise<PlannedSession> {
   return apiFetch<PlannedSession>(`${base(athleteId)}/${planId}/session`, { method: "DELETE" });
+}
+
+export function getPlanComparison(athleteId: string, planId: string): Promise<PlanComparison> {
+  return apiFetch<PlanComparison>(`${base(athleteId)}/${planId}/comparison`);
 }

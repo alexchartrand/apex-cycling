@@ -110,6 +110,21 @@ export interface HalfLapSplit {
   time_ms: number | null;
 }
 
+/** How even an effort was (backend `pacing.py`); percentages are positive when slower. */
+export interface Pacing {
+  reference_lap_count: number;
+  /** Mean of the laps that count: the pace every lap is compared with. */
+  even_pace_ms: number;
+  /** Lap-time spread, percent of the mean. */
+  cv_pct: number | null;
+  /** Last third of the laps against the first third. */
+  fade_pct: number | null;
+  /** One per lap of the effort; null for an unfinished lap. */
+  deviations_pct: (number | null)[];
+  /** The standing start's first lap is left out of the reference. */
+  start_lap_skipped: boolean;
+}
+
 /** One continuous block of laps (see backend `efforts.py`). */
 export interface Effort {
   index: number;
@@ -127,6 +142,14 @@ export interface Effort {
   distance_m: number | null;
   avg_speed_kmh: number | null;
   half_lap_splits: HalfLapSplit[];
+  pacing?: Pacing | null;
+  /** Fastest stretch between two placed checkpoints, and its lap. */
+  peak_speed_kmh?: number | null;
+  peak_speed_lap_id?: string | null;
+  /** Standing start: time to the first placed checkpoint, how far it is, and the average acceleration from rest. */
+  launch_time_ms?: number | null;
+  launch_distance_m?: number | null;
+  launch_accel_ms2?: number | null;
   avg_power_w?: number | null;
   avg_heart_rate?: number | null;
   avg_cadence?: number | null;

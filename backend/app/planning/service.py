@@ -15,8 +15,10 @@ from app.athletes.models import Athlete
 from app.auth.models import User
 from app.equipment.models import Bike, GearSetup
 from app.notifications.producers import notify_plan_added
+from app.planning.comparison import NoLinkedSession, compare_plan  # noqa: F401  (re-exported for the router)
 from app.planning.models import PlannedSession, PlanStatus
 from app.planning.schemas import (
+    PlanComparison,
     LinkedSession,
     PlannedEffort,
     PlannedEffortRead,
@@ -114,6 +116,13 @@ async def list_plans(
 async def _own(db: AsyncSession, athlete: Athlete, plan_id: uuid.UUID) -> PlannedSession | None:
     plan = await db.get(PlannedSession, plan_id)
     return plan if plan is not None and plan.athlete_id == athlete.id else None
+
+
+async def comparison(db: AsyncSession, athlete: Athlete, plan_id: uuid.UUID) -> PlanComparison | None:
+    """The plan against its linked session. None when the plan isn't this
+    athlete's; raises `NoLinkedSession`."""
+    plan = await _own(db, athlete, plan_id)
+    return None if plan is None else await compare_plan(db, plan)
 
 
 async def _read_one(db: AsyncSession, athlete: Athlete, viewer: User, plan: PlannedSession) -> PlannedSessionRead:

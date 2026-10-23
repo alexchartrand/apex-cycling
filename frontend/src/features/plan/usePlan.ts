@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createPlannedSession,
   deletePlannedSession,
+  getPlanComparison,
   linkPlannedSession,
   listPlannedSessions,
   unlinkPlannedSession,
@@ -42,5 +43,14 @@ export function usePlanAnswer(athleteId: string) {
       return updatePlannedSession(athleteId, args.planId, { status: args.status });
     },
     onSuccess: invalidate,
+  });
+}
+
+/** The plan's reps against the session linked to it; only asked for once linked. */
+export function usePlanComparison(athleteId: string, planId: string, linked: boolean) {
+  return useQuery({
+    queryKey: ["planned-sessions", athleteId, planId, "comparison"],
+    queryFn: () => getPlanComparison(athleteId, planId),
+    enabled: athleteId !== "" && linked,
   });
 }

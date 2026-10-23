@@ -8,6 +8,7 @@ import { useFormat } from "../../i18n/useFormat";
 import { formatRecordTime } from "../records/timeInput";
 import { useSessions } from "../training/useTraining";
 import { PlanDialog } from "./PlanDialog";
+import { PlanResults } from "./PlanResults";
 import { effortText, linkCandidates, STATUS_TONE } from "./planForm";
 import type { PlannedSession } from "./types";
 import { useDeletePlan, usePlanAnswer } from "./usePlan";
@@ -70,6 +71,10 @@ export function PlanDetailDialog({ athleteId, plan, onClose }: { athleteId: stri
                 {plan.session.event_name} · {fmt.date(plan.session.event_date, "medium")}
               </Link>
             </p>
+          )}
+
+          {plan.session && plan.targets.length > 0 && (
+            <PlanResults athleteId={athleteId} planId={plan.id} eventId={plan.session.external_event_id} />
           )}
 
           {plan.can_mark && plan.status === "planned" && (
