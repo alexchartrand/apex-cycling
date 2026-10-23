@@ -35,7 +35,7 @@ npm run lint       # oxlint
 npm test           # vitest (jsdom + Testing Library, setup in src/test/setup.ts)
 ```
 
-Production (single VPS, see README "Production deployment"; scripts in `scripts/`):
+Production (single VPS, see deploy.md; scripts in `scripts/`):
 ```bash
 sudo scripts/server-setup.sh                      # once, bare Ubuntu 24.04 (Docker, ufw, fail2ban, swap)
 scripts/init-env.sh <domain> <email>              # writes .env.prod with fresh secrets

@@ -171,7 +171,7 @@ services:
       BACKUP_KEEP_DAILY: ${BACKUP_KEEP_DAILY:-14}
       BACKUP_KEEP_WEEKLY: ${BACKUP_KEEP_WEEKLY:-8}
       # Optional off-host copy to any S3-compatible store (OVH Object Storage,
-      # Backblaze B2, AWS S3…) — see README.
+      # Backblaze B2, AWS S3…) — see deploy.md.
       BACKUP_S3_URI: ${BACKUP_S3_URI:-}
       BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
       BACKUP_S3_REGION: ${BACKUP_S3_REGION:-}
