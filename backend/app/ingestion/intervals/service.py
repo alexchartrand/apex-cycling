@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from app.db.base import utcnow
 from app.ingestion.intervals.client import IntervalsAuthError, IntervalsClientError, IntervalsRateLimited
-from app.ingestion.intervals.dtos import IntervalsConnectionRecord, SyncResult
+from app.ingestion.intervals.dtos import IntervalsConnectionRecord, RemoteActivity, SyncResult
 from app.ingestion.common import SyncRunRepositoryPort, UnitOfWorkPort
 from app.ingestion.intervals.ports import (
     ActivityImporterPort,
@@ -20,7 +20,7 @@ _OVERLAP = timedelta(days=2)
 
 
 class IntervalsSyncService:
-    """Brings an athlete's Intervals.icu rides into ApexCycling: lists the
+    """Brings an athlete's Intervals.icu rides and gym sessions into ApexCycling: lists the
     recent activities, skips those already imported, and runs each original
     file through the same import as an upload (so it is parsed, deduped
     against uploads, scored and linked to its sqorz session).
@@ -65,21 +65,20 @@ class IntervalsSyncService:
                 else today - timedelta(days=self._backfill_days)
             )
             remote = await self._client.list_activities(connection.api_key, oldest, today + timedelta(days=1))
-            candidates = [a for a in remote if a.is_ride and not a.is_strava and not a.has_note]
+            candidates = [a for a in remote if a.is_wanted and not a.is_strava and not a.has_note]
             known = await self._connections.known_external_ids(connection.id, [a.id for a in candidates])
             pending = sorted((a for a in candidates if a.id not in known), key=lambda a: a.start_local or utcnow(), reverse=True)
             skipped = len(remote) - len(candidates)
 
             for activity in pending[: self._max_downloads]:
-                content = await self._client.download_file(connection.api_key, activity.id)
-                if content is None:
-                    skipped += 1
-                    continue
                 try:
-                    outcome = await self._importer.import_file(connection, activity, content)
+                    outcome = await self._import(connection, activity)
                 except ActivityRejected as exc:
                     failed += 1
                     logger.warning("Intervals.icu activity %s not imported: %s", activity.id, exc)
+                    continue
+                if outcome is None:
+                    skipped += 1
                     continue
                 if outcome == "created":
                     imported += 1
@@ -123,6 +122,21 @@ class IntervalsSyncService:
             complete=complete and error is None,
             error=error,
         )
+
+    async def _import(self, connection: IntervalsConnectionRecord, activity: RemoteActivity):
+        """Imports from the original file; a gym session without a usable file
+        (typed in by hand, or a watch file with no samples) is kept from the
+        numbers Intervals.icu has. None when there is nothing to keep."""
+        content = await self._client.download_file(connection.api_key, activity.id)
+        if content is not None:
+            try:
+                return await self._importer.import_file(connection, activity, content)
+            except ActivityRejected:
+                if not activity.is_gym:
+                    raise
+        elif not activity.is_gym:
+            return None
+        return await self._importer.import_summary(connection, activity)
 
     async def sync_by_id(self, connection_id) -> SyncResult | None:
         connection = await self._connections.get_active(connection_id)

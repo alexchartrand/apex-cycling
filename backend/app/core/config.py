@@ -67,8 +67,8 @@ class Settings(BaseSettings):
     # arrives over several runs instead of hammering the API.
     intervals_base_url: str = "https://intervals.icu/api/v1"
     intervals_poll_interval_minutes: int = 30
-    intervals_backfill_days: int = 90
-    intervals_max_downloads_per_run: int = 25
+    intervals_backfill_days: int = 365
+    intervals_max_downloads_per_run: int = 100
 
     # Strava (app/ingestion/strava). Register an API application at
     # strava.com/settings/api with the authorization callback domain of this

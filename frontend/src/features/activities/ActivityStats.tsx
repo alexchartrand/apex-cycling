@@ -78,7 +78,7 @@ export function ActivityStats({ activity, analysis }: { activity: Activity; anal
       add("work", <StatTile label={t("activity.stats.work")} icon={<Zap aria-hidden />} value={fmt.number(analysis.work_kj, 0)} unit="kJ" />);
     }
   }
-  if (activity.has_heart_rate) {
+  if (activity.has_heart_rate || activity.avg_heart_rate != null) {
     add(
       "hr",
       <StatTile

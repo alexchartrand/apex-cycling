@@ -44,16 +44,24 @@ async def test_list_activities_sends_the_date_range_and_parses_fields():
                 {"id": "i1", "name": "Track", "type": "Ride", "source": "GARMIN_CONNECT", "start_date_local": "2026-06-05T18:00:00"},
                 {"id": "i2", "type": "Ride", "source": "STRAVA", "_note": "STRAVA activities are not available via the API"},
                 {"id": "i3", "type": "Run"},
+                {
+                    "id": "g1", "type": "WeightTraining", "start_date": "2026-06-05T16:00:00Z", "elapsed_time": 3600,
+                    "moving_time": 0, "average_heartrate": 112.4, "icu_rpe": 11, "description": "Legs",
+                },
                 {"name": "no id"},
             ],
         )
 
     activities = await _client(handler).list_activities("k", date(2026, 6, 1), date(2026, 6, 10))
 
-    assert [a.id for a in activities] == ["i1", "i2", "i3"]
+    assert [a.id for a in activities] == ["i1", "i2", "i3", "g1"]
     assert activities[0].is_ride and not activities[0].is_strava and activities[0].start_local.hour == 18
     assert activities[1].is_strava and activities[1].has_note
     assert not activities[2].is_ride
+    gym = activities[3]
+    assert gym.is_gym and gym.is_wanted and not gym.is_ride
+    assert (gym.start_utc.hour, gym.start_utc.utcoffset().total_seconds()) == (16, 0)
+    assert (gym.elapsed_s, gym.moving_s, gym.avg_heart_rate, gym.rpe, gym.description) == (3600, None, 112.4, 10, "Legs")
 
 
 async def test_download_returns_plain_and_gzipped_files_alike():

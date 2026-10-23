@@ -40,3 +40,11 @@ class ActivityImporterPort(Protocol):
         """Stores the activity for the connection's athlete. Raises
         `ActivityRejected` for an unusable file."""
         ...
+
+    async def import_summary(
+        self, connection: IntervalsConnectionRecord, remote: RemoteActivity
+    ) -> Literal["created", "duplicate"]:
+        """Stores an activity that has no file, from the numbers Intervals.icu
+        gives. Raises `ActivityRejected` when those don't say when it was and
+        how long it lasted."""
+        ...

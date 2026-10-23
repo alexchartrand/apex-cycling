@@ -6,7 +6,7 @@ forbid forwarding them), so those come back without a file.
 """
 
 import zlib
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 import httpx
 
@@ -49,6 +49,24 @@ def _parse_local(value: object) -> datetime | None:
         return datetime.fromisoformat(str(value))
     except ValueError:
         return None
+
+
+def _parse_utc(value: object) -> datetime | None:
+    moment = _parse_local(value) if value else None
+    if moment is None:
+        return None
+    return moment.replace(tzinfo=timezone.utc) if moment.tzinfo is None else moment.astimezone(timezone.utc)
+
+
+def _number(value: object, *, positive: bool = True) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value) if not positive or value > 0 else None
+
+
+def _rpe(value: object) -> int | None:
+    number = _number(value)
+    return None if number is None else min(10, max(1, round(number)))
 
 
 class IntervalsHttpClient:
@@ -100,6 +118,14 @@ class IntervalsHttpClient:
                     source=item.get("source"),
                     start_local=_parse_local(item.get("start_date_local")),
                     has_note=bool(item.get("_note")),
+                    start_utc=_parse_utc(item.get("start_date")),
+                    elapsed_s=_number(item.get("elapsed_time")),
+                    moving_s=_number(item.get("moving_time")),
+                    distance_m=_number(item.get("distance")),
+                    avg_heart_rate=_number(item.get("average_heartrate")),
+                    max_heart_rate=_number(item.get("max_heartrate")),
+                    rpe=_rpe(item.get("icu_rpe")),
+                    description=(item.get("description") or None),
                 )
             )
         return activities

@@ -160,22 +160,94 @@ async def test_a_second_sync_does_not_download_again(client, intervals):
 # --- what gets imported ------------------------------------------------------------------
 
 
-async def test_only_rides_with_data_are_imported(client, intervals):
+async def test_only_rides_and_gym_sessions_with_data_are_imported(client, intervals):
     athlete_id = await _rider(client)
     intervals.activities = [
         _remote("ride", day=1),
         _remote("virtual", type="VirtualRide", day=2),
         _remote("run", type="Run", day=3),
+        _remote("gym", type="WeightTraining", day=7),
         _remote("strava", source="STRAVA", note=True, day=4),
         _remote("noted", note=True, day=5),
         _remote("nofile", day=6),
     ]
-    intervals.files = {"ride": _fit(1), "virtual": _fit(2), "run": _fit(3), "strava": _fit(4), "noted": _fit(5)}
+    intervals.files = {"ride": _fit(1), "virtual": _fit(2), "run": _fit(3), "strava": _fit(4), "noted": _fit(5), "gym": _fit(7)}
 
     await _connect(client, athlete_id)
 
-    assert sorted(a["start_time"][:10] for a in await _activities(client, athlete_id)) == ["2026-06-01", "2026-06-02"]
-    assert set(intervals.downloads) == {"ride", "virtual", "nofile"}  # no point asking for runs or Strava
+    assert sorted(a["start_time"][:10] for a in await _activities(client, athlete_id)) == [
+        "2026-06-01",
+        "2026-06-02",
+        "2026-06-07",
+    ]
+    assert set(intervals.downloads) == {"ride", "virtual", "gym", "nofile"}  # no point asking for runs or Strava
+
+
+def _gym(id: str, day: int, **fields):
+    return RemoteActivity(
+        id=id,
+        name="Legs",
+        type="WeightTraining",
+        source="GARMIN_CONNECT",
+        start_local=datetime(2026, 6, day, 7),
+        has_note=False,
+        start_utc=datetime(2026, 6, day, 5, tzinfo=timezone.utc),
+        elapsed_s=3600.0,
+        moving_s=3000.0,
+        avg_heart_rate=110.0,
+        max_heart_rate=150.0,
+        rpe=7,
+        description="Squats",
+        **fields,
+    )
+
+
+async def test_a_gym_session_without_a_file_is_kept_from_its_summary(client, intervals):
+    athlete_id = await _rider(client)
+    intervals.activities = [_gym("g1", 3)]  # no file to download
+
+    await _connect(client, athlete_id)
+
+    (gym,) = await _activities(client, athlete_id)
+    assert (gym["name"], gym["sport"], gym["source"]) == ("Legs", "WeightTraining", "intervals_icu")
+    assert (gym["elapsed_s"], gym["moving_s"], gym["rpe"], gym["notes"]) == (3600, 3000, 7, "Squats")
+    assert (gym["avg_heart_rate"], gym["has_power"]) == (110, False)
+    assert gym["start_time"].startswith("2026-06-03T05:00")
+    # It has no samples, and counts towards the training load through its RPE.
+    assert (await client.get(f"/athletes/{athlete_id}/activities/{gym['id']}/streams")).status_code == 404
+    load = (await client.get(f"/athletes/{athlete_id}/training-load")).json()
+    assert load["unrated_activities"] == 0 and any(day["tss"] > 0 for day in load["days"])
+
+
+async def test_a_gym_file_with_no_samples_falls_back_to_the_summary(client, intervals):
+    athlete_id = await _rider(client)
+    intervals.activities = [_gym("g1", 3)]
+    intervals.files = {"g1": b"not an activity"}
+
+    await _connect(client, athlete_id)
+
+    assert len(await _activities(client, athlete_id)) == 1
+    assert (await client.get(f"/athletes/{athlete_id}/intervals")).json()["runs"][0]["imported_count"] == 1
+
+
+async def test_a_gym_summary_is_not_imported_twice_or_refetched(client, intervals):
+    athlete_id = await _rider(client)
+    intervals.activities = [_gym("g1", 3)]
+    await _connect(client, athlete_id)
+    await client.post(f"/athletes/{athlete_id}/intervals/sync")
+
+    assert len(await _activities(client, athlete_id)) == 1
+    assert intervals.downloads == ["g1"]
+
+
+async def test_a_gym_session_that_says_neither_when_nor_how_long_fails_alone(client, intervals):
+    athlete_id = await _rider(client)
+    intervals.activities = [_remote("bare", type="WeightTraining", day=1), _remote("ride", day=2)]
+    intervals.files = {"ride": _fit(2)}
+
+    await _connect(client, athlete_id)
+
+    assert [a["start_time"][:10] for a in await _activities(client, athlete_id)] == ["2026-06-02"]
 
 
 async def test_an_unreadable_file_does_not_stop_the_others(client, intervals):

@@ -69,7 +69,7 @@ async def delete_activities(db: AsyncSession, activities: list[Activity]) -> Non
     await db.execute(delete(Activity).where(Activity.id.in_(ids)))
 
 
-async def _insert(db: AsyncSession, activity: Activity, stream: ActivityStream) -> bool:
+async def _insert(db: AsyncSession, activity: Activity, stream: ActivityStream | None) -> bool:
     """Adds the rows inside a savepoint, so losing a race on a unique index
     (the same file or upstream activity arriving twice at once) doesn't undo
     the rest of the request. False when it lost."""
@@ -77,9 +77,10 @@ async def _insert(db: AsyncSession, activity: Activity, stream: ActivityStream) 
         async with db.begin_nested():
             db.add(activity)
             await db.flush()
-            stream.activity_id = activity.id
-            db.add(stream)
-            await db.flush()
+            if stream is not None:
+                stream.activity_id = activity.id
+                db.add(stream)
+                await db.flush()
     except IntegrityError:
         return False
     return True
@@ -212,4 +213,56 @@ async def import_parsed_activity(
     if "power_w" in parsed.channels:
         await apply_power_metrics(db, activity, parsed.time_s, parsed.channels["power_w"])
     await auto_link_activity(db, activity)
+    return ImportOutcome("created", activity)
+
+
+async def import_summary_activity(
+    db: AsyncSession,
+    athlete_id: uuid.UUID,
+    *,
+    start_time: datetime,
+    elapsed_s: float,
+    moving_s: float | None,
+    distance_m: float | None,
+    sport: str | None,
+    name: str | None,
+    avg_heart_rate: float | None,
+    max_heart_rate: float | None,
+    rpe: int | None,
+    notes: str | None,
+    source: ActivitySource,
+    external_id: str,
+    data_source_connection_id: uuid.UUID,
+) -> ImportOutcome:
+    """Stores an activity that has no samples at all (a gym session typed in
+    on the source): just the headline numbers, no stream and no original file.
+    Its load comes from the RPE, if any. Doesn't commit."""
+    same_ride = await find_same_ride(db, athlete_id, start_time, elapsed_s)
+    if same_ride is not None:
+        return ImportOutcome("duplicate", same_ride)
+    activity = Activity(
+        athlete_id=athlete_id,
+        source=source,
+        external_id=external_id,
+        data_source_connection_id=data_source_connection_id,
+        name=name,
+        sport=sport,
+        start_time=start_time,
+        elapsed_s=elapsed_s,
+        moving_s=moving_s,
+        distance_m=distance_m,
+        avg_heart_rate=avg_heart_rate,
+        max_heart_rate=max_heart_rate,
+        rpe=rpe,
+        notes=notes,
+    )
+    if not await _insert(db, activity, None):
+        winner = await db.scalar(
+            select(Activity).where(
+                Activity.athlete_id == athlete_id, Activity.source == source, Activity.external_id == external_id
+            )
+        )
+        if winner is None:
+            raise RuntimeError("activity insert hit a unique index but the conflicting row is gone")
+        return ImportOutcome("duplicate", winner)
     return ImportOutcome("created", activity)

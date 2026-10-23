@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.activities.models import Activity, ActivitySource
 from app.activities.parsers import ActivityParseError
-from app.activities.service import import_activity_file
+from app.activities.service import import_activity_file, import_summary_activity
 from app.connections.models import (
     DataSourceConnection,
     DataSourceConnectionStatus,
@@ -80,6 +80,35 @@ class SqlAlchemyActivityImporter:
             )
         except ActivityParseError as exc:
             raise ActivityRejected(str(exc)) from exc
+        return self._remember(outcome, connection, remote)
+
+    async def import_summary(
+        self, connection: IntervalsConnectionRecord, remote: RemoteActivity
+    ) -> Literal["created", "duplicate"]:
+        if remote.start_utc is None or (remote.elapsed_s or remote.moving_s) is None:
+            raise ActivityRejected("Intervals.icu gives neither a start time nor a duration")
+        elapsed_s = remote.elapsed_s or remote.moving_s
+        outcome = await import_summary_activity(
+            self._db,
+            connection.athlete_id,
+            start_time=remote.start_utc,
+            elapsed_s=elapsed_s,
+            moving_s=min(remote.moving_s, elapsed_s) if remote.moving_s else None,
+            distance_m=remote.distance_m,
+            sport=remote.type,
+            name=remote.name,
+            avg_heart_rate=remote.avg_heart_rate,
+            max_heart_rate=remote.max_heart_rate,
+            rpe=remote.rpe,
+            notes=remote.description,
+            source=ActivitySource.INTERVALS_ICU,
+            external_id=remote.id,
+            data_source_connection_id=connection.id,
+        )
+        return self._remember(outcome, connection, remote)
+
+    @staticmethod
+    def _remember(outcome, connection: IntervalsConnectionRecord, remote: RemoteActivity) -> Literal["created", "duplicate"]:
         existing = outcome.activity
         if outcome.status == "duplicate" and existing.external_id is None and existing.data_source_connection_id is None:
             # The same ride came in another way (an upload): remember it is
