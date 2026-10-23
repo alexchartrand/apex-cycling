@@ -18,6 +18,7 @@ export default {
     no_weight: "No weight in the profile: enter the rider's weight under Assumptions, or add it in Settings.",
     no_power: "No linked recording has power over these laps. Check the session link and clock offset on the activity page.",
     too_few_laps: "Fewer than 3 usable laps. Pick laps by hand in the table below, or ride a few laps at a steady pace.",
+    implausible_fit: "These laps don't give a believable CdA. Check that the right recording is linked, that the power meter is calibrated and the weight is right, or pick other laps.",
   },
   stats: {
     cda: "CdA",

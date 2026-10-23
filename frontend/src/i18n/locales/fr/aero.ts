@@ -23,6 +23,7 @@ export default {
     no_power:
       "Aucun enregistrement lié n'a de puissance sur ces tours. Vérifiez le lien avec la séance et le décalage d'horloge sur la page de l'activité.",
     too_few_laps: "Moins de 3 tours utilisables. Choisissez des tours dans le tableau ci-dessous, ou roulez quelques tours à allure régulière.",
+    implausible_fit: "Ces tours ne donnent pas un CdA crédible. Vérifiez que le bon enregistrement est lié, que le capteur de puissance est étalonné et que le poids est juste, ou choisissez d'autres tours.",
   },
   stats: {
     cda: "CdA",

@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 # Why there is no estimate, most fundamental first.
-AeroProblem = Literal["no_track_length", "no_weight", "no_power", "too_few_laps"]
+AeroProblem = Literal["no_track_length", "no_weight", "no_power", "too_few_laps", "implausible_fit"]
 
 
 class AeroInputs(BaseModel):

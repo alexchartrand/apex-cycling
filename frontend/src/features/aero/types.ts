@@ -16,7 +16,7 @@ export interface AeroEstimateRequest extends Partial<AeroInputs> {
   lap_ids?: string[] | null;
 }
 
-export type AeroProblem = "no_track_length" | "no_weight" | "no_power" | "too_few_laps";
+export type AeroProblem = "no_track_length" | "no_weight" | "no_power" | "too_few_laps" | "implausible_fit";
 
 export type AeroIssue = "excluded" | "no_power" | "first_lap" | "unsteady_speed" | "unsteady_power" | "too_slow";
 

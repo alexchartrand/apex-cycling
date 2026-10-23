@@ -64,7 +64,11 @@ export function AeroInputsForm({
       <BikeSelect
         bikes={weighed}
         value={bike?.id ?? null}
-        onChange={(picked) => onChange("bike_kg", picked?.weight_kg != null ? String(picked.weight_kg) : "")}
+        onChange={(picked) => {
+          onChange("bike_kg", picked?.weight_kg != null ? String(picked.weight_kg) : "");
+          // A bike without a Crr (or the blank choice) goes back to the automatic one.
+          onChange("crr", picked?.crr != null ? String(picked.crr) : "");
+        }}
         emptyLabel={typedBikeKg == null ? t("inputs.sessionBike") : t("inputs.typedBike")}
       />
       {INPUT_KEYS.map((key) => (

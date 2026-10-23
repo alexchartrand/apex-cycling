@@ -216,6 +216,8 @@ def estimate(
             problem = None
         elif not any(point.power_w is not None for point in points):
             problem = "no_power"
+        elif sum(point.used for point in points) >= aero.MIN_LAPS:
+            problem = "implausible_fit"
         else:
             problem = "too_few_laps"
 

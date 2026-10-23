@@ -85,13 +85,12 @@ def test_noisy_power_still_lands_close():
 
 def test_an_implausible_fitted_crr_falls_back_to_the_default():
     # Power that doesn't grow with speed as drag would: the free line's
-    # intercept comes out negative.
-    laps = effort("a", [11.0] * 4) + effort("b", [14.0] * 4)
-    laps = [replace(lap, power_w=100 + 4 * lap.speed_ms**2) for lap in laps[:4]] + [
-        replace(lap, power_w=2.5 * lap.speed_ms**3) for lap in laps[4:]
-    ]
+    # intercept comes out negative: a 5 N push on top of the drag at every speed.
+    laps = effort("a", [11.0] * 4, crr=0.0) + effort("b", [14.0] * 4, crr=0.0)
+    laps = [replace(lap, power_w=lap.power_w - 5 * lap.speed_ms / physics.DEFAULT_EFFICIENCY) for lap in laps]
     result = aero.estimate(laps, CONDITIONS)
     assert result.fit.crr_source == "default"
+    assert 0 < result.fit.cda_m2 < 1
 
 
 def test_speeding_up_is_not_counted_as_drag():
@@ -150,6 +149,20 @@ def test_a_hand_picked_selection_replaces_the_automatic_one():
     result = aero.estimate(laps, CONDITIONS, selected={"a1", "a4", "a5"})
     assert [p.key for p in result.points if p.used] == ["a5"]
     assert result.fit is None  # one lap isn't enough
+
+
+def test_power_below_rolling_resistance_gives_no_fit_instead_of_a_negative_cda():
+    # A meter reading far too low (or a recording from another ride): at one
+    # speed Crr is held, so the fit would otherwise come out with CdA <= 0.
+    laps = [replace(lap, power_w=lap.power_w * 0.05, power_sd_w=lap.power_w * 0.01) for lap in effort("a", [15.0] * 8)]
+    result = aero.estimate(laps, CONDITIONS)
+    assert result.fit is None
+    assert sum(p.used for p in result.points) >= aero.MIN_LAPS  # lap count isn't the reason
+
+
+def test_power_far_above_the_physics_gives_no_fit_instead_of_a_huge_cda():
+    laps = [replace(lap, power_w=lap.power_w * 6, power_sd_w=lap.power_w * 0.01) for lap in effort("a", [15.0] * 8)]
+    assert aero.estimate(laps, CONDITIONS).fit is None
 
 
 def test_too_few_laps_give_points_but_no_estimate():

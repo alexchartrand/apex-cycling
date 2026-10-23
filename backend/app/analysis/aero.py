@@ -43,6 +43,10 @@ MIN_FIT_LAPS = 6
 MIN_SPEED_SPREAD = 0.10
 # A fitted Crr outside this range means the data can't separate it from drag.
 PLAUSIBLE_CRR = (0.001, 0.01)
+# A CdA outside this range (m²) is a bad pairing of power and laps (a
+# mis-linked recording, an e-bike, a miscalibrated meter), not an aerodynamic
+# result; the estimate gives no fit rather than a number nothing else can use.
+PLAUSIBLE_CDA = (0.0, 1.0)
 
 # Why a lap isn't used (`AeroPoint.issue`). Hard issues keep a lap out even
 # when the athlete picks it by hand; the others only stop the automatic pick.
@@ -221,18 +225,20 @@ def estimate(
             b = sum(x * (y - a) for x, y in zip(xs, ys)) / sum(x * x for x in xs)
             residual = sum((y - a - b * x) ** 2 for x, y in zip(xs, ys))
             se = math.sqrt(residual / (len(xs) - 1) / sum(x * x for x in xs))
-        fit = AeroFit(
-            cda_m2=b / aero_k,
-            crr=crr_value,
-            crr_source=crr_source,
-            r_squared=_r_squared(xs, ys, a, b),
-            cda_se_m2=se / aero_k if math.isfinite(se) else None,
-            laps_used=len(chosen),
-            # Distance-weighted: total distance over total time.
-            speed_ms=sum(laps[i].length_m for i in chosen) / sum(laps[i].time_s for i in chosen),
-            power_w=sum(laps[i].power_w * laps[i].time_s for i in chosen) / sum(laps[i].time_s for i in chosen),
-            speed_spread=spread,
-        )
+        cda = b / aero_k
+        if PLAUSIBLE_CDA[0] < cda <= PLAUSIBLE_CDA[1]:
+            fit = AeroFit(
+                cda_m2=cda,
+                crr=crr_value,
+                crr_source=crr_source,
+                r_squared=_r_squared(xs, ys, a, b),
+                cda_se_m2=se / aero_k if math.isfinite(se) else None,
+                laps_used=len(chosen),
+                # Distance-weighted: total distance over total time.
+                speed_ms=sum(laps[i].length_m for i in chosen) / sum(laps[i].time_s for i in chosen),
+                power_w=sum(laps[i].power_w * laps[i].time_s for i in chosen) / sum(laps[i].time_s for i in chosen),
+                speed_spread=spread,
+            )
 
     point_crr = fit.crr if fit else (crr if crr is not None else DEFAULT_CRR)
     points = tuple(
