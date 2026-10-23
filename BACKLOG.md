@@ -89,11 +89,59 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
 
 ## 🐛 Bugs
 
+- [x] 🔴 Aero fit accepts a non-positive CdA on the fixed-Crr path — *added 10/22 (from REVIEW-2026-10-21), fixed 10/22 (`PLAUSIBLE_CDA` = (0, 1.0] m²; otherwise no fit and the new `implausible_fit` problem, EN/FR)*
+  - Why: with Crr held fixed, `analysis/aero.py::estimate` never checks the CdA it fits, so messy laps give CdA ≤ 0 and the goal prediction answers 143 km/h or a 500.
+  - Notes: reject an implausible fit (CdA ≤ 0 or > 1.0) so the goal prediction degrades to `no_cda`; tests in `tests/test_aero.py`.
+
 - [ ] 🟡 Production runs without off-host backups or SMTP — *added 10/20*
   - Why: decided at first-deploy planning to start with neither. Backups exist only on the VPS disk (`/var/backups/apex-cycling`), so losing the server loses them; password resets and club invites go through admin-copied links.
   - Notes: off-host = OVH VPS backup option or `BACKUP_S3_*` in `.env.prod` (README "Backups and restore"); email = `SMTP_*` in `.env.prod`. Revisit once real club data is in.
 
 ## ✨ Features
+
+**Suggestions of 10/22** (audit of UX, analytics and backend after v1; grouped in the suggested order — A foundations, B alive, C analysis, D coach & season)
+
+- [~] 🔴 A1 Sqorz polls re-normalize the whole history every time — *added 10/22; skip-when-unchanged done 10/22 (migration 0016, `NORMALIZER_VERSION`, "Sync now" forces); still open: retention and bulk lap upserts*
+  - Why: every poll (20 min per active transponder) re-normalizes the full payload and recomputes records even when nothing changed (`ingestion/sqorz/service.py`), and the normalizer costs several round trips per lap; `get_latest_hash` loads the whole JSON payload to read a hash; `ingestion_runs`/`raw_snapshots` grow forever.
+  - Notes: done — skip when the hash is unchanged, no assignment changed since `normalized_at` and the normalizer version matches; `get_latest_hash` selects only the hash. Open: retention for `ingestion_runs`/`raw_snapshots` (deletes data, so decide the policy first — e.g. keep the newest few snapshots per transponder and runs for 90 days; the Import page's sync history reads runs), and upserting laps in bulk in `normalizer.py` (still several round trips per lap whenever the payload does change).
+- [ ] 🔴 A2 Alerting when the worker or syncs fail — *added 10/22*
+  - Why: failures only reach the logs and `/admin`; no backoff or failure count per connection; `restart: unless-stopped` never restarts an *unhealthy* worker.
+  - Notes: consecutive-failure count + backoff, email/ntfy to platform admins, healthcheck-driven restart, external uptime monitor on `/api/health`.
+- [x] 🟡 A3 Missing composite indexes — *added 10/22, done 10/22 (migration 0017: training_events, activities, ingestion_runs, raw_snapshots, personal_records; the unindexed FKs on aero_tests/goals/planned_sessions were left out on purpose — tiny tables, only hit by bike/track deletes)*
+  - Notes: `training_events(athlete_id, event_date)`, `activities(athlete_id, start_time)`, `ingestion_runs(data_source_connection_id, requested_at)`, `raw_snapshots(external_ref, fetched_at)`, `personal_records(track_id, event_key, start_type)`, FKs `aero_tests.track_id`, `goals.track_id/bike_id`, `planned_sessions.training_event_id`.
+- [x] 🟡 A4 Frontend ships as one big chunk and refetches on every focus — *added 10/22, done 10/22 (every page behind `React.lazy` with a skeleton fallback in the shell, entry chunk 241 KB; `staleTime` 60 s)*
+  - Notes: `React.lazy` per route in `App.tsx`; default `staleTime` (~60 s) in `main.tsx`.
+- [ ] 🟡 A5 Slow read paths — *added 10/22*
+  - Notes: goals fit every aero test (decoding streams) to use the newest (`goals/service.py`); coach dashboard N+1 (last session, failing transponders per athlete); training load has no lower date bound; `/sessions` and `/progression` unpaginated.
+- [ ] 🟡 B1 Session insights & PR moments — *added 10/22*
+  - Why: a PR only shows as a line in the session overview; nothing celebrates it or says "best 4th lap this season", "most consistent effort", "first time under X".
+  - Notes: derive headlines per session from the records results; banner on the session page, "What's new" on Home, toast after a sync.
+- [ ] 🟢 B2 Share card for a PR or effort — *added 10/22*
+  - Notes: generated PNG (time, splits, velodrome) via `navigator.share`; sqorz data only, so Strava-free.
+- [ ] 🟡 B3 Notifications (in-app centre, Web Push, email) — *added 10/22*
+  - Why: only the coaching badge exists. Events: new PR, sync failed/stalled, comment, coach request, plan added.
+  - Notes: bell + notifications table, VAPID push from the existing service worker, email when SMTP is set (absorbs "Email notifications for coaching" below); per-user opt-outs.
+- [ ] 🟡 B4 First-run checklist — *added 10/22*
+  - Why: a new user isn't asked for weight/FTP, a club or a coach; "Connect a transponder" lands on `/import` where the sqorz card is third, with no help on the code and no "found N laps" feedback.
+  - Notes: Home checklist with progress, `/import#sqorz` anchor, where-to-find-the-code help, first-sync result.
+- [ ] 🟡 C1 Compare sessions and efforts — *added 10/22*
+  - Notes: lap-by-lap overlay, cumulative delta, half-lap splits side by side; reuse `lapTable.ts`/`HalfLapSplitChart`; `?compare=` in the URL.
+- [ ] 🟡 C2 Pacing analysis per effort — *added 10/22*
+  - Notes: lap-time CV, fade % (last third vs first), deviation from even pace and from a pursuit schedule (`pursuitSchedule.ts`); pacing chart on effort cards.
+- [ ] 🟢 C3 Planned vs actual per planned effort — *added 10/22*
+  - Notes: match a linked plan's `PlannedEffort`s (target times) to the efforts ridden; hit/miss per rep.
+- [ ] 🟢 C4 Sprint metrics from segment times — *added 10/22*
+  - Notes: peak speed from the fastest `LapSegmentTime` segment, standing-start first segment as acceleration.
+- [ ] 🟡 D1 Coach dashboard v2 — *added 10/22*
+  - Notes: CTL/ATL/TSB, plan compliance and goal progress per athlete; squad view of every athlete's best on one event/track (no Strava). Supersedes "Coach dashboard form is recent load only" below.
+- [ ] 🟢 D2 Seasons, competitions, ICS feed — *added 10/22*
+  - Notes: mark a session as a race, season start dates + season bests, race calendar tied to goals with taper countdown; ICS feed of planned sessions.
+- [ ] 🟢 D3 CP/W′ and FTP suggestion from the power curve — *added 10/22*
+  - Notes: fit on `mean_maximal_power`; "your data suggests FTP ≈ X, update?".
+- [ ] 🟢 Smaller suggestions — *added 10/22*
+  - Pursuit board: works offline cold (precache inputs), landscape allowed (manifest locks portrait), vibrate on tap, confirm Reset/undo.
+  - Wellness check-in (sleep, soreness, optional HRV) next to RPE; conditions-adjusted times (air density, weather for outdoor tracks).
+  - Chart data-table fallbacks for screen readers (LapChart, CurveChart, RecordTimeline, Progress); a real 404 page; Import/Progress reachable from the phone tabs.
 
 - [ ] 🟡 Email notifications for coaching — *added 10/19*
   - Why: a coach–athlete request, or a new comment on a session, only shows up in the in-app "Waiting for you" list and the nav badge. With SMTP configured (`app/core/mail.py`) it could also email.
