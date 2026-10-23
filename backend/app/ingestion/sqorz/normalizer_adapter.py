@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.activities.fusion_service import sync_session_links
 from app.ingestion.sqorz.normalizer import normalize_snapshot
+from app.notifications.producers import notify_new_records, notify_sync_failed
 from app.training.records_service import recompute_many
 
 
@@ -29,3 +30,12 @@ class SqlAlchemyRecordsAdapter:
         await recompute_many(self._db, athlete_ids)
         # New laps may complete a session a recording was waiting for.
         await sync_session_links(self._db, athlete_ids)
+        await notify_new_records(self._db, athlete_ids)
+
+
+class SqlAlchemyFailureNotifier:
+    def __init__(self, db: AsyncSession) -> None:
+        self._db = db
+
+    async def sync_failed(self, connection_id: uuid.UUID, run_id: uuid.UUID, error_message: str) -> None:
+        await notify_sync_failed(self._db, connection_id, run_id, error_message)

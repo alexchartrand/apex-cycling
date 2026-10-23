@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.session import AsyncSessionLocal
 from app.ingestion.jobs import poll_active_connections, poll_intervals_connections, poll_strava_connections
+from app.notifications.service import deliver_pending
 from app.ops.heartbeat import record_beat, touch_heartbeat_file
 
 logger = logging.getLogger("ingestion.runner")
@@ -67,6 +68,14 @@ async def sync_strava() -> None:
         logger.exception("Strava sync run failed")
 
 
+async def send_notifications() -> None:
+    try:
+        async with AsyncSessionLocal() as db:
+            await deliver_pending(db)
+    except Exception:
+        logger.exception("Sending notifications failed")
+
+
 async def main() -> None:
     configure_logging()
     settings = get_settings()
@@ -96,6 +105,7 @@ async def main() -> None:
         max_instances=1,
         coalesce=True,
     )
+    scheduler.add_job(send_notifications, "interval", seconds=60, max_instances=1, coalesce=True)
     scheduler.add_job(beat, "interval", seconds=60)
     scheduler.start()
     logger.info(

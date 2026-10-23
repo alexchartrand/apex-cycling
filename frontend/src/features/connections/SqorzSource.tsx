@@ -1,9 +1,14 @@
 import { useState, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { CircleStop, Plus, RefreshCw, Radio } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { errorMessage } from "../../api/errors";
 import { Badge, Button, Card, Checkbox, ConfirmDialog, Input, useToast } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
+import { lapTotals } from "../onboarding/checklist";
+import { listSessions } from "../training/api";
+import { InsightRow } from "../insights/InsightRow";
+import { useNewInsightsAfter } from "../insights/useInsights";
 import type { TransponderAssignment } from "./types";
 import {
   useImportTransponderAssignmentNow,
@@ -15,11 +20,15 @@ import {
 export function SqorzSource({ athleteId }: { athleteId: string }) {
   const { t } = useTranslation(["import", "common"]);
   const fmt = useFormat();
+  const { t: ti } = useTranslation("insights");
   const { toast } = useToast();
   const assignments = useTransponderAssignments(athleteId);
   const reportUsage = useReportTransponderUsage(athleteId);
   const importNow = useImportTransponderAssignmentNow(athleteId);
   const stop = useStopTransponderAssignment(athleteId);
+  const watchInsights = useNewInsightsAfter(athleteId);
+  const queryClient = useQueryClient();
+  const [found, setFound] = useState<{ laps: number; sessions: number } | null>(null);
 
   const [transponderCode, setTransponderCode] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -27,6 +36,16 @@ export function SqorzSource({ athleteId }: { athleteId: string }) {
   const [keepSyncing, setKeepSyncing] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
   const [stopping, setStopping] = useState<TransponderAssignment | null>(null);
+
+  /** What the log holds after a sync, so "it worked" is not left to guesswork. */
+  async function reportFound() {
+    try {
+      const sessions = await queryClient.fetchQuery({ queryKey: ["sessions", athleteId], queryFn: () => listSessions(athleteId), staleTime: 0 });
+      setFound(lapTotals(sessions));
+    } catch {
+      setFound(null);
+    }
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -41,6 +60,7 @@ export function SqorzSource({ athleteId }: { athleteId: string }) {
       setStartDate("");
       setEndDate("");
       toast({ title: t("toasts.added"), description: t("toasts.addedDescription"), tone: "success" });
+      await reportFound();
     } catch (err) {
       setFormError(errorMessage(err));
     }
@@ -48,9 +68,20 @@ export function SqorzSource({ athleteId }: { athleteId: string }) {
 
   async function handleSyncNow(assignment: TransponderAssignment) {
     try {
+      const collectNew = await watchInsights();
       const run = await importNow.mutateAsync(assignment.id);
-      if (run.status === "success") toast({ title: t("toasts.synced"), description: assignment.transponder_code, tone: "success" });
-      else toast({ title: t("toasts.syncFailed"), description: run.error_message ?? undefined, tone: "error" });
+      if (run.status === "success") {
+        toast({ title: t("toasts.synced"), description: assignment.transponder_code, tone: "success" });
+        await reportFound();
+        const fresh = await collectNew();
+        if (fresh.length > 0) {
+          toast({
+            title: ti("toast.title", { count: fresh.length }),
+            description: <InsightRow insight={fresh[0]} />,
+            tone: "success",
+          });
+        }
+      } else toast({ title: t("toasts.syncFailed"), description: run.error_message ?? undefined, tone: "error" });
     } catch (err) {
       toast({ title: t("toasts.syncFailed"), description: errorMessage(err), tone: "error" });
     }
@@ -68,8 +99,15 @@ export function SqorzSource({ athleteId }: { athleteId: string }) {
   }
 
   return (
+    // The id is the target of the "Connect your transponder" step on Home (/import#sqorz).
+    <div id="sqorz" className="sqorz-anchor">
     <Card eyebrow="my.sqorz.com" title={t("sources.sqorz.title")} actions={<Radio className="import-source__icon" aria-hidden />}>
       <p className="ui-card__hint">{t("sources.sqorz.description")}</p>
+      {found && (
+        <p role="status" className={found.laps > 0 ? "sqorz__found sqorz__found--ok" : "sqorz__found"}>
+          {found.laps > 0 ? t("found.some", { laps: found.laps, count: found.sessions }) : t("found.none")}
+        </p>
+      )}
 
       <section className="sqorz__section">
         <h4>{t("assignments.title")}</h4>
@@ -123,6 +161,10 @@ export function SqorzSource({ athleteId }: { athleteId: string }) {
 
       <section className="sqorz__section">
         <h4>{t("form.title")}</h4>
+        <details className="sqorz__help">
+          <summary>{t("form.helpTitle")}</summary>
+          <p>{t("form.helpBody")}</p>
+        </details>
         <form className="sqorz__form" onSubmit={handleSubmit}>
           <Input
             label={t("form.transponder")}
@@ -163,5 +205,6 @@ export function SqorzSource({ athleteId }: { athleteId: string }) {
         onConfirm={handleStop}
       />
     </Card>
+    </div>
   );
 }

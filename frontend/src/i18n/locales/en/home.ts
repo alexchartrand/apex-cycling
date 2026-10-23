@@ -27,6 +27,28 @@ export default {
     noActive: "No transponder is syncing automatically.",
     manage: "Manage imports",
   },
+  checklist: {
+    eyebrow: "Getting started",
+    title: "Set up ApexCycling",
+    progress: "{{done}} of {{total}}",
+    optional: "optional",
+    done: "done",
+    hide: "Hide this checklist",
+    steps: {
+      transponder: {
+        title: "Connect your transponder",
+        hint: "Your laps are imported after every session.",
+        action: "Connect",
+      },
+      physiology: {
+        title: "Add your weight and FTP",
+        hint: "Weight gives W/kg and the aero lab; FTP only matters if you train with power.",
+        action: "Add",
+      },
+      club: { title: "Join your club", hint: "Paste an invitation link, or create the club.", action: "Open clubs" },
+      coach: { title: "Choose a coach", hint: "A coach can follow your sessions and plan the next ones.", action: "Find a coach" },
+    },
+  },
   onboarding: {
     title: "Welcome to ApexCycling",
     description: "Connect the sqorz transponder you ride with and your laps will be imported automatically after every session.",

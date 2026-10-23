@@ -14,6 +14,7 @@ from app.athletes.coaching import speaks_for_athlete
 from app.athletes.models import Athlete
 from app.auth.models import User
 from app.equipment.models import Bike, GearSetup
+from app.notifications.producers import notify_plan_added
 from app.planning.models import PlannedSession, PlanStatus
 from app.planning.schemas import (
     LinkedSession,
@@ -132,6 +133,7 @@ async def create_plan(
         targets=await _stored_targets(db, athlete, payload.targets),
     )
     db.add(plan)
+    await notify_plan_added(db, athlete, viewer, payload.title, payload.planned_date)
     await db.commit()
     return await _read_one(db, athlete, viewer, plan)
 

@@ -9,16 +9,34 @@ import { useEffortGear } from "../../equipment/useEquipment";
 import type { Bike } from "../../equipment/types";
 import type { Effort, StartType } from "../types";
 import { useLabelEffort } from "../useTraining";
+import { effortCardModel } from "../../share/cardModels";
+import { ShareButton } from "../../share/ShareButton";
 import { HalfLapSplitChart } from "./HalfLapSplitChart";
 import "./EffortCard.css";
 
 const START_TONES: Record<StartType, BadgeTone> = { standing: "highlight", flying: "accent", unknown: "neutral" };
 
-export function EffortCard({ athleteId, eventId, effort, bikes }: { athleteId: string; eventId: string; effort: Effort; bikes: Bike[] }) {
+export function EffortCard({
+  athleteId,
+  eventId,
+  effort,
+  bikes,
+  date,
+  trackLengthM = null,
+}: {
+  athleteId: string;
+  eventId: string;
+  effort: Effort;
+  bikes: Bike[];
+  /** The session's date, for the share card. */
+  date?: string;
+  trackLengthM?: number | null;
+}) {
   const { t } = useTranslation("training");
   const { t: tg } = useTranslation("equipment");
   const effortGear = useEffortGear(athleteId, eventId);
   const { t: tr } = useTranslation("records");
+  const { t: ts } = useTranslation("share");
   const fmt = useFormat();
   const [renaming, setRenaming] = useState(false);
   const hasUnfinishedLap = effort.completed_lap_count < effort.lap_ids.length;
@@ -33,11 +51,30 @@ export function EffortCard({ athleteId, eventId, effort, bikes }: { athleteId: s
         </span>
       }
       actions={
-        <Tooltip content={t("efforts.rename")}>
-          <IconButton aria-label={t("efforts.rename")} variant="ghost" onClick={() => setRenaming(true)}>
-            <Pencil aria-hidden />
-          </IconButton>
-        </Tooltip>
+        <>
+          {effort.total_time_ms != null && date && (
+            <ShareButton
+              buildModel={() =>
+                effortCardModel(
+                  { effort, date, trackLengthM },
+                  {
+                    brand: ts("brand"),
+                    eyebrow: ts("effort", { start: tr(`startTypes.${effort.start_type}`) }),
+                    title: effort.label ?? t("efforts.effortN", { n: effort.index }),
+                    splitsCaption: ts("splits"),
+                    deltaNote: effort.avg_speed_kmh != null ? ts("average", { speed: fmt.number(effort.avg_speed_kmh, 1, 1) }) : null,
+                  },
+                  fmt,
+                )
+              }
+            />
+          )}
+          <Tooltip content={t("efforts.rename")}>
+            <IconButton aria-label={t("efforts.rename")} variant="ghost" onClick={() => setRenaming(true)}>
+              <Pencil aria-hidden />
+            </IconButton>
+          </Tooltip>
+        </>
       }
     >
       <div className="effort-card__stats">

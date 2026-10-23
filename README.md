@@ -251,6 +251,23 @@ instant imports instead of polling every 3 hours, see the webhook notes in
 protects the stored keys and tokens; an existing `.env.prod` from before this
 feature needs one added (`openssl rand -base64 32 | tr + - | tr / _`).
 
+### Notifications (optional)
+
+The bell in the app (new records, comments, coaching requests, planned
+sessions, failed syncs) needs nothing. Two more channels are opt-in per
+person in Settings → Notifications and need the server set up:
+
+- **Email** — the same `SMTP_*` settings as password resets. The worker sends
+  it, so it also needs them (the compose files pass them).
+- **Push** (a notification on the phone or computer even when the app is
+  closed) — make a VAPID key pair once with
+  `scripts/compose.sh exec backend python -m app.notifications.cli generate-vapid`
+  and put `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT`
+  (`mailto:you@example.com`) in `.env.prod`. Each browser then turns push on
+  for itself. On an iPhone the app has to be added to the home screen first.
+  Changing the key pair later silently stops existing subscriptions; people
+  turn push off and on again.
+
 ### 6. Troubleshooting
 
 - **No certificate / browser shows a TLS error**: `scripts/compose.sh logs frontend`.

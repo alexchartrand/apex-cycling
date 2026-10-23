@@ -15,6 +15,13 @@ export default {
     end: "Last day",
     keepSyncing: "I still use it — keep syncing automatically",
     submit: "Add transponder",
+    helpTitle: "Where do I find the code?",
+    helpBody: "It is printed on the transponder itself and looks like two letters, a dash and digits (LS-03407). If yours has no label, ask your club or the timing staff. Enter the first day you rode with it: laps before that day aren't attributed to you.",
+  },
+  found: {
+    some_one: "Found {{laps}} laps in {{count}} session.",
+    some_other: "Found {{laps}} laps in {{count}} sessions.",
+    none: "No laps yet. They appear once you have ridden with the transponder during the period you gave.",
   },
   assignments: {
     title: "Your transponders",

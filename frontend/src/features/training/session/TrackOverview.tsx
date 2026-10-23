@@ -5,6 +5,9 @@ import { Badge, Button, Card, IconButton, Select, StatTile, Tooltip } from "../.
 import { useFormat } from "../../../i18n/useFormat";
 import { formatRecordTime } from "../../records/timeInput";
 import type { RecordEntry } from "../../records/types";
+import type { Insight } from "../../insights/types";
+import { recordCardModel } from "../../share/cardModels";
+import { ShareButton } from "../../share/ShareButton";
 import { LapChart, type LapChartMetric } from "../LapChart";
 import {
   bestLap,
@@ -27,14 +30,18 @@ export function TrackOverview({
   track,
   meta,
   records,
+  insights = [],
 }: {
   track: TrackSessionDetail;
   meta: TrackSummary | undefined;
   /** Records whose performance happened in this session, on this track. */
   records: RecordEntry[];
+  /** The session's headlines, for what each record beat. */
+  insights?: Insight[];
 }) {
   const { t } = useTranslation("training");
   const { t: tr } = useTranslation("records");
+  const { t: ts } = useTranslation("share");
   const fmt = useFormat();
   const [selectedLapId, setSelectedLapId] = useState<string | null>(null);
   const [leftMetric, setLeftMetric] = useState<LapChartMetric>("lapTime");
@@ -114,11 +121,38 @@ export function TrackOverview({
         ) : (
           <ul className="track-overview__badges">
             {records.map((record) => (
-              <li key={`${record.event_key}-${record.start_type}`}>
+              <li key={`${record.event_key}-${record.start_type}`} className="track-overview__record">
                 <Badge tone="marker" icon={<Trophy aria-hidden />}>
                   {tr("badge")} · {tr(`events.${record.event_key as "f200"}`)} · {tr(`startTypes.${record.start_type}`)} ·{" "}
                   {formatRecordTime(record.time_ms, fmt)}
                 </Badge>
+                <ShareButton
+                  buildModel={() => {
+                    const beaten = insights.find(
+                      (i) =>
+                        i.kind === "personal_record" &&
+                        i.event_key === record.event_key &&
+                        i.start_type === record.start_type &&
+                        i.track_id === record.track_id,
+                    );
+                    return recordCardModel(
+                      { record, laps: track.laps, trackLengthM: meta?.length_m ?? null, previousMs: beaten?.previous_ms ?? null },
+                      {
+                        brand: ts("brand"),
+                        eyebrow: ts("record", { start: tr(`startTypes.${record.start_type}`) }),
+                        title: tr(`events.${record.event_key as "f200"}`),
+                        splitsCaption: ts("splits"),
+                        deltaNote:
+                          beaten?.milestone_ms != null
+                            ? ts("firstUnder", { milestone: formatRecordTime(beaten.milestone_ms, fmt) })
+                            : beaten?.previous_ms != null
+                              ? ts("vsPrevious")
+                              : null,
+                      },
+                      fmt,
+                    );
+                  }}
+                />
               </li>
             ))}
           </ul>

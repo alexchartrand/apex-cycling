@@ -18,6 +18,13 @@ export default {
     end: "Dernier jour",
     keepSyncing: "Je l'utilise encore — synchroniser automatiquement",
     submit: "Ajouter le transpondeur",
+    helpTitle: "Où trouver le code ?",
+    helpBody: "Il est imprimé sur le transpondeur lui-même et ressemble à deux lettres, un tiret et des chiffres (LS-03407). Si le vôtre n'a pas d'étiquette, demandez à votre club ou au chronométreur. Indiquez le premier jour où vous l'avez utilisé : les tours d'avant cette date ne vous sont pas attribués.",
+  },
+  found: {
+    some_one: "{{laps}} tours trouvés dans {{count}} séance.",
+    some_other: "{{laps}} tours trouvés dans {{count}} séances.",
+    none: "Aucun tour pour l'instant. Ils apparaissent dès que vous avez roulé avec le transpondeur pendant la période indiquée.",
   },
   assignments: {
     title: "Vos transpondeurs",

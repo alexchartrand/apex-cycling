@@ -113,17 +113,16 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
   - Notes: `React.lazy` per route in `App.tsx`; default `staleTime` (~60 s) in `main.tsx`.
 - [ ] 🟡 A5 Slow read paths — *added 10/22*
   - Notes: goals fit every aero test (decoding streams) to use the newest (`goals/service.py`); coach dashboard N+1 (last session, failing transponders per athlete); training load has no lower date bound; `/sessions` and `/progression` unpaginated.
-- [ ] 🟡 B1 Session insights & PR moments — *added 10/22*
-  - Why: a PR only shows as a line in the session overview; nothing celebrates it or says "best 4th lap this season", "most consistent effort", "first time under X".
-  - Notes: derive headlines per session from the records results; banner on the session page, "What's new" on Home, toast after a sync.
-- [ ] 🟢 B2 Share card for a PR or effort — *added 10/22*
-  - Notes: generated PNG (time, splits, velodrome) via `navigator.share`; sqorz data only, so Strava-free.
-- [ ] 🟡 B3 Notifications (in-app centre, Web Push, email) — *added 10/22*
-  - Why: only the coaching badge exists. Events: new PR, sync failed/stalled, comment, coach request, plan added.
-  - Notes: bell + notifications table, VAPID push from the existing service worker, email when SMTP is set (absorbs "Email notifications for coaching" below); per-user opt-outs.
-- [ ] 🟡 B4 First-run checklist — *added 10/22*
-  - Why: a new user isn't asked for weight/FTP, a club or a coach; "Connect a transponder" lands on `/import` where the sqorz card is third, with no help on the code and no "found N laps" feedback.
-  - Notes: Home checklist with progress, `/import#sqorz` anchor, where-to-find-the-code help, first-sync result.
+- [x] 🟡 B1 Session insights & PR moments — *added 10/22, done 10/23 (`training/insights.py` pure + `insights_service.py`; `GET /athletes/{id}/insights` and `…/sessions/{event}/insights`; computed on read like the record history, no table)*
+  - Done: personal records (with the round time they broke — "first time under 1:10"), season bests (calendar year, needs an earlier result that season), best Nth lap of the season (efforts of ≥ 4 laps, the biggest improvement per session and track), most consistent effort (lap-time spread, comparable lap counts). A first result is never a "record". Banner on the session page, "What's new" card on Home (30 days, 3 sessions, 4 each), toast after "Sync now".
+  - Open: insights are sqorz-only (manual results don't count); they load every lap of the athlete on each read, like the record history — fold them into A5's slow-path work if it shows.
+- [x] 🟢 B2 Share card for a PR or effort — *added 10/22, done 10/23 (`features/share/`: canvas drawing, `navigator.share` with files, falls back to saving the PNG)*
+  - Done: a share button on each record badge (session overview) and on each effort card: 1080×1350 dark card with the velodrome, the time, the gain over the previous best, and lap bars. Sqorz data only, so Strava-free. Checked in a browser (desktop download of the real PNG); the phone share sheet itself wasn't exercised.
+- [x] 🟡 B3 Notifications (in-app centre, Web Push, email) — *added 10/22, done 10/23 (migration 0018; `app/notifications/`)*
+  - Done: a bell (sidebar, phone top bar) with unread count and panel; events new record (once per session, ≤ 5 listed, last 7 days only), comment (athlete, active coaches and people already in the thread, never the author), coaching request, plan added by someone else, sync failed (once per streak, not for "Sync now"). Per-user, per-event opt-outs for bell/push/email (Settings → Notifications; new records don't email by default). The row is also the outbox: the worker sends push (VAPID, `pywebpush`) and email every minute. Push and email are off until `VAPID_*` / `SMTP_*` are set (README "Notifications"); covered by account export and deletion. Absorbs "Email notifications for coaching".
+  - Open: "sync stalled" (worker hung / no successful run for a day) belongs with A2 alerting; coaches aren't told about their athletes' records; no retry for a failed email or push (marked delivered either way); push untested against a real push service.
+- [x] 🟡 B4 First-run checklist — *added 10/22, done 10/23 (`features/onboarding/`)*
+  - Done: Home checklist "2 of 4" (transponder, weight, club and coach optional), hideable per browser, never shown when viewing another athlete; `/import#sqorz` scrolls to the sqorz card; "Where do I find the code?" help; after adding a transponder or "Sync now" the card says "Found N laps in M sessions" or that none have arrived yet. Manual syncs now refresh the session list and records (staleTime had hidden them for 60 s).
 - [ ] 🟡 C1 Compare sessions and efforts — *added 10/22*
   - Notes: lap-by-lap overlay, cumulative delta, half-lap splits side by side; reuse `lapTable.ts`/`HalfLapSplitChart`; `?compare=` in the URL.
 - [ ] 🟡 C2 Pacing analysis per effort — *added 10/22*
@@ -143,9 +142,7 @@ Plan changed 10/20: the target is a dedicated bare OVH VPS (domain `apex-cycling
   - Wellness check-in (sleep, soreness, optional HRV) next to RPE; conditions-adjusted times (air density, weather for outdoor tracks).
   - Chart data-table fallbacks for screen readers (LapChart, CurveChart, RecordTimeline, Progress); a real 404 page; Import/Progress reachable from the phone tabs.
 
-- [ ] 🟡 Email notifications for coaching — *added 10/19*
-  - Why: a coach–athlete request, or a new comment on a session, only shows up in the in-app "Waiting for you" list and the nav badge. With SMTP configured (`app/core/mail.py`) it could also email.
-  - Notes: reuse `send_email` the way club invites do; needs a per-user opt-out first.
+- [x] 🟡 Email notifications for coaching — *added 10/19, done 10/23 (part of B3: coaching requests and comments email when SMTP is set, per-user opt-out)*
 
 - [ ] 🟢 Coach dashboard "form" is recent load only — *added 10/19*
   - Why: the cards show sessions, laps and mean RPE for the last 7 days against the 7 before. A real fitness/fatigue/form model (CTL/ATL/TSB) needs power or HR data, which arrives with the import phases.

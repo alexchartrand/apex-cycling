@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,12 +10,14 @@ from app.auth.deps import get_current_user, require_athlete_access
 from app.auth.models import User
 from app.db.session import get_db
 from app.equipment.service import add_gear_to_efforts, add_gear_to_session
+from app.training.insights_service import list_insights
 from app.training.edit_service import set_effort_label, update_lap, update_session
 from app.training.efforts import StartType
 from app.training.schemas import (
     EffortDetail,
     EffortLabel,
     EffortLabelUpdate,
+    InsightRead,
     LapEdit,
     LapUpdate,
     ProgressionMetric,
@@ -73,6 +75,28 @@ async def session_detail(
     efforts = await get_session_efforts(db, athlete.id, event_id) or []
     await add_gear_to_session(db, athlete.id, detail, efforts)
     return detail
+
+
+@router.get("/insights", response_model=list[InsightRead])
+async def insights_feed(
+    athlete_id: uuid.UUID,
+    days: int = Query(default=30, ge=1, le=365),
+    limit: int = Query(default=20, ge=1, le=100),
+    athlete: Athlete = Depends(require_athlete_access),
+    db: AsyncSession = Depends(get_db),
+) -> list[InsightRead]:
+    """What's new: the headlines of the last `days` days of sessions, newest first."""
+    return await list_insights(db, athlete.id, since=date.today() - timedelta(days=days), limit=limit)
+
+
+@router.get("/sessions/{event_id}/insights", response_model=list[InsightRead])
+async def session_insights(
+    athlete_id: uuid.UUID,
+    event_id: str,
+    athlete: Athlete = Depends(require_athlete_access),
+    db: AsyncSession = Depends(get_db),
+) -> list[InsightRead]:
+    return await list_insights(db, athlete.id, external_event_id=event_id)
 
 
 @router.patch("/sessions/{event_id}", response_model=SessionMeta)

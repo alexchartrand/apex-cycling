@@ -28,6 +28,7 @@ from app.core.config import API_PREFIX, get_settings
 from app.core.logging import RequestLogMiddleware, configure_logging
 from app.core.rate_limit import limiter
 from app.db.session import get_db
+from app.notifications.router import router as notifications_router
 from app.training.comments_router import inbox_router as comments_inbox_router
 from app.training.comments_router import router as comments_router
 from app.training.records_router import router as records_router
@@ -83,6 +84,7 @@ api_router.include_router(aero_router)
 api_router.include_router(equipment_router)
 api_router.include_router(goals_router)
 api_router.include_router(planning_router)
+api_router.include_router(notifications_router)
 
 
 @api_router.get("/health")

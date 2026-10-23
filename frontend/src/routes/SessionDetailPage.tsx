@@ -8,6 +8,8 @@ import { CommentsTab } from "../features/comments/CommentsTab";
 import { GearPicker } from "../features/equipment/GearPicker";
 import { useBikes, useSessionGear } from "../features/equipment/useEquipment";
 import { useComments } from "../features/comments/useComments";
+import { SessionInsights } from "../features/insights/SessionInsights";
+import { useSessionInsights } from "../features/insights/useInsights";
 import { useRecords } from "../features/records/useRecords";
 import { EffortCard } from "../features/training/session/EffortCard";
 import { NotesTab } from "../features/training/session/NotesTab";
@@ -37,6 +39,7 @@ export function SessionDetailPage() {
   const tracks = useTracks(athleteId);
   const efforts = useSessionEfforts(athleteId, eventId);
   const records = useRecords(athleteId);
+  const insights = useSessionInsights(athleteId, eventId);
   const comments = useComments(athleteId, eventId);
   const bikes = useBikes(athleteId);
   const sessionGear = useSessionGear(athleteId, eventId);
@@ -119,6 +122,8 @@ export function SessionDetailPage() {
         </div>
       )}
 
+      {session && <SessionInsights athleteId={athleteId} eventId={eventId} />}
+
       {session && (
         <Tabs items={items} value={tab} onValueChange={selectTab} aria-label={t("session.tabs.label")}>
           <TabPanel value="overview">
@@ -128,6 +133,7 @@ export function SessionDetailPage() {
                   key={track.track_id}
                   track={track}
                   meta={tracks.data?.find((candidate) => candidate.id === track.track_id)}
+                  insights={insights.data}
                   records={(records.data ?? []).filter(
                     (record) => record.source === "sqorz" && record.external_event_id === eventId && record.track_id === track.track_id,
                   )}
@@ -157,7 +163,15 @@ export function SessionDetailPage() {
               {efforts.data && efforts.data.length === 0 && <EmptyState compact icon={<SearchX aria-hidden />} title={t("efforts.empty")} />}
               {efforts.data && efforts.data.length > 0 && <p className="session-detail__note">{t("efforts.description")}</p>}
               {efforts.data?.map((effort) => (
-                <EffortCard key={effort.lap_ids[0]} athleteId={athleteId} eventId={eventId} effort={effort} bikes={bikes.data ?? []} />
+                <EffortCard
+                  key={effort.lap_ids[0]}
+                  athleteId={athleteId}
+                  eventId={eventId}
+                  effort={effort}
+                  bikes={bikes.data ?? []}
+                  date={session.event_date}
+                  trackLengthM={tracks.data?.find((candidate) => candidate.id === effort.track_id)?.length_m ?? null}
+                />
               ))}
             </div>
           </TabPanel>

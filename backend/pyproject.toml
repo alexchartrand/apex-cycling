@@ -21,6 +21,7 @@ dependencies = [
     "cryptography>=43",
     "fitdecode>=0.10",
     "defusedxml>=0.7",
+    "pywebpush>=2.0",
 ]
 
 [project.optional-dependencies]

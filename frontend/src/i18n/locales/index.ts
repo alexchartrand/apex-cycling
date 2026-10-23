@@ -9,8 +9,11 @@ import enEquipment from "./en/equipment";
 import enGoals from "./en/goals";
 import enHome from "./en/home";
 import enImport from "./en/import";
+import enInsights from "./en/insights";
+import enNotifications from "./en/notifications";
 import enPlan from "./en/plan";
 import enRecords from "./en/records";
+import enShare from "./en/share";
 import enSettings from "./en/settings";
 import enShell from "./en/shell";
 import enTools from "./en/tools";
@@ -26,8 +29,11 @@ import frEquipment from "./fr/equipment";
 import frGoals from "./fr/goals";
 import frHome from "./fr/home";
 import frImport from "./fr/import";
+import frInsights from "./fr/insights";
+import frNotifications from "./fr/notifications";
 import frPlan from "./fr/plan";
 import frRecords from "./fr/records";
+import frShare from "./fr/share";
 import frSettings from "./fr/settings";
 import frShell from "./fr/shell";
 import frTools from "./fr/tools";
@@ -52,6 +58,9 @@ export const resources = {
     equipment: enEquipment,
     goals: enGoals,
     plan: enPlan,
+    insights: enInsights,
+    share: enShare,
+    notifications: enNotifications,
   },
   fr: {
     common: frCommon,
@@ -71,6 +80,9 @@ export const resources = {
     equipment: frEquipment,
     goals: frGoals,
     plan: frPlan,
+    insights: frInsights,
+    share: frShare,
+    notifications: frNotifications,
   },
 } as const;
 

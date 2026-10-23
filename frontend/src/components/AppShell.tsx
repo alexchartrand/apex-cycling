@@ -5,6 +5,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import { BrandMark } from "../brand/BrandMark";
 import { Wordmark } from "../brand/Wordmark";
 import { useMyAthlete } from "../features/athletes/useAthlete";
+import { NotificationBell } from "../features/notifications/NotificationBell";
 import { useCoachingBadgeCount } from "../features/coaching/useCoaching";
 import { useCurrentUser, useLogout } from "../features/auth/useAuth";
 import { usePreferenceSetters } from "../features/auth/usePreferences";
@@ -106,6 +107,7 @@ export function AppShell() {
           {SIDEBAR_FOOTER.map((item) => (
             <SidebarLink key={item.key} item={item} active={active?.key === item.key} collapsed={sidebarCollapsed} />
           ))}
+          <NotificationBell variant={sidebarCollapsed ? "compact" : "row"} />
           <AccountMenu variant={sidebarCollapsed ? "compact" : "full"} />
           <Tooltip content={sidebarCollapsed ? t("expandSidebar") : t("collapseSidebar")} side="right">
             <IconButton
@@ -128,6 +130,7 @@ export function AppShell() {
           </Link>
           <span className="shell__topbar-title">{sectionTitle}</span>
           <AthleteSwitcher variant="avatar" />
+          <NotificationBell variant="icon" />
           <AccountMenu variant="avatar" />
         </header>
         <ViewingBanner />

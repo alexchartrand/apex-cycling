@@ -15,6 +15,7 @@ from sqlalchemy.orm import aliased
 from app.athletes.coaching import admin_club_ids, speaks_for_athlete
 from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus, on_roster_of
 from app.auth.models import User
+from app.notifications.producers import notify_comment
 from app.training.models import SessionComment, SessionCommentRead, TrainingEvent
 from app.training.schemas import CommentInboxItem, CommentRead
 
@@ -64,6 +65,7 @@ async def add_comment(db: AsyncSession, event: TrainingEvent, athlete: Athlete, 
     await db.flush()
     # Your own message means you've seen everything up to it.
     await mark_read(db, event, author)
+    await notify_comment(db, event, athlete, author, body)
     await db.commit()
     own_profile = await db.scalar(select(Athlete.display_name).where(Athlete.user_id == author.id))
     return _read(comment, own_profile, athlete, author, await speaks_for_athlete(db, author, athlete))

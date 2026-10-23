@@ -30,6 +30,7 @@ from app.connections.models import DataSourceConnection, IngestionRun, RawSnapsh
 from app.db.base import Base
 from app.equipment.models import Bike, GearSetup
 from app.goals.models import Goal
+from app.notifications.models import Notification, NotificationPreference, PushSubscription
 from app.planning.models import PlannedSession
 from app.training.models import (
     EventClass,
@@ -217,6 +218,15 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
             files[filename] = _csv(model, rows)
         await _add_activities(db, athlete, files)
 
+    files["notifications.csv"] = _csv(
+        Notification,
+        list(await db.scalars(select(Notification).where(Notification.user_id == user.id).order_by(Notification.created_at))),
+    )
+    preferences = await db.scalar(select(NotificationPreference).where(NotificationPreference.user_id == user.id))
+    files["notification_preferences.json"] = json.dumps(
+        preferences.prefs if preferences else {}, indent=2, ensure_ascii=False
+    )
+
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
         for filename, content in files.items():
@@ -334,6 +344,9 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     await db.execute(
         update(PlannedSession).where(PlannedSession.created_by_user_id == user.id).values(created_by_user_id=None)
     )
+    await db.execute(delete(Notification).where(Notification.user_id == user.id))
+    await db.execute(delete(NotificationPreference).where(NotificationPreference.user_id == user.id))
+    await db.execute(delete(PushSubscription).where(PushSubscription.user_id == user.id))
     await db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == user.id))
     await db.execute(
         update(PasswordResetToken)

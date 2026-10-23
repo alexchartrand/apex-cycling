@@ -4,14 +4,16 @@ persists / serves personal records and manual results.
 
 import re
 import uuid
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
+from dataclasses import dataclass
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.training.distances import STANDARD_EVENTS
-from app.training.efforts import StartType
+from app.training.efforts import LapInput, StartType
 from app.training.models import EventTrack, LapSegmentTime, ManualResult, PersonalRecord, Track, TrackView, TrainingEvent, TrainingLap
 from app.training.records import Result, best_results, running_minimum, session_results
 from app.training.schemas import ManualResultRead, ManualResultWrite, RecordEntry
@@ -33,8 +35,22 @@ def _place_key(track_id: uuid.UUID | None, venue: str | None) -> str:
     return f"track:{track_id}" if track_id is not None else f"venue:{_venue_key(venue or '')}"
 
 
-async def compute_results(db: AsyncSession, athlete_id: uuid.UUID) -> list[Result]:
-    """Every session's best result per event, for all of the athlete's laps."""
+@dataclass(frozen=True)
+class SessionInput:
+    """One session's laps on one track, with what `records.session_results`
+    needs to score them.
+    """
+
+    track_id: uuid.UUID
+    track_length_m: float | None
+    training_event_id: uuid.UUID
+    event_date: date
+    laps: list[LapInput]
+    view_times_ms: dict[str, dict[uuid.UUID, int | None]]
+
+
+async def load_session_inputs(db: AsyncSession, athlete_id: uuid.UUID) -> list[SessionInput]:
+    """The athlete's laps grouped per session and track, ready to score."""
     laps = (
         await db.scalars(
             select(TrainingLap)
@@ -54,7 +70,7 @@ async def compute_results(db: AsyncSession, athlete_id: uuid.UUID) -> list[Resul
     for lap in laps:
         laps_by_event_track.setdefault(lap.event_track_id, []).append(lap)
 
-    results: list[Result] = []
+    inputs: list[SessionInput] = []
     for event_track_laps in laps_by_event_track.values():
         event_track = event_track_laps[0].event_track
         track, event = event_track.track, event_track.training_event
@@ -71,15 +87,37 @@ async def compute_results(db: AsyncSession, athlete_id: uuid.UUID) -> list[Resul
                 lap.id: _view_time_ms(lap.segment_times, loop_ids) for lap in event_track_laps
             }
 
-        results += session_results(
-            track_id=track.id,
-            track_length_m=track.length_m,
-            training_event_id=event.id,
-            event_date=event.event_date,
-            laps=[_lap_input(lap) for lap in event_track_laps],
-            view_times_ms=view_times_ms,
+        inputs.append(
+            SessionInput(
+                track_id=track.id,
+                track_length_m=track.length_m,
+                training_event_id=event.id,
+                event_date=event.event_date,
+                laps=[_lap_input(lap) for lap in event_track_laps],
+                view_times_ms=view_times_ms,
+            )
         )
-    return results
+    return inputs
+
+
+def results_of(inputs: Iterable[SessionInput]) -> list[Result]:
+    return [
+        result
+        for item in inputs
+        for result in session_results(
+            track_id=item.track_id,
+            track_length_m=item.track_length_m,
+            training_event_id=item.training_event_id,
+            event_date=item.event_date,
+            laps=item.laps,
+            view_times_ms=item.view_times_ms,
+        )
+    ]
+
+
+async def compute_results(db: AsyncSession, athlete_id: uuid.UUID) -> list[Result]:
+    """Every session's best result per event, for all of the athlete's laps."""
+    return results_of(await load_session_inputs(db, athlete_id))
 
 
 async def recompute_personal_records(db: AsyncSession, athlete_id: uuid.UUID) -> None:

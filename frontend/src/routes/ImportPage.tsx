@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { PageHeader, SkeletonGroup } from "../components/ui";
 import { ActivityUpload } from "../features/activities/ActivityUpload";
 import { IntervalsSource } from "../features/activities/IntervalsSource";
@@ -20,6 +20,7 @@ export function ImportPage() {
   const athlete = useActiveAthlete();
   const queryClient = useQueryClient();
   const [params, setParams] = useSearchParams();
+  const { hash } = useLocation();
   const stravaParam = params.get("strava");
   const returned = RETURNS.find((value) => value === stravaParam) ?? null;
 
@@ -35,6 +36,17 @@ export function ImportPage() {
     }, 3000);
     return () => clearTimeout(timer);
   }, [returned, queryClient]);
+
+  // /import#sqorz (the Home checklist) lands on the transponder card, which sits below the file sources.
+  const ready = athlete.data !== undefined;
+  useEffect(() => {
+    if (!ready || hash !== "#sqorz") return;
+    const scroll = () => document.getElementById("sqorz")?.scrollIntoView({ block: "start" });
+    scroll();
+    // The cards above load their own data and push this one down; land on it once they have.
+    const timer = setTimeout(scroll, 700);
+    return () => clearTimeout(timer);
+  }, [ready, hash]);
 
   // The banner is shown once; a refresh shouldn't repeat it.
   useEffect(() => {

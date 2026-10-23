@@ -3,7 +3,7 @@ import type en from "../en/settings";
 
 export default {
   title: "Paramètres",
-  sections: { profile: "Profil", physiology: "Physiologie", privacy: "Confidentialité", preferences: "Préférences", account: "Compte" },
+  sections: { profile: "Profil", physiology: "Physiologie", privacy: "Confidentialité", notifications: "Notifications", preferences: "Préférences", account: "Compte" },
   privacy: {
     title: "Confidentialité",
     description: "Vos données sont privées. Seul ce que vous choisissez ici est partagé avec les autres.",

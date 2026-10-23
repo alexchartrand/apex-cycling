@@ -1,6 +1,6 @@
 export default {
   title: "Settings",
-  sections: { profile: "Profile", physiology: "Physiology", privacy: "Privacy", preferences: "Preferences", account: "Account" },
+  sections: { profile: "Profile", physiology: "Physiology", privacy: "Privacy", notifications: "Notifications", preferences: "Preferences", account: "Account" },
   privacy: {
     title: "Privacy",
     description: "Your data is private. The only thing shared with others is what you choose here.",

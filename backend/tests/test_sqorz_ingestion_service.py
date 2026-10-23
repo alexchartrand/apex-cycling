@@ -138,8 +138,16 @@ class FakeUnitOfWork:
         self.commits += 1
 
 
+class FakeFailureNotifier:
+    def __init__(self):
+        self.calls: list[tuple[uuid.UUID, uuid.UUID, str]] = []
+
+    async def sync_failed(self, connection_id, run_id, error_message):
+        self.calls.append((connection_id, run_id, error_message))
+
+
 def _build_service(
-    *, client, connection_repo=None, run_repo=None, snapshot_repo=None, normalizer=None, records=None, uow=None
+    *, client, connection_repo=None, run_repo=None, snapshot_repo=None, normalizer=None, records=None, uow=None, notifier=None
 ):
     return SqorzIngestionService(
         client=client,
@@ -149,6 +157,7 @@ def _build_service(
         normalizer=normalizer or FakeNormalizer(),
         records=records or FakeRecords(),
         unit_of_work=uow or FakeUnitOfWork(),
+        failure_notifier=notifier,
     )
 
 
@@ -305,6 +314,26 @@ async def test_ingest_marks_failed_on_client_error():
     assert normalizer.calls == []
     assert connection_repo.update_calls == []
     assert uow.commits == 1
+
+
+async def test_a_failed_poll_tells_the_failure_notifier_but_a_manual_sync_does_not():
+    notifier = FakeFailureNotifier()
+    service = _build_service(
+        client=FakeSqorzClient(error=SqorzClientError("boom", http_status=503)), notifier=notifier
+    )
+
+    run = await service.ingest(CONNECTION)
+    assert [(c[0], c[1]) for c in notifier.calls] == [(CONNECTION.id, run.id)]
+    assert "boom" in notifier.calls[0][2]
+
+    await service.ingest(CONNECTION, force=True)  # "Sync now": the person is looking at the result already
+    assert len(notifier.calls) == 1
+
+
+async def test_a_successful_poll_notifies_nobody():
+    notifier = FakeFailureNotifier()
+    await _build_service(client=FakeSqorzClient(), notifier=notifier).ingest(CONNECTION)
+    assert notifier.calls == []
 
 
 async def test_ingest_by_id_returns_none_for_unknown_connection():

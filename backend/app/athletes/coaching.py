@@ -23,6 +23,7 @@ from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus, on_ro
 from app.athletes.schemas import CoachLinkRead
 from app.auth.models import User
 from app.clubs.models import ClubMembership, ClubRole
+from app.notifications.producers import notify_coach_request
 
 PENDING = (CoachAthleteStatus.PENDING_ATHLETE_ACCEPTANCE, CoachAthleteStatus.PENDING_COACH_ACCEPTANCE)
 OPEN = (*PENDING, CoachAthleteStatus.ACTIVE)
@@ -86,13 +87,15 @@ async def _open_link(
 ) -> CoachAthlete:
     """Creates the link in `status`, or moves an existing one on: asking
     again is a no-op, asking back activates, asking after a revocation
-    reopens it."""
+    reopens it. A request that now waits for the other side's answer
+    notifies them (not when asking again changed nothing)."""
     if coach_user_id == athlete.user_id:
         raise CoachLinkError("Nobody coaches themself")
     now = datetime.now(timezone.utc)
     link = await db.scalar(
         select(CoachAthlete).where(CoachAthlete.coach_user_id == coach_user_id, CoachAthlete.athlete_id == athlete.id)
     )
+    before = None if link is None else (link.status, link.initiated_by_user_id)
     if link is None:
         link = CoachAthlete(
             coach_user_id=coach_user_id, athlete_id=athlete.id, initiated_by_user_id=actor.id, status=status
@@ -108,6 +111,8 @@ async def _open_link(
     elif link.status != status:  # the other side had already asked: both want it
         link.status, link.responded_at = CoachAthleteStatus.ACTIVE, now
     await db.flush()
+    if (link.status, link.initiated_by_user_id) != before:
+        await notify_coach_request(db, link, athlete, actor)
     return link
 
 

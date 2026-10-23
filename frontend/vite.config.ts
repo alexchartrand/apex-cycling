@@ -34,6 +34,8 @@ export default defineConfig(({ mode }) => {
         workbox: {
           navigateFallback: '/index.html',
           navigateFallbackDenylist: [/^\/api\//],
+          // Push and notification-click handlers (public/push-sw.js).
+          importScripts: ['push-sw.js'],
           globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
           // Only Latin font subsets are worth precaching for a FR/EN app.
           globIgnores: ['**/*-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*.woff2'],

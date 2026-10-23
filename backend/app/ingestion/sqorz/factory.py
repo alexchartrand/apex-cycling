@@ -4,7 +4,11 @@ SQLAlchemy-backed implementations are wired into SqorzIngestionService.
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ingestion.sqorz.client import SqorzHttpClient
-from app.ingestion.sqorz.normalizer_adapter import SqlAlchemyNormalizerAdapter, SqlAlchemyRecordsAdapter
+from app.ingestion.sqorz.normalizer_adapter import (
+    SqlAlchemyFailureNotifier,
+    SqlAlchemyNormalizerAdapter,
+    SqlAlchemyRecordsAdapter,
+)
 from app.ingestion.sqorz.ports import SqorzClientPort
 from app.ingestion.sqorz.repositories import (
     SqlAlchemyDataSourceConnectionRepository,
@@ -26,4 +30,5 @@ def build_sqorz_ingestion_service(
         normalizer=SqlAlchemyNormalizerAdapter(db),
         records=SqlAlchemyRecordsAdapter(db),
         unit_of_work=SqlAlchemySessionCommitter(db),
+        failure_notifier=SqlAlchemyFailureNotifier(db),
     )

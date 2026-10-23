@@ -12,6 +12,7 @@ from app.ingestion.sqorz.ports import (
     RawSnapshotRepositoryPort,
     SnapshotNormalizerPort,
     SqorzClientPort,
+    SyncFailureNotifierPort,
     UnitOfWorkPort,
 )
 
@@ -55,6 +56,7 @@ class SqorzIngestionService:
         normalizer: SnapshotNormalizerPort,
         records: AthleteRecordsPort,
         unit_of_work: UnitOfWorkPort,
+        failure_notifier: SyncFailureNotifierPort | None = None,
     ) -> None:
         self._client = client
         self._connection_repo = connection_repo
@@ -63,6 +65,7 @@ class SqorzIngestionService:
         self._normalizer = normalizer
         self._records = records
         self._unit_of_work = unit_of_work
+        self._failure_notifier = failure_notifier
 
     async def ingest(self, connection: DataSourceConnectionRecord, *, force: bool = False) -> IngestionRunRecord:
         run = await self._run_repo.create(connection.id, utcnow())
@@ -73,6 +76,9 @@ class SqorzIngestionService:
             run = await self._run_repo.mark_failed(
                 run.id, http_status=exc.http_status, error_message=str(exc), completed_at=utcnow()
             )
+            # Whoever pressed "Sync now" sees the failure right there.
+            if self._failure_notifier is not None and not force:
+                await self._failure_notifier.sync_failed(connection.id, run.id, str(exc))
             await self._unit_of_work.commit()
             return run
 

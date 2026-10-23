@@ -179,3 +179,34 @@
   font-size: var(--text-sm);
   color: var(--color-text-2);
 }
+
+.sqorz__help {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}
+
+.sqorz__help summary {
+  cursor: pointer;
+  color: var(--color-accent);
+}
+
+.sqorz__help p {
+  margin: var(--space-2) 0 0;
+}
+
+.sqorz__found {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  font-size: var(--text-sm);
+}
+
+.sqorz__found--ok {
+  background: var(--color-positive-soft);
+}
+
+.sqorz-anchor {
+  scroll-margin-top: var(--space-4);
+}

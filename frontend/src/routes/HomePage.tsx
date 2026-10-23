@@ -7,6 +7,9 @@ import { FitnessCard } from "../features/activities/FitnessCard";
 import { useActivities } from "../features/activities/useActivities";
 import "../features/activities/Activities.css";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
+import { FirstRunChecklist } from "../features/onboarding/FirstRunChecklist";
+import { useFirstRunChecklist } from "../features/onboarding/useFirstRunChecklist";
+import { WhatsNewCard } from "../features/insights/WhatsNewCard";
 import { PlannedSessionsCard } from "../features/plan/PlannedSessionsCard";
 import { GoalsCard } from "../features/goals/GoalsCard";
 import { useIngestionRuns, useTransponderAssignments } from "../features/connections/useConnections";
@@ -37,6 +40,7 @@ export function HomePage() {
   const runs = useIngestionRuns(athleteId);
   const assignments = useTransponderAssignments(athleteId);
   const latest = sessions.data?.[0];
+  const firstRun = useFirstRunChecklist();
   const latestDetail = useSessionDetail(athleteId, latest?.external_event_id ?? "");
 
   const now = new Date();
@@ -75,7 +79,9 @@ export function HomePage() {
 
       {(athlete.isLoading || sessions.isLoading) && <SkeletonGroup lines={6} />}
 
-      {noData && (
+      {firstRun.visible && firstRun.checklist && <FirstRunChecklist checklist={firstRun.checklist} onHide={firstRun.hide} />}
+
+      {noData && !firstRun.visible && (
         <EmptyState
           icon={<Radio aria-hidden />}
           title={t("onboarding.title")}
@@ -83,6 +89,8 @@ export function HomePage() {
           action={<ButtonLink to="/import">{t("onboarding.action")}</ButtonLink>}
         />
       )}
+
+      {athleteId !== "" && <WhatsNewCard athleteId={athleteId} />}
 
       {athleteId !== "" && <FitnessCard athleteId={athleteId} hideWhenEmpty />}
 

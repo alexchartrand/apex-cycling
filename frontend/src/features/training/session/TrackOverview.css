@@ -58,3 +58,9 @@
     width: auto;
   }
 }
+
+.track-overview__record {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}

@@ -409,3 +409,28 @@ class CommentInboxItem(BaseModel):
     latest_at: datetime
     latest_author_name: str | None
     latest_excerpt: str
+
+
+class InsightRead(BaseModel):
+    """A headline about a session (`insights.py`). Which fields are set
+    depends on `kind`: records and season bests carry the event and times,
+    "best Nth lap" the lap number and time, "most consistent" the spread.
+    """
+
+    key: str
+    kind: Literal["personal_record", "season_best", "best_nth_lap", "most_consistent"]
+    external_event_id: str
+    session_name: str
+    event_date: date
+    track_id: uuid.UUID
+    track_name: str
+    event_key: str | None = None
+    start_type: StartType | None = None
+    time_ms: int | None = None
+    previous_ms: int | None = None
+    milestone_ms: int | None = None
+    lap_number: int | None = None
+    lap_count: int | None = None
+    cv_pct: float | None = None
+    effort_start_type: StartType | None = None
+    first_lap_id: uuid.UUID | None = None

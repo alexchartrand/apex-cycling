@@ -74,3 +74,9 @@ class AthleteRecordsPort(Protocol):
 
 class UnitOfWorkPort(Protocol):
     async def commit(self) -> None: ...
+
+
+class SyncFailureNotifierPort(Protocol):
+    async def sync_failed(self, connection_id: uuid.UUID, run_id: uuid.UUID, error_message: str) -> None:
+        """Tells whoever uses the transponder that a sync failed (once per streak)."""
+        ...

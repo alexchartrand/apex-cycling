@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     # "starttls" (port 587), "ssl" (implicit TLS, port 465) or "none".
     smtp_security: str = "starttls"
 
+    # Web Push (app/notifications/push.py). Without a VAPID key pair browsers
+    # can't be subscribed and push is off; the bell and email still work.
+    # `python -m app.notifications.cli generate-vapid` makes a pair. The subject
+    # is a mailto: or https: contact the push services can reach.
+    vapid_public_key: str | None = None
+    vapid_private_key: str | None = None
+    vapid_subject: str | None = None
+
     # Encrypts third-party credentials at rest (app/core/crypto.py): one Fernet
     # key, or several comma-separated for rotation (the first encrypts, all
     # decrypt). The default is public — production must set its own, and

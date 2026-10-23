@@ -4,13 +4,14 @@ import { LanguageSwitcher, ThemeSwitcher } from "../components/preferences/Prefe
 import { Card, EmptyState, PageHeader, Skeleton, TabPanel, Tabs, type TabItem } from "../components/ui";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { useCurrentUser } from "../features/auth/useAuth";
+import { NotificationSettings } from "../features/notifications/NotificationSettings";
 import { AccountSettings } from "../features/settings/AccountSettings";
 import { PrivacySettings } from "../features/settings/PrivacySettings";
 import { PhysiologySettings } from "../features/settings/PhysiologySettings";
 import { ProfileSettings } from "../features/settings/ProfileSettings";
 import "./SettingsPage.css";
 
-const SECTIONS = ["profile", "physiology", "privacy", "preferences", "account"] as const;
+const SECTIONS = ["profile", "physiology", "privacy", "notifications", "preferences", "account"] as const;
 type Section = (typeof SECTIONS)[number];
 
 function isSection(value: string | undefined): value is Section {
@@ -48,6 +49,9 @@ export function SettingsPage() {
               </TabPanel>
               <TabPanel value="privacy">
                 {athlete.data && user && <PrivacySettings athlete={athlete.data} user={user} />}
+              </TabPanel>
+              <TabPanel value="notifications">
+                <NotificationSettings />
               </TabPanel>
               <TabPanel value="preferences">
                 <Card title={t("preferences.title")} as="section">
