@@ -194,12 +194,17 @@ function nodeDraft(item: WorkoutItem | InnerRepeat, fmt: Fmt): DraftNode {
   return stepDraft(item, fmt);
 }
 
+/** Saved steps as editable nodes. */
+export function draftNodes(items: WorkoutItem[], fmt: Fmt): DraftNode[] {
+  return items.map((item) => nodeDraft(item, fmt));
+}
+
 export function draftFrom(workout: Pick<Workout, "name" | "description" | "tags" | "steps">, fmt: Fmt): WorkoutDraft {
   return {
     name: workout.name,
     description: workout.description ?? "",
     tags: workout.tags.join(", "),
-    steps: workout.steps.map((item) => nodeDraft(item, fmt)),
+    steps: draftNodes(workout.steps, fmt),
   };
 }
 

@@ -5,6 +5,7 @@ import { Badge, Button, Card, SkeletonGroup } from "../../components/ui";
 import { localIsoDate } from "../../i18n/format";
 import { useFormat } from "../../i18n/useFormat";
 import { PlanDetailDialog } from "./PlanDetailDialog";
+import { lengthText } from "../workouts/profile";
 import { PlanDialog } from "./PlanDialog";
 import { outstanding } from "./planForm";
 import type { PlannedSession } from "./types";
@@ -50,7 +51,11 @@ export function PlannedSessionsCard({ athleteId, alwaysShow = false }: { athlete
               <span className="plan-list__date">{fmt.date(plan.planned_date, "weekday")}</span>
               <span className="plan-list__main">
                 <span className="plan-list__title">{plan.title}</span>
-                {plan.targets.length > 0 && <span className="plan-list__meta">{t("blocks", { count: plan.targets.length })}</span>}
+                {plan.workout_estimate ? (
+                  plan.workout_estimate.duration_s > 0 && <span className="plan-list__meta">{lengthText(plan.workout_estimate.duration_s)}</span>
+                ) : (
+                  plan.targets.length > 0 && <span className="plan-list__meta">{t("blocks", { count: plan.targets.length })}</span>
+                )}
               </span>
               {plan.planned_date < today && <Badge tone="negative">{t("overdue")}</Badge>}
               <ChevronRight className="plan-list__chevron" aria-hidden />

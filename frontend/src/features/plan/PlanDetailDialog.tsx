@@ -1,4 +1,4 @@
-import { Check, Link2, Pencil, RotateCcw, SkipForward, Trash2, Unlink } from "lucide-react";
+import { Check, Dumbbell, Link2, Pencil, RotateCcw, SkipForward, Trash2, Unlink } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
@@ -7,12 +7,18 @@ import { Badge, Button, ConfirmDialog, Dialog, Select, useToast } from "../../co
 import { useFormat } from "../../i18n/useFormat";
 import { formatRecordTime } from "../records/timeInput";
 import { useSessions } from "../training/useTraining";
+import { IntensityChart } from "../workouts/IntensityChart";
+import { hasTrackEvents, hasWattTargets } from "../workouts/types";
+import { WorkoutSteps } from "../workouts/WorkoutSteps";
+import { useEstimateFtp } from "../workouts/useWorkouts";
+import { WorkoutTotals } from "../workouts/WorkoutTotals";
 import { PlanDialog } from "./PlanDialog";
 import { PlanResults } from "./PlanResults";
-import { effortText, linkCandidates, STATUS_TONE } from "./planForm";
+import { effortText, linkCandidates, STATUS_TONE, workoutGearLabels } from "./planForm";
 import type { PlannedSession } from "./types";
 import { useDeletePlan, usePlanAnswer } from "./usePlan";
 import { useAthletePath } from "../athletes/athleteScope";
+import "../workouts/Workouts.css";
 import "./Plan.css";
 
 /** One planned session: what is asked, and what the viewer may do about it. */
@@ -31,6 +37,9 @@ export function PlanDetailDialog({ athleteId, plan, onClose }: { athleteId: stri
   const candidates = linkCandidates(plan, sessions.data ?? []);
   const [picked, setPicked] = useState("");
   const chosen = picked || candidates[0]?.external_event_id || "";
+  // The server's estimate used the FTP on the planned day; any FTP at all means watt steps count.
+  const ftp = useEstimateFtp();
+  const scored = plan.workout ? hasTrackEvents(plan.workout) : plan.targets.length > 0;
 
   async function run(action: Parameters<typeof answer.mutateAsync>[0]) {
     try {
@@ -46,7 +55,7 @@ export function PlanDetailDialog({ athleteId, plan, onClose }: { athleteId: stri
 
   return (
     <>
-      <Dialog open onOpenChange={(open) => !open && onClose()} title={plan.title} description={`${fmt.date(plan.planned_date, "long")}${plan.created_by_name ? ` · ${t("by", { name: plan.created_by_name })}` : ""}`}>
+      <Dialog open size={plan.workout ? "lg" : "md"} onOpenChange={(open) => !open && onClose()} title={plan.title} description={`${fmt.date(plan.planned_date, "long")}${plan.created_by_name ? ` · ${t("by", { name: plan.created_by_name })}` : ""}`}>
         <div className="plan-detail">
           <p>
             <Badge tone={STATUS_TONE[plan.status]}>{t(`status.${plan.status}`)}</Badge>
@@ -66,6 +75,23 @@ export function PlanDetailDialog({ athleteId, plan, onClose }: { athleteId: stri
             </ul>
           )}
 
+          {plan.workout && (
+            <section className="plan-detail__workout" aria-label={t("detail.workout")}>
+              {plan.workout_estimate && (
+                <>
+                  <WorkoutTotals estimate={plan.workout_estimate} wattsWithoutFtp={ftp == null && hasWattTargets(plan.workout)} />
+                  <IntensityChart segments={plan.workout_estimate.segments} />
+                </>
+              )}
+              <WorkoutSteps steps={plan.workout} gearLabels={workoutGearLabels(plan)} />
+              {plan.source_workout_id && (
+                <Link className="plan-detail__source" to={`/workouts/${plan.source_workout_id}`} onClick={onClose}>
+                  <Dumbbell aria-hidden /> {t("detail.openSource")}
+                </Link>
+              )}
+            </section>
+          )}
+
           {plan.session && (
             <p>
               {t("detail.linkedTo")}{" "}
@@ -75,7 +101,7 @@ export function PlanDetailDialog({ athleteId, plan, onClose }: { athleteId: stri
             </p>
           )}
 
-          {plan.session && plan.targets.length > 0 && (
+          {plan.session && scored && (
             <PlanResults athleteId={athleteId} planId={plan.id} eventId={plan.session.external_event_id} />
           )}
 

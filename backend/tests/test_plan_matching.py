@@ -1,7 +1,10 @@
 """Planned vs ridden: the matcher on its own, then through the API."""
 
-from app.planning.matching import EffortResults, RepStatus, expand_reps, match_reps
+from pydantic import TypeAdapter
+
+from app.planning.matching import EffortResults, RepStatus, expand_reps, match_reps, workout_reps
 from app.training.efforts import StartType
+from app.workouts.schemas import WorkoutItem
 from tests.test_aero_api import _setup
 from tests.test_planning import _plan
 
@@ -98,3 +101,48 @@ async def test_the_comparison_endpoint_scores_each_rep(client, db_session):
     assert body["measured"] == 4 and body["hits"] == 2
 
     assert (await client.get(f"{url}/00000000-0000-0000-0000-000000000000/comparison")).status_code == 404
+
+
+# --- a scheduled workout -------------------------------------------------------
+
+KILOS_WORKOUT = [
+    {"kind": "warmup", "duration_s": 600},
+    {
+        "type": "repeat",
+        "count": 2,
+        "steps": [
+            {"label": "Kilo", "event_key": "1km", "start_type": "flying", "target_time_ms": 75_000},
+            {"kind": "recovery", "duration_s": 300},
+        ],
+    },
+    {"event_key": "500m", "target_time_ms": 33_000},
+    {"label": "Start", "event_key": "500m", "start_type": "standing", "target_time_ms": 35_000},
+]
+
+
+def test_a_workouts_track_steps_are_its_reps_in_riding_order():
+    reps = workout_reps(TypeAdapter(list[WorkoutItem]).validate_python(KILOS_WORKOUT))
+    assert [(r.target_index, r.rep, r.label, r.event_key) for r in reps] == [
+        (0, 1, "Kilo", "1km"),
+        (0, 2, "Kilo", "1km"),
+        (1, 1, "", "500m"),
+        (2, 1, "Start", "500m"),
+    ]
+    assert reps[0].start_type == F and reps[3].start_type == S and reps[0].target_time_ms == 75_000
+
+
+async def test_the_comparison_reads_a_scheduled_workout(client, db_session):
+    athlete_id = await _setup(client, db_session, upload=False)
+    url = f"/athletes/{athlete_id}/planned-sessions"
+    plan = (await client.post(url, json=_plan(targets=[], workout=KILOS_WORKOUT))).json()
+    await client.put(f"{url}/{plan['id']}/session", json={"external_event_id": "evt-aero"})
+
+    body = (await client.get(f"{url}/{plan['id']}/comparison")).json()
+    rows = [(r["target_index"], r["rep"], r["status"], r["effort_index"], r["time_ms"]) for r in body["reps"]]
+    assert rows == [
+        (0, 1, "miss", 1, 80_000),
+        (0, 2, "hit", 2, 70_000),
+        (1, 1, "hit", 3, 32_000),
+        (2, 1, "not_ridden", None, None),
+    ]
+    assert body["measured"] == 4 and body["hits"] == 2

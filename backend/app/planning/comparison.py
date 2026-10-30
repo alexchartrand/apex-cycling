@@ -1,17 +1,22 @@
-"""The plan answered by the ridden session: expands the plan's targets into
-reps, scores each effort of the linked session, and matches them
-(`matching.py`). Sqorz data only, so nothing here is Strava-derived.
+"""The plan answered by the ridden session: expands the plan's workout (its
+track steps), else its targets, into reps, scores each effort of the linked
+session, and matches them (`matching.py`). Sqorz data only, so nothing here
+is Strava-derived.
 """
 
+from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.planning.matching import EffortResults, RepOutcome, RepStatus, expand_reps, match_reps
+from app.planning.matching import EffortResults, RepOutcome, RepStatus, expand_reps, match_reps, workout_reps
 from app.planning.models import PlannedSession
 from app.planning.schemas import PlanComparison, RepResult
 from app.training.models import TrainingEvent
 from app.training.records import session_results
 from app.training.records_service import view_times_of
 from app.training.service import _load_event_laps, detect_session_efforts
+from app.workouts.schemas import WorkoutItem
+
+_ITEMS = TypeAdapter(list[WorkoutItem])
 
 
 class NoLinkedSession(Exception):
@@ -59,7 +64,8 @@ async def compare_plan(db: AsyncSession, plan: PlannedSession) -> PlanComparison
     """Raises `NoLinkedSession`."""
     if plan.training_event_id is None:
         raise NoLinkedSession
-    outcomes = match_reps(expand_reps(plan.targets or []), await _effort_results(db, plan))
+    reps = workout_reps(_ITEMS.validate_python(plan.workout)) if plan.workout else expand_reps(plan.targets or [])
+    outcomes = match_reps(reps, await _effort_results(db, plan))
     measured = [o for o in outcomes if o.rep.target_time_ms is not None and o.rep.event_key is not None]
     return PlanComparison(
         reps=[_read(o) for o in outcomes],

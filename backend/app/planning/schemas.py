@@ -7,6 +7,7 @@ from app.planning.matching import RepStatus
 from app.planning.models import PlanStatus
 from app.training.distances import STANDARD_EVENTS_BY_KEY
 from app.training.efforts import StartType
+from app.workouts.schemas import WorkoutEstimate, WorkoutItem, check_steps
 
 
 def _blank_is_none(value: str | None) -> str | None:
@@ -53,13 +54,24 @@ class PlannedEffortRead(PlannedEffort):
     gear_label: str | None = None
 
 
+def _check_workout(items: list | None) -> list | None:
+    return None if items is None else check_steps(items)
+
+
 class PlannedSessionWrite(BaseModel):
+    """`workout` is the step tree to ride, usually copied from a library
+    workout (`source_workout_id`) and maybe adapted; `targets` is the older
+    free-form list, still accepted."""
+
     planned_date: date
     title: str = Field(min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=5000)
     targets: list[PlannedEffort] = Field(default_factory=list, max_length=30)
+    workout: list[WorkoutItem] | None = Field(default=None, min_length=1, max_length=50)
+    source_workout_id: uuid.UUID | None = None
 
     _clean_description = field_validator("description")(_blank_is_none)
+    _check_workout = field_validator("workout")(_check_workout)
 
     @field_validator("title")
     @classmethod
@@ -72,16 +84,20 @@ class PlannedSessionWrite(BaseModel):
 
 class PlannedSessionUpdate(BaseModel):
     """PATCH body: only the fields sent change. The content (date, title,
-    description, targets) is the author's and the athlete's to edit; `status`
-    is the athlete's side only."""
+    description, targets, workout) is the author's and the athlete's to edit;
+    `status` is the athlete's side only. A null `workout` removes it, and the
+    library workout it came from with it."""
 
     planned_date: date | None = None
     title: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=5000)
     targets: list[PlannedEffort] | None = Field(default=None, max_length=30)
+    workout: list[WorkoutItem] | None = Field(default=None, min_length=1, max_length=50)
+    source_workout_id: uuid.UUID | None = None
     status: PlanStatus | None = None
 
     _clean_description = field_validator("description")(_blank_is_none)
+    _check_workout = field_validator("workout")(_check_workout)
 
     @field_validator("planned_date", "title", "targets", "status")
     @classmethod
@@ -109,12 +125,28 @@ class LinkedSession(BaseModel):
     event_date: date
 
 
+class PlanWorkoutGear(BaseModel):
+    """A gear the workout asks for (as teeth), found among the athlete's
+    saved gears: "Track bike · 50×15"."""
+
+    chainring_teeth: int
+    cog_teeth: int
+    gear_setup_id: uuid.UUID
+    label: str
+
+
 class PlannedSessionRead(BaseModel):
     id: uuid.UUID
     planned_date: date
     title: str
     description: str | None
     targets: list[PlannedEffortRead]
+    workout: list[WorkoutItem] | None
+    # Derived on read with the athlete's FTP on the planned date.
+    workout_estimate: WorkoutEstimate | None
+    workout_gears: list[PlanWorkoutGear]
+    # The library workout it was copied from, only while the viewer can open it.
+    source_workout_id: uuid.UUID | None
     status: PlanStatus
     created_by_name: str | None
     # The session that was ridden, when linked.

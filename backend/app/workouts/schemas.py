@@ -143,7 +143,7 @@ def structure_size(items: list[WorkoutStep | RepeatBlock | InnerRepeat]) -> int:
     return sum(1 if isinstance(item, WorkoutStep) else 1 + structure_size(item.steps) for item in items)
 
 
-def _check_steps(items: list) -> list:
+def check_steps(items: list) -> list:
     if structure_size(items) > MAX_STRUCTURE_STEPS:
         raise ValueError(f"A workout has at most {MAX_STRUCTURE_STEPS} steps and repeats")
     return items
@@ -174,7 +174,7 @@ class WorkoutSteps(BaseModel):
     track_length_m: float | None = Field(default=None, gt=0, le=1000)
     ftp_w: float | None = Field(default=None, gt=0, le=1000)
 
-    _check_steps = field_validator("steps")(_check_steps)
+    _check_steps = field_validator("steps")(check_steps)
 
 
 class WorkoutWrite(BaseModel):
@@ -186,7 +186,7 @@ class WorkoutWrite(BaseModel):
     _clean_description = field_validator("description")(_blank_is_none)
     _trim_name = field_validator("name")(_trim_name)
     _clean_tags = field_validator("tags")(_clean_tags)
-    _check_steps = field_validator("steps")(_check_steps)
+    _check_steps = field_validator("steps")(check_steps)
 
 
 class WorkoutUpdate(BaseModel):
@@ -208,7 +208,7 @@ class WorkoutUpdate(BaseModel):
 
     _trim_name = field_validator("name")(_trim_name)
     _clean_tags = field_validator("tags")(_clean_tags)
-    _check_steps = field_validator("steps")(_check_steps)
+    _check_steps = field_validator("steps")(check_steps)
 
 
 class ProfileSegment(BaseModel):

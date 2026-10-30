@@ -23,6 +23,10 @@ const plan = (over: Partial<PlannedSession> = {}): PlannedSession => ({
     { label: "Standing start", reps: 3, event_key: "500m", start_type: "standing", target_time_ms: 34_000, gear_setup_id: "g1", gear_label: "Track bike · 50×15" },
     { label: "Tempo", reps: 1, event_key: null, start_type: null, target_time_ms: null, gear_setup_id: null },
   ],
+  workout: null,
+  workout_estimate: null,
+  workout_gears: [],
+  source_workout_id: null,
   status: "planned",
   created_by_name: "Coach Cam",
   session: null,
@@ -30,6 +34,23 @@ const plan = (over: Partial<PlannedSession> = {}): PlannedSession => ({
   can_mark: true,
   ...over,
 });
+
+const STEP = { kind: "work", label: "Flying", notes: null, duration_s: null, distance_m: null, laps: null, power: null, cadence: null, rpe: null, event_key: "f200", start_type: "flying", target_time_ms: 11_500, gear: null };
+const LIBRARY_WORKOUT = {
+  id: "w1",
+  source: "preset",
+  name: "Sprint openers",
+  description: "Short and sharp",
+  tags: [],
+  is_track: true,
+  duration_s: 1200,
+  tss: 20,
+  owner_name: null,
+  can_edit: false,
+  created_at: null,
+  steps: [{ type: "repeat", count: 3, steps: [STEP] }],
+  estimate: { duration_s: 1200, tss: 20, unrated_s: 0, open_steps: 0, segments: [] },
+};
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
@@ -57,6 +78,9 @@ describe("PlannedSessionsCard", () => {
     sessions = [{ external_event_id: "evt1", event_name: "Tuesday night", event_date: day(2), track_names: [], lap_count: 10 }];
     fetchMock.mockImplementation((url: string, init?: RequestInit) => {
       if (url.endsWith("/sessions")) return Promise.resolve(json(sessions));
+      if (url === "/api/workouts/estimate") return Promise.resolve(json({ duration_s: 1200, tss: 20, unrated_s: 0, open_steps: 0, segments: [] }));
+      if (url === "/api/workouts/w1") return Promise.resolve(json(LIBRARY_WORKOUT));
+      if (url.startsWith("/api/workouts")) return Promise.resolve(json([{ ...LIBRARY_WORKOUT, steps: undefined, estimate: undefined }]));
       if (init?.method === "PUT" || init?.method === "PATCH") return Promise.resolve(json(plan({ status: "done" })));
       return Promise.resolve(json(plans));
     });
@@ -77,6 +101,26 @@ describe("PlannedSessionsCard", () => {
     expect(within(dialog).getByText("3 × Standing start — 500 m, 34.000 s, Track bike · 50×15")).toBeInTheDocument();
     expect(within(dialog).getByText("Tempo")).toBeInTheDocument();
     expect(within(dialog).getByText(/by Coach Cam/)).toBeInTheDocument();
+  });
+
+  it("shows a scheduled workout, its gears in the athlete's words and a way back to the library", async () => {
+    plans = [
+      plan({
+        targets: [],
+        workout: [{ type: "repeat", count: 3, steps: [{ ...STEP, gear: { chainring_teeth: 50, cog_teeth: 15 } }] }] as PlannedSession["workout"],
+        workout_estimate: { duration_s: 1500, tss: 30, unrated_s: 0, open_steps: 0, segments: [] },
+        workout_gears: [{ chainring_teeth: 50, cog_teeth: 15, gear_setup_id: "g1", label: "Track bike · 50×15" }],
+        source_workout_id: "w1",
+      }),
+    ];
+    renderCard();
+    const user = userEvent.setup();
+    expect(await screen.findByText("25 min")).toBeInTheDocument(); // the list shows the duration
+    await user.click(screen.getByRole("button", { name: /Kilo openers/ }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Flying")).toBeInTheDocument();
+    expect(within(dialog).getByText(/Track bike · 50×15/)).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: /Open the library workout/ })).toHaveAttribute("href", "/workouts/w1");
   });
 
   it("links the session ridden near the date, which is picked for you", async () => {
@@ -131,7 +175,7 @@ describe("PlannedSessionsCard", () => {
     await waitFor(() => expect(screen.queryByText("Planned sessions")).not.toBeInTheDocument());
   });
 
-  it("plans a session: title and date are sent with its efforts", async () => {
+  it("plans a session from a library workout: the plan gets its own copy", async () => {
     plans = [];
     renderCard({ alwaysShow: true });
     const user = userEvent.setup();
@@ -140,20 +184,21 @@ describe("PlannedSessionsCard", () => {
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
     expect(within(dialog).getByText("Give it a title")).toBeInTheDocument();
 
-    await user.type(within(dialog).getByLabelText("Title"), "Openers");
-    await user.click(within(dialog).getByRole("button", { name: "Add an effort" }));
-    await user.type(within(dialog).getByLabelText("What"), "Starts");
-    await user.selectOptions(within(dialog).getByLabelText("Event"), "500 m");
-    await user.type(within(dialog).getByLabelText("Target"), "34,5");
+    await within(dialog).findByRole("option", { name: "Sprint openers" });
+    await user.selectOptions(within(dialog).getByLabelText("From the library"), "w1");
+    await waitFor(() => expect(within(dialog).getByLabelText("Title")).toHaveValue("Sprint openers"));
+    expect(within(dialog).getByText("Copied from the library: changes here stay on this plan.")).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
-    await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
-    const [url, init] = fetchMock.mock.calls.find(([, i]) => i?.method === "POST")!;
+    await waitFor(() => expect(fetchMock.mock.calls.some(([u, init]) => u.includes("planned-sessions") && init?.method === "POST")).toBe(true));
+    const [url, init] = fetchMock.mock.calls.find(([u, i]) => u.includes("planned-sessions") && i?.method === "POST")!;
     expect(url).toBe("/api/athletes/a1/planned-sessions");
     expect(JSON.parse(init.body)).toMatchObject({
-      title: "Openers",
-      description: null,
-      targets: [{ label: "Starts", reps: 1, event_key: "500m", start_type: null, target_time_ms: 34_500, gear_setup_id: null }],
+      title: "Sprint openers",
+      description: "Short and sharp",
+      targets: [],
+      source_workout_id: "w1",
+      workout: [{ type: "repeat", count: 3, steps: [{ label: "Flying", event_key: "f200", start_type: "flying", target_time_ms: 11_500 }] }],
     });
   });
 });

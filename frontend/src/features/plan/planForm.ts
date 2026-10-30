@@ -1,90 +1,117 @@
 import type { Formatters } from "../../i18n/format";
-import { parseTimeInput, timeToInput } from "../records/timeInput";
-import { EVENT_START_TYPES, STANDARD_EVENT_KEYS, type StandardEventKey } from "../records/types";
+import type { Gear } from "../equipment/types";
+import { timeToInput } from "../records/timeInput";
+import { STANDARD_EVENT_KEYS, type StandardEventKey } from "../records/types";
+import { gearKey, type Workout, type WorkoutItem } from "../workouts/types";
+import { draftErrors, draftNodes, draftSteps, newRepeat, newStep, type DraftNode, type DraftRepeat, type DraftStep, type StepField, type WorkoutDraft } from "../workouts/workoutDraft";
 import type { PlannedEffort, PlannedSession, PlannedSessionWrite, PlanStatus } from "./types";
-
-export type EffortRow = {
-  label: string;
-  reps: string;
-  /** "" = no event (a free-form block like "tempo"). */
-  eventKey: "" | StandardEventKey;
-  startType: "" | "standing" | "flying";
-  time: string;
-  /** "" = no gear asked for. */
-  gearId: string;
-};
 
 export type PlanForm = {
   date: string;
   title: string;
   description: string;
-  targets: EffortRow[];
+  /** An older plan's free-form efforts, kept as they are until turned into steps. */
+  legacyTargets: PlannedEffort[];
+  /** The workout being planned; null = none. */
+  steps: DraftNode[] | null;
+  /** The library workout the steps were copied from. */
+  sourceWorkoutId: string | null;
 };
 
-export type PlanFormErrors = { title?: true; date?: true; targets: Record<number, "label" | "reps" | "time"> };
+export type PlanFormErrors = { title?: true; date?: true; steps?: "empty" | "tooMany"; nodes: Record<string, StepField[]> };
 
-export const emptyEffortRow = (): EffortRow => ({ label: "", reps: "1", eventKey: "", startType: "", time: "", gearId: "" });
+type Fmt = Pick<Formatters, "seconds" | "lapTime" | "language">;
+
+const asDraft = (steps: DraftNode[]): WorkoutDraft => ({ name: "", description: "", tags: "", steps });
 
 export function emptyPlanForm(date: string): PlanForm {
-  return { date, title: "", description: "", targets: [] };
+  return { date, title: "", description: "", legacyTargets: [], steps: null, sourceWorkoutId: null };
 }
 
-export function planFormFrom(plan: PlannedSession, fmt: Pick<Formatters, "seconds" | "lapTime">): PlanForm {
+export function planFormFrom(plan: PlannedSession, fmt: Fmt): PlanForm {
   return {
     date: plan.planned_date,
     title: plan.title,
     description: plan.description ?? "",
-    targets: plan.targets.map((target) => ({
-      label: target.label,
-      reps: String(target.reps),
-      eventKey: (STANDARD_EVENT_KEYS as readonly string[]).includes(target.event_key ?? "") ? (target.event_key as StandardEventKey) : "",
-      startType: target.start_type ?? "",
-      time: target.target_time_ms != null ? timeToInput(target.target_time_ms, fmt) : "",
-      gearId: target.gear_setup_id ?? "",
-    })),
+    legacyTargets: plan.workout ? [] : plan.targets,
+    steps: plan.workout ? draftNodes(plan.workout, fmt) : null,
+    sourceWorkoutId: plan.source_workout_id,
   };
 }
 
-/** Changing a block's event keeps its start when the event has it, and clears the start and time when the event goes. */
-export function withRowEvent(row: EffortRow, eventKey: "" | StandardEventKey): EffortRow {
-  if (eventKey === "") return { ...row, eventKey, startType: "", time: "" };
-  const allowed = EVENT_START_TYPES[eventKey];
-  return { ...row, eventKey, startType: row.startType && allowed.includes(row.startType) ? row.startType : "" };
+/** The form with a library workout's steps; its name and description fill a blank title and description. */
+export function withLibraryWorkout(form: PlanForm, workout: Pick<Workout, "id" | "name" | "description" | "steps">, fmt: Fmt): PlanForm {
+  return {
+    ...form,
+    title: form.title.trim() === "" ? workout.name : form.title,
+    description: form.description.trim() === "" ? (workout.description ?? "") : form.description,
+    legacyTargets: [],
+    steps: draftNodes(workout.steps, fmt),
+    sourceWorkoutId: workout.id,
+  };
+}
+
+/**
+ * An older plan's efforts as workout steps: each one a work step ending on its
+ * event's distance (or the lap button without an event), in a repeat when it
+ * has several reps. A saved gear becomes its teeth.
+ */
+export function targetsToSteps(targets: PlannedEffort[], gears: Pick<Gear, "id" | "chainring_teeth" | "cog_teeth">[], fmt: Fmt): DraftNode[] {
+  return targets.map((target) => {
+    const gear = gears.find((g) => g.id === target.gear_setup_id);
+    const step: DraftStep = {
+      ...newStep("work", ""),
+      label: target.label,
+      lengthMode: "open",
+      eventKey: (STANDARD_EVENT_KEYS as readonly string[]).includes(target.event_key ?? "") ? (target.event_key as StandardEventKey) : "",
+      startType: target.event_key ? (target.start_type ?? "") : "",
+      targetTime: target.event_key && target.target_time_ms != null ? timeToInput(target.target_time_ms, fmt) : "",
+      chainring: gear ? String(gear.chainring_teeth) : "",
+      cog: gear ? String(gear.cog_teeth) : "",
+    };
+    if (target.reps < 2) return step;
+    const block: DraftRepeat = { ...newRepeat(), count: String(target.reps), steps: [step] };
+    return block;
+  });
+}
+
+/** The plan's matched gears by `gearKey`, for `WorkoutSteps`. */
+export function workoutGearLabels(plan: Pick<PlannedSession, "workout_gears">): Record<string, string> {
+  return Object.fromEntries(plan.workout_gears.map((gear) => [gearKey(gear.chainring_teeth, gear.cog_teeth), gear.label]));
 }
 
 export function planFormErrors(form: PlanForm): PlanFormErrors {
-  const errors: PlanFormErrors = { targets: {} };
+  const errors: PlanFormErrors = { nodes: {} };
   if (form.title.trim() === "") errors.title = true;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) errors.date = true;
-  form.targets.forEach((row, index) => {
-    const reps = Number(row.reps);
-    if (row.label.trim() === "") errors.targets[index] = "label";
-    else if (!Number.isInteger(reps) || reps < 1 || reps > 99) errors.targets[index] = "reps";
-    else if (row.time.trim() !== "" && (row.eventKey === "" || parseTimeInput(row.time) == null)) errors.targets[index] = "time";
-  });
+  if (form.steps != null) {
+    const workout = draftErrors(asDraft(form.steps));
+    if (workout.steps) errors.steps = workout.steps;
+    errors.nodes = workout.nodes;
+  }
   return errors;
 }
 
 export function hasPlanErrors(errors: PlanFormErrors): boolean {
-  return errors.title === true || errors.date === true || Object.keys(errors.targets).length > 0;
+  return errors.title === true || errors.date === true || errors.steps != null || Object.keys(errors.nodes).length > 0;
+}
+
+/** The steps as the estimate takes them; null while there are none or they'd be refused. */
+export function planSteps(form: PlanForm): WorkoutItem[] | null {
+  return form.steps == null ? null : draftSteps(asDraft(form.steps));
 }
 
 export function planPayload(form: PlanForm): PlannedSessionWrite | null {
   if (hasPlanErrors(planFormErrors(form))) return null;
+  const workout = planSteps(form);
   return {
     planned_date: form.date,
     title: form.title.trim(),
     description: form.description.trim() || null,
-    targets: form.targets.map(
-      (row): PlannedEffort => ({
-        label: row.label.trim(),
-        reps: Number(row.reps),
-        event_key: row.eventKey || null,
-        start_type: row.eventKey ? row.startType || null : null,
-        target_time_ms: row.eventKey && row.time.trim() !== "" ? parseTimeInput(row.time) : null,
-        gear_setup_id: row.gearId || null,
-      }),
-    ),
+    // The server sends gear labels back; it doesn't take them.
+    targets: workout ? [] : form.legacyTargets.map(({ gear_label: _label, ...target }) => target),
+    workout,
+    source_workout_id: workout ? form.sourceWorkoutId : null,
   };
 }
 

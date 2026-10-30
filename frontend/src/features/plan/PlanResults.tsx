@@ -31,8 +31,7 @@ export function PlanResults({ athleteId, planId, eventId }: { athleteId: string;
         {reps.map((rep) => (
           <li key={`${rep.target_index}-${rep.rep}`} className="plan-results__row">
             <span className="plan-results__what">
-              {rep.label}
-              {rep.event_key && ` · ${tr(`events.${rep.event_key as StandardEventKey}`)}`}
+              {[rep.label, rep.event_key ? tr(`events.${rep.event_key as StandardEventKey}`) : null].filter(Boolean).join(" · ")}
               {reps.filter((other) => other.target_index === rep.target_index).length > 1 && ` (${rep.rep})`}
             </span>
             <span className="plan-results__figures">

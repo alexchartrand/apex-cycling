@@ -7,9 +7,11 @@ something commit.
 import uuid
 from datetime import date
 
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.activities.metrics_service import _ftp_on, _metric_rows
 from app.athletes.coaching import speaks_for_athlete
 from app.athletes.models import Athlete
 from app.auth.models import User
@@ -25,8 +27,14 @@ from app.planning.schemas import (
     PlannedSessionRead,
     PlannedSessionUpdate,
     PlannedSessionWrite,
+    PlanWorkoutGear,
 )
 from app.training.models import TrainingEvent
+from app.workouts import structure
+from app.workouts.schemas import WorkoutItem
+from app.workouts.service import visible_workout_ids
+
+_ITEMS = TypeAdapter(list[WorkoutItem])
 
 
 class NotAllowed(Exception):
@@ -37,14 +45,46 @@ class UnknownGear(Exception):
     """A planned effort names a gear that isn't one of this athlete's."""
 
 
-async def _gear_labels(db: AsyncSession, athlete_id: uuid.UUID) -> dict[uuid.UUID, str]:
-    """The athlete's gears as riders say them: "Track bike · 50×15"."""
+class UnknownWorkout(Exception):
+    """The plan names a library workout the viewer can't see."""
+
+
+async def _gears(db: AsyncSession, athlete_id: uuid.UUID) -> list[PlanWorkoutGear]:
+    """The athlete's gears as riders say them ("Track bike · 50×15"), by bike name."""
     rows = await db.execute(
         select(GearSetup.id, Bike.name, GearSetup.chainring_teeth, GearSetup.cog_teeth)
         .join(Bike, Bike.id == GearSetup.bike_id)
         .where(GearSetup.athlete_id == athlete_id)
+        .order_by(Bike.name, GearSetup.chainring_teeth, GearSetup.cog_teeth)
     )
-    return {gear_id: f"{bike} · {ring}×{cog}" for gear_id, bike, ring, cog in rows.all()}
+    return [
+        PlanWorkoutGear(chainring_teeth=ring, cog_teeth=cog, gear_setup_id=gear_id, label=f"{bike} · {ring}×{cog}")
+        for gear_id, bike, ring, cog in rows.all()
+    ]
+
+
+async def _gear_labels(db: AsyncSession, athlete_id: uuid.UUID) -> dict[uuid.UUID, str]:
+    return {gear.gear_setup_id: gear.label for gear in await _gears(db, athlete_id)}
+
+
+def _workout_gears(items: list, gears: list[PlanWorkoutGear]) -> list[PlanWorkoutGear]:
+    """For each ratio the workout asks for, the athlete's first gear with
+    those teeth (several bikes may have one; ratios they lack are left out)."""
+    wanted = {(s.gear.chainring_teeth, s.gear.cog_teeth) for s in structure.expand(items) if s.gear is not None}
+    matched: dict[tuple[int, int], PlanWorkoutGear] = {}
+    for gear in gears:
+        matched.setdefault((gear.chainring_teeth, gear.cog_teeth), gear)
+    return [matched[teeth] for teeth in sorted(wanted) if teeth in matched]
+
+
+async def _check_source(db: AsyncSession, viewer: User, workout_id: uuid.UUID | None) -> None:
+    """Raises `UnknownWorkout`."""
+    if workout_id is not None and not await visible_workout_ids(db, viewer, {workout_id}):
+        raise UnknownWorkout
+
+
+def _stored_workout(items: list | None) -> list[dict] | None:
+    return None if items is None else _ITEMS.dump_python(items, mode="json", exclude_none=True)
 
 
 async def _stored_targets(db: AsyncSession, athlete: Athlete, targets: list[PlannedEffort]) -> list[dict]:
@@ -73,10 +113,15 @@ async def _reads(
     )
     event_ids = {p.training_event_id for p in plans if p.training_event_id}
     events = {e.id: e for e in await db.scalars(select(TrainingEvent).where(TrainingEvent.id.in_(event_ids)))}
-    gear_labels = await _gear_labels(db, athlete.id)
+    gears = await _gears(db, athlete.id)
+    gear_labels = {gear.gear_setup_id: gear.label for gear in gears}
+    with_workout = [p for p in plans if p.workout]
+    metric_rows = await _metric_rows(db, athlete.id) if with_workout else []
+    sources = await visible_workout_ids(db, viewer, {p.source_workout_id for p in plans if p.source_workout_id})
     reads = []
     for plan in plans:
         event = events.get(plan.training_event_id) if plan.training_event_id else None
+        workout = _ITEMS.validate_python(plan.workout) if plan.workout else None
         reads.append(
             PlannedSessionRead(
                 id=plan.id,
@@ -84,6 +129,12 @@ async def _reads(
                 title=plan.title,
                 description=plan.description,
                 targets=[_target_read(t, gear_labels) for t in plan.targets or []],
+                workout=workout,
+                workout_estimate=structure.estimate(workout, ftp_w=_ftp_on(metric_rows, plan.planned_date))
+                if workout
+                else None,
+                workout_gears=_workout_gears(workout, gears) if workout else [],
+                source_workout_id=plan.source_workout_id if plan.source_workout_id in sources else None,
                 status=PlanStatus(plan.status),
                 created_by_name=names.get(plan.created_by_user_id),
                 session=LinkedSession(
@@ -132,7 +183,9 @@ async def _read_one(db: AsyncSession, athlete: Athlete, viewer: User, plan: Plan
 async def create_plan(
     db: AsyncSession, athlete: Athlete, viewer: User, payload: PlannedSessionWrite
 ) -> PlannedSessionRead:
-    """Raises `UnknownGear` for another athlete's gear."""
+    """Raises `UnknownGear` for another athlete's gear, `UnknownWorkout` for
+    a library workout the viewer can't see."""
+    await _check_source(db, viewer, payload.source_workout_id)
     plan = PlannedSession(
         athlete_id=athlete.id,
         created_by_user_id=viewer.id,
@@ -140,6 +193,8 @@ async def create_plan(
         title=payload.title,
         description=payload.description,
         targets=await _stored_targets(db, athlete, payload.targets),
+        workout=_stored_workout(payload.workout),
+        source_workout_id=payload.source_workout_id if payload.workout else None,
     )
     db.add(plan)
     await notify_plan_added(db, athlete, viewer, payload.title, payload.planned_date)
@@ -151,7 +206,7 @@ async def update_plan(
     db: AsyncSession, athlete: Athlete, viewer: User, plan_id: uuid.UUID, payload: PlannedSessionUpdate
 ) -> PlannedSessionRead | None:
     """Raises `NotAllowed` when the viewer may not make one of the changes,
-    `UnknownGear` for another athlete's gear."""
+    `UnknownGear` for another athlete's gear, `UnknownWorkout`."""
     plan = await _own(db, athlete, plan_id)
     if plan is None:
         return None
@@ -164,6 +219,12 @@ async def update_plan(
         raise NotAllowed
     if "targets" in changes:
         changes["targets"] = await _stored_targets(db, athlete, payload.targets or [])
+    if "source_workout_id" in changes:
+        await _check_source(db, viewer, payload.source_workout_id)
+    if "workout" in changes:
+        changes["workout"] = _stored_workout(payload.workout)
+        if payload.workout is None:
+            changes["source_workout_id"] = None  # nothing copied from it any more
     for field, value in changes.items():
         setattr(plan, field, value)
     if new_status is not None:

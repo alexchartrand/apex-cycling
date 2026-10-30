@@ -121,3 +121,11 @@ export function isRepeat(item: WorkoutItem | InnerRepeat | WorkoutStep): item is
 export function hasWattTargets(items: (WorkoutItem | InnerRepeat)[]): boolean {
   return items.some((item) => (isRepeat(item) ? hasWattTargets(item.steps) : item.power?.unit === "watts"));
 }
+
+/** A step with a standard event: something the timing can score once the session is linked. */
+export function hasTrackEvents(items: (WorkoutItem | InnerRepeat)[]): boolean {
+  return items.some((item) => (isRepeat(item) ? hasTrackEvents(item.steps) : item.event_key != null));
+}
+
+/** "50×15": how a gear is written, and the key a plan's matched gear labels use. */
+export const gearKey = (chainring: number, cog: number) => `${chainring}×${cog}`;

@@ -11,6 +11,7 @@ export default {
   sourceBy: "Coach: {{name}}",
   tssValue: "{{value}} TSS",
   duplicate: "Duplicate",
+  schedule: "Schedule",
   duplicated: "Copied to your workouts",
   saved: "Workout saved",
   profile: "Profile",

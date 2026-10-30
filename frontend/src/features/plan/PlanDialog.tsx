@@ -1,31 +1,83 @@
-import { Plus, Trash2 } from "lucide-react";
+import { ListPlus, Wand2, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { errorMessage } from "../../api/errors";
-import { Button, Dialog, IconButton, Input, Select, Textarea, useToast } from "../../components/ui";
+import { Button, Dialog, Input, Select, Textarea, useToast } from "../../components/ui";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { useFormat } from "../../i18n/useFormat";
-import { gearChoices } from "../equipment/gear";
 import { useBikes } from "../equipment/useEquipment";
-import { EVENT_START_TYPES, STANDARD_EVENT_KEYS, type StandardEventKey } from "../records/types";
-import { emptyEffortRow, emptyPlanForm, planFormErrors, planFormFrom, planPayload, withRowEvent, type EffortRow, type PlanForm } from "./planForm";
+import { formatRecordTime } from "../records/timeInput";
+import { getWorkout } from "../workouts/api";
+import { IntensityChart } from "../workouts/IntensityChart";
+import { hasWattTargets, type Workout, type WorkoutSource } from "../workouts/types";
+import { useEstimateFtp, useWorkoutEstimate, useWorkouts } from "../workouts/useWorkouts";
+import { WorkoutEditor } from "../workouts/WorkoutEditor";
+import { emptyDraft, LIMITS } from "../workouts/workoutDraft";
+import { WorkoutTotals } from "../workouts/WorkoutTotals";
+import { effortText, emptyPlanForm, planFormErrors, planFormFrom, planPayload, planSteps, targetsToSteps, withLibraryWorkout, type PlanForm } from "./planForm";
 import type { PlannedSession } from "./types";
 import { useSavePlan } from "./usePlan";
+import "../workouts/Workouts.css";
 import "./Plan.css";
 
-/** Plan a session on `date`, or edit `plan`. Remount it (key) per plan so its fields start fresh. */
-export function PlanDialog({ athleteId, date, plan, onClose }: { athleteId: string; date: string; plan: PlannedSession | null; onClose: () => void }) {
+const SOURCES: WorkoutSource[] = ["mine", "coach", "preset"];
+
+/**
+ * Plan a session on `date`, or edit `plan`; `workout` starts a new plan from
+ * that library workout. The plan keeps its own copy of the steps, so they can
+ * be adapted here without touching the library. Remount it (key) per plan so
+ * its fields start fresh.
+ */
+export function PlanDialog({
+  athleteId,
+  date,
+  plan,
+  workout,
+  onClose,
+}: {
+  athleteId: string;
+  date: string;
+  plan: PlannedSession | null;
+  workout?: Workout;
+  onClose: () => void;
+}) {
   const { t } = useTranslation("plan");
+  const { t: tw } = useTranslation("workouts");
   const { t: tr } = useTranslation("records");
   const { t: tc } = useTranslation("common");
   const fmt = useFormat();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const save = useSavePlan(athleteId);
-  const gears = gearChoices(useBikes(athleteId).data ?? []);
-  const [form, setForm] = useState<PlanForm>(() => (plan ? planFormFrom(plan, fmt) : emptyPlanForm(date)));
+  const bikes = useBikes(athleteId).data ?? [];
+  const library = useWorkouts({});
+  const ftp = useEstimateFtp();
+  const [form, setForm] = useState<PlanForm>(() => {
+    if (plan) return planFormFrom(plan, fmt);
+    const empty = emptyPlanForm(date);
+    return workout ? withLibraryWorkout(empty, workout, fmt) : empty;
+  });
+  const [picking, setPicking] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const errors = planFormErrors(form);
   const set = <K extends keyof PlanForm>(key: K, value: PlanForm[K]) => setForm((current) => ({ ...current, [key]: value }));
-  const setRow = (index: number, row: EffortRow) => set("targets", form.targets.map((existing, i) => (i === index ? row : existing)));
+
+  const steps = useDebouncedValue(planSteps(form), 400);
+  const estimate = useWorkoutEstimate(steps, ftp);
+
+  async function pickWorkout(workoutId: string) {
+    if (!workoutId) return;
+    setPicking(true);
+    try {
+      const picked = await queryClient.fetchQuery({ queryKey: ["workout", workoutId], queryFn: () => getWorkout(workoutId) });
+      setForm((current) => withLibraryWorkout(current, picked, fmt));
+    } catch (error) {
+      toast({ title: errorMessage(error), tone: "error" });
+    } finally {
+      setPicking(false);
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -43,9 +95,13 @@ export function PlanDialog({ athleteId, date, plan, onClose }: { athleteId: stri
     }
   }
 
+  const gears = bikes.flatMap((bike) => bike.gears);
+  const workouts = library.data ?? [];
+
   return (
     <Dialog
       open
+      size="lg"
       onOpenChange={(open) => !open && onClose()}
       title={plan ? t("dialog.editTitle") : t("dialog.addTitle")}
       footer={
@@ -68,7 +124,7 @@ export function PlanDialog({ athleteId, date, plan, onClose }: { athleteId: stri
             placeholder={t("dialog.titlePlaceholder")}
             error={showErrors && errors.title ? t("dialog.titleRequired") : undefined}
             onChange={(e) => set("title", e.target.value)}
-            autoFocus={!plan}
+            autoFocus={!plan && !workout}
           />
           <Input
             label={t("dialog.date")}
@@ -81,87 +137,83 @@ export function PlanDialog({ athleteId, date, plan, onClose }: { athleteId: stri
         </div>
         <Textarea label={t("dialog.description")} rows={3} maxLength={5000} value={form.description} onChange={(e) => set("description", e.target.value)} />
 
-        <fieldset className="plan-form__targets">
-          <legend>{t("dialog.targets")}</legend>
-          <p className="plan-form__hint">{t("dialog.targetsHint")}</p>
-          {form.targets.map((row, index) => {
-            const problem = showErrors ? errors.targets[index] : undefined;
-            return (
-              <div key={index} className="plan-form__target">
-                <Input
-                  label={t("dialog.label")}
-                  value={row.label}
-                  maxLength={100}
-                  placeholder={t("dialog.labelPlaceholder")}
-                  error={problem === "label" ? t("dialog.labelRequired") : undefined}
-                  onChange={(e) => setRow(index, { ...row, label: e.target.value })}
-                />
-                <Input
-                  label={t("dialog.reps")}
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={99}
-                  value={row.reps}
-                  error={problem === "reps" ? t("dialog.repsInvalid") : undefined}
-                  onChange={(e) => setRow(index, { ...row, reps: e.target.value })}
-                />
-                <Select label={t("dialog.event")} value={row.eventKey} onChange={(e) => setRow(index, withRowEvent(row, e.target.value as "" | StandardEventKey))}>
-                  <option value="">{t("dialog.noEvent")}</option>
-                  {STANDARD_EVENT_KEYS.map((key) => (
-                    <option key={key} value={key}>
-                      {tr(`events.${key}`)}
-                    </option>
-                  ))}
-                </Select>
-                <Select
-                  label={t("dialog.start")}
-                  value={row.startType}
-                  disabled={row.eventKey === ""}
-                  onChange={(e) => setRow(index, { ...row, startType: e.target.value as EffortRow["startType"] })}
-                >
-                  <option value="">{t("dialog.anyStart")}</option>
-                  {(row.eventKey ? EVENT_START_TYPES[row.eventKey] : []).map((start) => (
-                    <option key={start} value={start}>
-                      {tr(`startTypes.${start}`)}
-                    </option>
-                  ))}
-                </Select>
-                <Input
-                  label={t("dialog.time")}
-                  value={row.time}
-                  inputMode="decimal"
-                  autoComplete="off"
-                  disabled={row.eventKey === ""}
-                  placeholder="34.0"
-                  error={problem === "time" ? t("dialog.timeInvalid") : undefined}
-                  onChange={(e) => setRow(index, { ...row, time: e.target.value })}
-                />
-                {gears.length > 0 && (
-                  <div className="plan-form__gear">
-                    <Select label={t("dialog.gear")} value={row.gearId} onChange={(e) => setRow(index, { ...row, gearId: e.target.value })}>
-                      <option value="">{t("dialog.anyGear")}</option>
-                      {gears.map((gear) => (
-                        <option key={gear.id} value={gear.id}>
-                          {gear.label}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                )}
-                <IconButton
-                  aria-label={t("dialog.removeBlock", { n: index + 1 })}
-                  className="plan-form__remove"
-                  onClick={() => set("targets", form.targets.filter((_, i) => i !== index))}
-                >
-                  <Trash2 aria-hidden />
-                </IconButton>
-              </div>
-            );
-          })}
-          <Button size="sm" variant="secondary" icon={<Plus aria-hidden />} onClick={() => set("targets", [...form.targets, emptyEffortRow()])} disabled={form.targets.length >= 30}>
-            {t("dialog.addBlock")}
-          </Button>
+        <fieldset className="plan-form__workout">
+          <legend>{t("dialog.workout")}</legend>
+          <div className="plan-form__library">
+            <Select
+              label={form.steps ? t("dialog.replaceFromLibrary") : t("dialog.fromLibrary")}
+              value=""
+              disabled={picking || library.isLoading}
+              onChange={(e) => void pickWorkout(e.target.value)}
+            >
+              <option value="">{t("dialog.pickWorkout")}</option>
+              {SOURCES.map((source) => {
+                const ofSource = workouts.filter((w) => w.source === source);
+                return ofSource.length === 0 ? null : (
+                  <optgroup key={source} label={tw(`sources.${source}`)}>
+                    {ofSource.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.source === "coach" && w.owner_name ? `${w.name} (${w.owner_name})` : w.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
+            </Select>
+            {form.steps == null && form.legacyTargets.length === 0 && (
+              <Button size="sm" variant="secondary" icon={<ListPlus aria-hidden />} onClick={() => set("steps", emptyDraft().steps)}>
+                {t("dialog.buildSteps")}
+              </Button>
+            )}
+            {form.steps != null && (
+              <Button size="sm" variant="ghost" icon={<X aria-hidden />} onClick={() => setForm((current) => ({ ...current, steps: null, sourceWorkoutId: null }))}>
+                {t("dialog.removeWorkout")}
+              </Button>
+            )}
+          </div>
+          <p className="plan-form__hint">{form.steps && form.sourceWorkoutId ? t("dialog.copiedHint") : t("dialog.workoutHint")}</p>
+
+          {form.steps == null && form.legacyTargets.length > 0 && (
+            <div className="plan-form__legacy">
+              <p className="plan-form__hint">{t("dialog.legacyHint")}</p>
+              <ul className="plan-detail__targets" aria-label={t("detail.targets")}>
+                {form.legacyTargets.map((target, index) => (
+                  <li key={index}>
+                    {effortText(target, {
+                      reps: (n, label) => t("detail.reps", { n, label }),
+                      event: (key) => tr(`events.${key}`),
+                      time: (ms) => formatRecordTime(ms, fmt),
+                    })}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={<Wand2 aria-hidden />}
+                onClick={() => setForm((current) => ({ ...current, steps: targetsToSteps(current.legacyTargets, gears, fmt), legacyTargets: [] }))}
+              >
+                {t("dialog.convertTargets")}
+              </Button>
+            </div>
+          )}
+
+          {form.steps != null && (
+            <div className="plan-form__editor">
+              {showErrors && errors.steps && (
+                <p className="workout-editor__error" role="alert">
+                  {tw(`form.steps.${errors.steps}`, { max: LIMITS.structureSize })}
+                </p>
+              )}
+              <WorkoutEditor steps={form.steps} onChange={(next) => set("steps", next)} errors={showErrors ? errors.nodes : null} />
+              {estimate.data && (
+                <div className="plan-form__preview">
+                  <WorkoutTotals estimate={estimate.data} wattsWithoutFtp={ftp == null && steps != null && hasWattTargets(steps)} />
+                  <IntensityChart segments={estimate.data.segments} />
+                </div>
+              )}
+            </div>
+          )}
         </fieldset>
 
         {save.isError && (

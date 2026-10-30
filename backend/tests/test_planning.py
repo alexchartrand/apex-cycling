@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from app.auth.models import User
 from app.planning.models import PlannedSession
+from app.workouts.presets import presets
 from tests.test_account import PASSWORD, _other_client, _rows_referencing, _signup
 from tests.test_activity_fusion import _coach_of
 from tests.test_aero_api import _setup
@@ -236,3 +237,116 @@ async def test_export_and_account_deletion_cover_plans(client, db_session):
     assert (await client.post("/auth/delete-account", json={"password": PASSWORD})).status_code == 204
     async with db_session() as session:
         assert await _rows_referencing(session, user_id, uuid.UUID(athlete_id)) == []
+
+
+# --- scheduling a workout --------------------------------------------------------
+
+STEPS = [
+    {"kind": "warmup", "duration_s": 600, "power": {"unit": "ftp_pct", "low": 60}},
+    {"label": "Flying 200", "event_key": "f200", "gear": {"chainring_teeth": 50, "cog_teeth": 15}},
+    {"kind": "work", "duration_s": 600, "power": {"unit": "watts", "low": 300}},
+]
+
+
+async def test_scheduling_a_workout_keeps_a_copy(client, db_session):
+    athlete_id = await _setup(client, db_session, upload=False)
+    url = f"/athletes/{athlete_id}/planned-sessions"
+    workout = (await client.post("/workouts", json={"name": "Openers", "steps": STEPS})).json()
+
+    created = await client.post(url, json=_plan(targets=[], workout=STEPS, source_workout_id=workout["id"]))
+    assert created.status_code == 201, created.text
+    plan = created.json()
+    assert plan["source_workout_id"] == workout["id"]
+    assert [s["label"] for s in plan["workout"]] == [None, "Flying 200", None]
+    estimate = plan["workout_estimate"]
+    assert estimate["duration_s"] > 1200 and len(estimate["segments"]) == 3
+    # No FTP yet: the watt step counts as unrated.
+    assert estimate["unrated_s"] > 600
+
+    # Editing the library workout never rewrites the plan.
+    await client.patch(f"/workouts/{workout['id']}", json={"steps": [{"duration_s": 60}]})
+    assert (await client.get(url)).json()[0]["workout"] == plan["workout"]
+
+    # The plan's own copy can be adapted, or dropped (and its source with it).
+    edited = (await client.patch(f"{url}/{plan['id']}", json={"workout": STEPS[:1]})).json()
+    assert len(edited["workout"]) == 1 and edited["source_workout_id"] == workout["id"]
+    cleared = (await client.patch(f"{url}/{plan['id']}", json={"workout": None})).json()
+    assert cleared["workout"] is None and cleared["workout_estimate"] is None and cleared["source_workout_id"] is None
+
+    # A deleted library workout stops being offered as the source.
+    again = (await client.post(url, json=_plan(targets=[], workout=STEPS, source_workout_id=workout["id"]))).json()
+    await client.delete(f"/workouts/{workout['id']}")
+    assert next(p for p in (await client.get(url)).json() if p["id"] == again["id"])["source_workout_id"] is None
+    async with db_session() as session:
+        assert (await session.get(PlannedSession, uuid.UUID(again["id"]))).source_workout_id is None
+
+
+async def test_the_estimate_uses_the_ftp_on_the_planned_day(client, db_session):
+    athlete_id = await _setup(client, db_session, upload=False)
+    url = f"/athletes/{athlete_id}/planned-sessions"
+    await client.post(f"/athletes/{athlete_id}/metrics", json={"effective_date": "2026-01-01", "ftp_w": 300})
+    plan = (await client.post(url, json=_plan(targets=[], workout=STEPS[2:]))).json()
+    # 10 min at 300 W on a 300 W FTP: IF 1, TSS 100/6.
+    assert plan["workout_estimate"]["unrated_s"] == 0
+    assert plan["workout_estimate"]["tss"] == round(100 / 6, 1)
+
+
+async def test_a_workout_gear_is_matched_to_the_athletes_bikes(client, db_session):
+    athlete_id = await _setup(client, db_session, upload=False)
+    url = f"/athletes/{athlete_id}/planned-sessions"
+    plan = (await client.post(url, json=_plan(targets=[], workout=STEPS))).json()
+    assert plan["workout_gears"] == []  # no bike with that gear yet
+
+    bike = (await client.post(f"/athletes/{athlete_id}/bikes", json={"name": "Track bike"})).json()
+    gear = (
+        await client.post(
+            f"/athletes/{athlete_id}/bikes/{bike['id']}/gears",
+            json={"chainring_teeth": 50, "cog_teeth": 15, "rollout_mm": 2100},
+        )
+    ).json()
+    await client.post(
+        f"/athletes/{athlete_id}/bikes/{bike['id']}/gears",
+        json={"chainring_teeth": 48, "cog_teeth": 15, "rollout_mm": 2100},
+    )
+    assert (await client.get(url)).json()[0]["workout_gears"] == [
+        {"chainring_teeth": 50, "cog_teeth": 15, "gear_setup_id": gear["id"], "label": "Track bike · 50×15"}
+    ]
+
+
+async def test_a_plan_names_only_a_workout_the_planner_can_see(client, db_session):
+    athlete_id = await _setup(client, db_session, upload=False)
+    url = f"/athletes/{athlete_id}/planned-sessions"
+    async with _other_client() as stranger:
+        await _signup(stranger, "stranger@example.com")
+        theirs = (await stranger.post("/workouts", json={"name": "Secret", "steps": STEPS})).json()
+    body = _plan(targets=[], workout=STEPS, source_workout_id=theirs["id"])
+    assert (await client.post(url, json=body)).status_code == 404
+    plan = (await client.post(url, json=_plan(targets=[], workout=STEPS))).json()
+    assert (await client.patch(f"{url}/{plan['id']}", json={"source_workout_id": theirs["id"]})).status_code == 404
+
+    # A preset is everyone's.
+    preset_id = str(next(iter(presets())))
+    ok = await client.post(url, json=_plan(targets=[], workout=STEPS, source_workout_id=preset_id))
+    assert ok.status_code == 201 and ok.json()["source_workout_id"] == preset_id
+
+    # The steps are checked like a library workout's.
+    assert (await client.post(url, json=_plan(workout=[]))).status_code == 422
+    assert (await client.post(url, json=_plan(workout=[{"duration_s": 60, "laps": 2}]))).status_code == 422
+
+
+async def test_the_coach_schedules_from_their_library(client, db_session):
+    athlete_id = await _setup(client, db_session, upload=False)
+    url = f"/athletes/{athlete_id}/planned-sessions"
+    async with _coach_of(db_session, athlete_id) as coach:
+        workout = (await coach.post("/workouts", json={"name": "Coach openers", "steps": STEPS})).json()
+        created = await coach.post(url, json=_plan(targets=[], workout=STEPS, source_workout_id=workout["id"]))
+        assert created.status_code == 201, created.text
+        # The athlete sees the coach's library, so the source stays linked for them too.
+        assert (await client.get(url)).json()[0]["source_workout_id"] == workout["id"]
+        assert (await coach.post("/auth/delete-account", json={"password": PASSWORD})).status_code == 204
+
+    # The coach is gone with their library; the athlete keeps the copy.
+    kept = (await client.get(url)).json()[0]
+    assert kept["workout"] is not None and kept["source_workout_id"] is None
+    async with db_session() as session:
+        assert (await session.get(PlannedSession, uuid.UUID(kept["id"]))).source_workout_id is None

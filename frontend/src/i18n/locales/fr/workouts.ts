@@ -14,6 +14,7 @@ export default {
   sourceBy: "Entraîneur : {{name}}",
   tssValue: "{{value}} TSS",
   duplicate: "Dupliquer",
+  schedule: "Planifier",
   duplicated: "Copié dans vos entraînements",
   saved: "Entraînement enregistré",
   profile: "Profil",

@@ -8,12 +8,13 @@ those that change something commit.
 import uuid
 
 from pydantic import TypeAdapter
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.athletes.coaching import self_athlete
 from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus
 from app.auth.models import User
+from app.planning.models import PlannedSession
 from app.workouts import structure
 from app.workouts.models import Workout
 from app.workouts.presets import Preset, presets
@@ -46,6 +47,19 @@ async def visible_owner_ids(db: AsyncSession, viewer: User) -> set[uuid.UUID]:
             )
         )
     return owners
+
+
+async def visible_workout_ids(db: AsyncSession, viewer: User, workout_ids: set[uuid.UUID]) -> set[uuid.UUID]:
+    """Those of `workout_ids` the viewer can open: presets, and workouts
+    that still exist in a library they see."""
+    found = workout_ids & set(presets())
+    rest = workout_ids - found
+    if rest:
+        owners = await visible_owner_ids(db, viewer)
+        found |= set(
+            await db.scalars(select(Workout.id).where(Workout.id.in_(rest), Workout.owner_user_id.in_(owners)))
+        )
+    return found
 
 
 async def _owner_names(db: AsyncSession, owner_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
@@ -227,6 +241,10 @@ async def delete_workout(db: AsyncSession, viewer: User, workout_id: uuid.UUID) 
         return False
     if workout.owner_user_id != viewer.id:
         raise NotAllowed
+    # Plans keep their copy of the steps; only the pointer back goes.
+    await db.execute(
+        update(PlannedSession).where(PlannedSession.source_workout_id == workout.id).values(source_workout_id=None)
+    )
     await db.delete(workout)
     await db.commit()
     return True

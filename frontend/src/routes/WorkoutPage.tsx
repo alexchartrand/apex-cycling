@@ -1,9 +1,12 @@
-import { Copy, Pencil, Trash2 } from "lucide-react";
+import { CalendarPlus, Copy, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { errorMessage } from "../api/errors";
 import { Badge, Button, ButtonLink, Card, ConfirmDialog, EmptyState, PageHeader, Skeleton, useToast } from "../components/ui";
+import { localIsoDate } from "../i18n/format";
+import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
+import { PlanDialog } from "../features/plan/PlanDialog";
 import { IntensityChart } from "../features/workouts/IntensityChart";
 import { WorkoutSteps } from "../features/workouts/WorkoutSteps";
 import { hasWattTargets } from "../features/workouts/types";
@@ -24,6 +27,8 @@ export function WorkoutPage() {
   const duplicate = useDuplicateWorkout();
   const remove = useDeleteWorkout();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
+  const athleteId = useActiveAthlete().data?.id;
   const back = { to: "/workouts", label: t("title") };
 
   if (!workout.data) {
@@ -55,6 +60,11 @@ export function WorkoutPage() {
         eyebrow={data.source === "coach" && data.owner_name ? t("sourceBy", { name: data.owner_name }) : t(`sources.${data.source}`)}
         actions={
           <>
+            {athleteId && (
+              <Button icon={<CalendarPlus aria-hidden />} onClick={() => setScheduling(true)}>
+                {t("schedule")}
+              </Button>
+            )}
             <Button variant="secondary" icon={<Copy aria-hidden />} loading={duplicate.isPending} onClick={handleDuplicate}>
               {t("duplicate")}
             </Button>
@@ -93,6 +103,7 @@ export function WorkoutPage() {
           <WorkoutSteps steps={data.steps} />
         </Card>
       </div>
+      {scheduling && athleteId && <PlanDialog key="schedule" athleteId={athleteId} date={localIsoDate()} plan={null} workout={data} onClose={() => setScheduling(false)} />}
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}

@@ -77,6 +77,24 @@ li:first-child > .plan-list__row {
   white-space: pre-wrap;
 }
 
+.plan-detail__workout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.plan-detail__source {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.plan-detail__source svg {
+  width: 1em;
+  height: 1em;
+}
+
 .plan-detail__targets {
   margin: 0;
   padding-left: var(--space-5);
@@ -136,7 +154,7 @@ li:first-child > .plan-list__row {
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
 }
 
-.plan-form__targets {
+.plan-form__workout {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -146,7 +164,7 @@ li:first-child > .plan-list__row {
   min-width: 0;
 }
 
-.plan-form__targets legend {
+.plan-form__workout legend {
   padding: 0;
   font-weight: 600;
 }
@@ -157,25 +175,33 @@ li:first-child > .plan-list__row {
   color: var(--color-text-2);
 }
 
-.plan-form__target {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) 5rem minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1fr) auto;
+.plan-form__library {
+  display: flex;
+  flex-wrap: wrap;
   align-items: end;
   gap: var(--space-2);
+}
+
+.plan-form__library > :first-child {
+  flex: 1 1 16rem;
+}
+
+.plan-form__legacy,
+.plan-form__editor {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.plan-form__editor {
+  align-items: stretch;
+}
+
+.plan-form__preview {
   padding: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-}
-
-.plan-form__remove {
-  /* Stays at the end of the first line when the gear wraps to a second one. */
-  grid-row: 1;
-  grid-column: -2;
-  margin-bottom: 2px;
-}
-
-.plan-form__gear {
-  grid-column: span 2;
 }
 
 .plan-form__error {
@@ -187,19 +213,6 @@ li:first-child > .plan-list__row {
 @media (max-width: 640px) {
   .plan-form__row--title {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .plan-form__target {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .plan-form__target > :first-child {
-    grid-column: 1 / -1;
-  }
-
-  .plan-form__remove {
-    grid-row: auto;
-    grid-column: auto;
   }
 }
 

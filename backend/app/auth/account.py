@@ -369,6 +369,12 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     await db.execute(
         update(PlannedSession).where(PlannedSession.created_by_user_id == user.id).values(created_by_user_id=None)
     )
+    # Athletes keep the plans scheduled from these workouts, minus the pointer back.
+    await db.execute(
+        update(PlannedSession)
+        .where(PlannedSession.source_workout_id.in_(select(Workout.id).where(Workout.owner_user_id == user.id)))
+        .values(source_workout_id=None)
+    )
     await db.execute(delete(Workout).where(Workout.owner_user_id == user.id))
     await db.execute(delete(Notification).where(Notification.user_id == user.id))
     await db.execute(delete(NotificationPreference).where(NotificationPreference.user_id == user.id))

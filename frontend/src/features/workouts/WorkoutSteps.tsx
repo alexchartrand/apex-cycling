@@ -3,20 +3,23 @@ import { useTranslation } from "react-i18next";
 import { useFormat } from "../../i18n/useFormat";
 import { formatRecordTime } from "../records/timeInput";
 import { clockText } from "./profile";
-import { isRepeat, type InnerRepeat, type WorkoutItem, type WorkoutStep } from "./types";
+import { gearKey, isRepeat, type InnerRepeat, type WorkoutItem, type WorkoutStep } from "./types";
+
+/** `gearKey` → the athlete's own name for that gear ("Track bike · 50×15"). */
+type GearLabels = Record<string, string>;
 
 /** The step tree as read: a line per step, repeats as indented blocks. */
-export function WorkoutSteps({ steps }: { steps: (WorkoutItem | InnerRepeat)[] }) {
+export function WorkoutSteps({ steps, gearLabels }: { steps: (WorkoutItem | InnerRepeat)[]; gearLabels?: GearLabels }) {
   return (
     <ol className="workout-steps">
       {steps.map((item, index) => (
-        <li key={index}>{isRepeat(item) ? <RepeatView block={item} /> : <StepView step={item} />}</li>
+        <li key={index}>{isRepeat(item) ? <RepeatView block={item} gearLabels={gearLabels} /> : <StepView step={item} gearLabels={gearLabels} />}</li>
       ))}
     </ol>
   );
 }
 
-function RepeatView({ block }: { block: { count: number; steps: (WorkoutStep | InnerRepeat)[] } }) {
+function RepeatView({ block, gearLabels }: { block: { count: number; steps: (WorkoutStep | InnerRepeat)[] }; gearLabels?: GearLabels }) {
   const { t } = useTranslation("workouts");
   return (
     <div className="workout-steps__repeat">
@@ -24,12 +27,12 @@ function RepeatView({ block }: { block: { count: number; steps: (WorkoutStep | I
         <Repeat aria-hidden />
         {t("steps.times", { count: block.count })}
       </span>
-      <WorkoutSteps steps={block.steps} />
+      <WorkoutSteps steps={block.steps} gearLabels={gearLabels} />
     </div>
   );
 }
 
-function StepView({ step }: { step: WorkoutStep }) {
+function StepView({ step, gearLabels }: { step: WorkoutStep; gearLabels?: GearLabels }) {
   const { t } = useTranslation("workouts");
   const { t: tr } = useTranslation("records");
   const fmt = useFormat();
@@ -54,7 +57,7 @@ function StepView({ step }: { step: WorkoutStep }) {
     step.cadence ? `${range(step.cadence.low, step.cadence.high)} ${t("units.rpm")}` : null,
     step.rpe != null ? t("steps.rpe", { value: step.rpe }) : null,
     step.target_time_ms != null ? formatRecordTime(step.target_time_ms, fmt) : null,
-    step.gear ? `${step.gear.chainring_teeth}×${step.gear.cog_teeth}` : null,
+    step.gear ? gearText(step.gear.chainring_teeth, step.gear.cog_teeth, gearLabels) : null,
   ].filter(Boolean);
 
   return (
@@ -67,4 +70,9 @@ function StepView({ step }: { step: WorkoutStep }) {
       {step.notes && <p className="workout-steps__notes">{step.notes}</p>}
     </div>
   );
+}
+
+function gearText(chainring: number, cog: number, gearLabels?: GearLabels): string {
+  const key = gearKey(chainring, cog);
+  return gearLabels?.[key] ?? key;
 }

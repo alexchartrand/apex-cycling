@@ -1,7 +1,9 @@
 """Planned vs ridden: which effort of the session answers which rep of the plan.
 
 Pure functions. A plan's targets expand into reps in the order written ("3 ×
-500 m standing" is three reps); the session's efforts are in the order ridden.
+500 m standing" is three reps), and a workout's track steps (those with a
+standard event) in the order ridden, repeats unrolled; the session's efforts
+are in the order ridden.
 Each rep takes the first effort after the one the previous rep took that has a
 result for its event and start — so a warm-up, or an effort that went wrong,
 is passed over instead of shifting every rep after it. One effort answers at
@@ -13,6 +15,8 @@ from dataclasses import dataclass
 from enum import Enum
 
 from app.training.efforts import StartType
+from app.workouts.schemas import InnerRepeat, RepeatBlock, WorkoutStep
+from app.workouts.structure import expand
 
 
 class RepStatus(str, Enum):
@@ -67,6 +71,31 @@ def expand_reps(targets: Sequence[Mapping]) -> list[Rep]:
                     target_time_ms=target.get("target_time_ms"),
                 )
             )
+    return reps
+
+
+def workout_reps(items: Sequence[WorkoutStep | RepeatBlock | InnerRepeat]) -> list[Rep]:
+    """One rep per ridden occurrence of a step with an event. `target_index`
+    numbers the distinct steps of the tree (so "4 × flying 200" is one target
+    with four reps); steps without an event aren't measured here."""
+    indexes: dict[int, int] = {}
+    counts: dict[int, int] = {}
+    reps = []
+    for step in expand(items):
+        if step.event_key is None:
+            continue
+        target_index = indexes.setdefault(id(step), len(indexes))
+        counts[target_index] = counts.get(target_index, 0) + 1
+        reps.append(
+            Rep(
+                target_index=target_index,
+                rep=counts[target_index],
+                label=step.label or "",
+                event_key=step.event_key,
+                start_type=step.start_type,
+                target_time_ms=step.target_time_ms,
+            )
+        )
     return reps
 
 

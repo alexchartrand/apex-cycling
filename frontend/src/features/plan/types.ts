@@ -1,3 +1,5 @@
+import type { WorkoutEstimate, WorkoutItem } from "../workouts/types";
+
 export type PlanStatus = "planned" | "done" | "skipped";
 
 export interface PlannedEffort {
@@ -18,12 +20,29 @@ export interface LinkedPlanSession {
   event_date: string;
 }
 
+/** A gear the workout asks for (as teeth), found among the athlete's saved gears. */
+export interface PlanWorkoutGear {
+  chainring_teeth: number;
+  cog_teeth: number;
+  gear_setup_id: string;
+  /** "Track bike · 50×15" */
+  label: string;
+}
+
 export interface PlannedSession {
   id: string;
   planned_date: string;
   title: string;
   description: string | null;
+  /** The older free-form plan; new plans carry a `workout` instead. */
   targets: PlannedEffort[];
+  /** The plan's own copy of a workout's steps, taken when it was scheduled. */
+  workout: WorkoutItem[] | null;
+  /** With the athlete's FTP on the planned date. */
+  workout_estimate: WorkoutEstimate | null;
+  workout_gears: PlanWorkoutGear[];
+  /** The library workout it was copied from, while the viewer can still open it. */
+  source_workout_id: string | null;
   status: PlanStatus;
   created_by_name: string | null;
   /** The session that was ridden, when linked. */
@@ -39,6 +58,8 @@ export interface PlannedSessionWrite {
   title: string;
   description: string | null;
   targets: PlannedEffort[];
+  workout: WorkoutItem[] | null;
+  source_workout_id: string | null;
 }
 
 export interface PlannedSessionUpdate {
@@ -46,6 +67,9 @@ export interface PlannedSessionUpdate {
   title?: string;
   description?: string | null;
   targets?: PlannedEffort[];
+  /** Null removes it, and its source with it. */
+  workout?: WorkoutItem[] | null;
+  source_workout_id?: string | null;
   status?: PlanStatus;
 }
 

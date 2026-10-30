@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { emptyEffortRow, emptyPlanForm, hasPlanErrors, linkCandidates, outstanding, planFormErrors, planFormFrom, planPayload, withRowEvent } from "./planForm";
+import type { DraftRepeat, DraftStep } from "../workouts/workoutDraft";
+import {
+  emptyPlanForm,
+  hasPlanErrors,
+  linkCandidates,
+  outstanding,
+  planFormErrors,
+  planFormFrom,
+  planPayload,
+  targetsToSteps,
+  withLibraryWorkout,
+  workoutGearLabels,
+} from "./planForm";
 import type { PlannedSession } from "./types";
 
 const plan = (over: Partial<PlannedSession> = {}): PlannedSession => ({
@@ -8,6 +20,10 @@ const plan = (over: Partial<PlannedSession> = {}): PlannedSession => ({
   title: "Kilo openers",
   description: null,
   targets: [],
+  workout: null,
+  workout_estimate: null,
+  workout_gears: [],
+  source_workout_id: null,
   status: "planned",
   created_by_name: null,
   session: null,
@@ -16,61 +32,85 @@ const plan = (over: Partial<PlannedSession> = {}): PlannedSession => ({
   ...over,
 });
 
+const fmt = { seconds: () => "", lapTime: () => "1:10.500", language: "en" as const };
+
+const STEPS = [
+  { kind: "warmup" as const, label: null, notes: null, duration_s: 600, distance_m: null, laps: null, power: null, cadence: null, rpe: 3, event_key: null, start_type: null, target_time_ms: null, gear: null },
+  {
+    type: "repeat" as const,
+    count: 3,
+    steps: [
+      { kind: "work" as const, label: "Flying", notes: null, duration_s: null, distance_m: null, laps: null, power: null, cadence: null, rpe: null, event_key: "f200" as const, start_type: "flying" as const, target_time_ms: null, gear: { chainring_teeth: 50, cog_teeth: 15 } },
+    ],
+  },
+];
+
 describe("plan form", () => {
-  it("needs a title and a date, and each block a label and sane reps", () => {
-    const form = emptyPlanForm("");
-    expect(planFormErrors(form)).toEqual({ title: true, date: true, targets: {} });
-    const ok = { ...emptyPlanForm("2026-11-10"), title: "Openers", targets: [{ ...emptyEffortRow(), label: "Tempo" }] };
+  it("needs a title and a date; a workout's steps are checked like the editor's", () => {
+    expect(planFormErrors(emptyPlanForm(""))).toEqual({ title: true, date: true, nodes: {} });
+    const ok = { ...emptyPlanForm("2026-11-10"), title: "Openers" };
     expect(hasPlanErrors(planFormErrors(ok))).toBe(false);
-    expect(planFormErrors({ ...ok, targets: [emptyEffortRow()] }).targets).toEqual({ 0: "label" });
-    expect(planFormErrors({ ...ok, targets: [{ ...emptyEffortRow(), label: "x", reps: "0" }] }).targets).toEqual({ 0: "reps" });
-    expect(planFormErrors({ ...ok, targets: [{ ...emptyEffortRow(), label: "x", reps: "2.5" }] }).targets).toEqual({ 0: "reps" });
+    expect(planFormErrors({ ...ok, steps: [] }).steps).toBe("empty");
+    const form = planFormFrom(plan({ workout: STEPS }), fmt);
+    const broken = { ...form, steps: [{ ...(form.steps![0] as DraftStep), duration: "soon" }] };
+    expect(Object.values(planFormErrors(broken).nodes)).toEqual([["duration"]]);
+    expect(planPayload(broken)).toBeNull();
   });
 
-  it("a time goes with an event and has to be readable", () => {
-    const base = { ...emptyPlanForm("2026-11-10"), title: "T" };
-    const row = { ...emptyEffortRow(), label: "x", time: "34.0" };
-    expect(planFormErrors({ ...base, targets: [row] }).targets).toEqual({ 0: "time" }); // no event
-    expect(planFormErrors({ ...base, targets: [{ ...row, eventKey: "500m" as const, time: "fast" }] }).targets).toEqual({ 0: "time" });
-    expect(planFormErrors({ ...base, targets: [{ ...row, eventKey: "500m" as const }] }).targets).toEqual({});
-  });
-
-  it("builds the payload: times in ms, blanks as null, no start without an event", () => {
-    const form = {
-      ...emptyPlanForm("2026-11-10"),
-      title: " Openers ",
-      description: "  ",
-      targets: [
-        { label: "Standing", reps: "3", eventKey: "500m" as const, startType: "standing" as const, time: "34,5", gearId: "g1" },
-        { label: "Tempo", reps: "4", eventKey: "" as const, startType: "standing" as const, time: "", gearId: "" },
-      ],
-    };
-    expect(planPayload(form)).toEqual({
+  it("a plan without a workout keeps its older efforts as they were", () => {
+    const targets = [{ label: "Kilo", reps: 2, event_key: "1km", start_type: "standing" as const, target_time_ms: 70_500, gear_setup_id: "g1", gear_label: "Track · 50×15" }];
+    const form = planFormFrom(plan({ description: "Easy", targets }), fmt);
+    expect(form).toMatchObject({ date: "2026-11-10", description: "Easy", steps: null, legacyTargets: targets });
+    expect(planPayload({ ...form, title: " Openers ", description: "  " })).toEqual({
       planned_date: "2026-11-10",
       title: "Openers",
       description: null,
-      targets: [
-        { label: "Standing", reps: 3, event_key: "500m", start_type: "standing", target_time_ms: 34_500, gear_setup_id: "g1" },
-        { label: "Tempo", reps: 4, event_key: null, start_type: null, target_time_ms: null, gear_setup_id: null },
-      ],
+      targets: [{ label: "Kilo", reps: 2, event_key: "1km", start_type: "standing", target_time_ms: 70_500, gear_setup_id: "g1" }],
+      workout: null,
+      source_workout_id: null,
     });
-    expect(planPayload(emptyPlanForm(""))).toBeNull();
   });
 
-  it("changing a block's event keeps a valid start and clears the rest when the event goes", () => {
-    const row = { ...emptyEffortRow(), eventKey: "500m" as const, startType: "standing" as const, time: "34.0" };
-    expect(withRowEvent(row, "1km")).toMatchObject({ eventKey: "1km", startType: "standing" });
-    expect(withRowEvent(row, "f200")).toMatchObject({ eventKey: "f200", startType: "" }); // flying only
-    expect(withRowEvent(row, "")).toMatchObject({ eventKey: "", startType: "", time: "" });
+  it("an edit starts from the plan's own copy of the workout and sends it back", () => {
+    const form = planFormFrom(plan({ workout: STEPS, source_workout_id: "w1" }), fmt);
+    expect(form.steps).toHaveLength(2);
+    expect(form.sourceWorkoutId).toBe("w1");
+    const payload = planPayload(form)!;
+    expect(payload.targets).toEqual([]);
+    expect(payload.source_workout_id).toBe("w1");
+    expect(payload.workout).toEqual(STEPS.map((item) => ("type" in item ? item : { ...item })));
+    // Removing the workout drops its source too.
+    expect(planPayload({ ...form, steps: null })).toMatchObject({ workout: null, source_workout_id: null });
   });
 
-  it("an edit starts from the saved plan", () => {
-    const form = planFormFrom(
-      plan({ description: "Easy", targets: [{ label: "Kilo", reps: 2, event_key: "1km", start_type: "standing", target_time_ms: 70_500, gear_setup_id: "g1" }] }),
-      { seconds: () => "", lapTime: () => "1:10.500" },
+  it("a library workout fills a blank title and description, never typed ones", () => {
+    const workout = { id: "w2", name: "Sprint openers", description: "Short and sharp", steps: STEPS };
+    const filled = withLibraryWorkout({ ...emptyPlanForm("2026-11-10"), legacyTargets: plan().targets }, workout, fmt);
+    expect(filled).toMatchObject({ title: "Sprint openers", description: "Short and sharp", sourceWorkoutId: "w2", legacyTargets: [] });
+    const kept = withLibraryWorkout({ ...emptyPlanForm("2026-11-10"), title: "Mine", description: "My notes" }, workout, fmt);
+    expect(kept).toMatchObject({ title: "Mine", description: "My notes" });
+  });
+
+  it("turns older efforts into steps: event distance, repeats for reps, gear as teeth", () => {
+    const nodes = targetsToSteps(
+      [
+        { label: "Kilo", reps: 2, event_key: "1km", start_type: "standing", target_time_ms: 70_500, gear_setup_id: "g1" },
+        { label: "Tempo", reps: 1, event_key: null, start_type: null, target_time_ms: null, gear_setup_id: null },
+      ],
+      [{ id: "g1", chainring_teeth: 50, cog_teeth: 15 }],
+      fmt,
     );
-    expect(form).toMatchObject({ date: "2026-11-10", description: "Easy" });
-    expect(form.targets).toEqual([{ label: "Kilo", reps: "2", eventKey: "1km", startType: "standing", time: "1:10.500", gearId: "g1" }]);
+    const repeat = nodes[0] as DraftRepeat;
+    expect(repeat).toMatchObject({ type: "repeat", count: "2" });
+    expect(repeat.steps[0]).toMatchObject({ label: "Kilo", lengthMode: "open", eventKey: "1km", startType: "standing", targetTime: "1:10.500", chainring: "50", cog: "15" });
+    expect(nodes[1]).toMatchObject({ type: "step", label: "Tempo", lengthMode: "open", eventKey: "", chainring: "" });
+    const payload = planPayload({ ...emptyPlanForm("2026-11-10"), title: "T", steps: nodes })!;
+    expect(payload.workout).toHaveLength(2);
+  });
+
+  it("names a workout's gears the athlete's way", () => {
+    const labels = workoutGearLabels(plan({ workout_gears: [{ chainring_teeth: 50, cog_teeth: 15, gear_setup_id: "g1", label: "Track bike · 50×15" }] }));
+    expect(labels).toEqual({ "50×15": "Track bike · 50×15" });
   });
 });
 
