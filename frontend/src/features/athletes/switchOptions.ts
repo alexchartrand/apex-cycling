@@ -1,4 +1,4 @@
-export type SwitchGroup = "me" | "coached" | "club";
+export type SwitchGroup = "me" | "club";
 
 export interface SwitchOption {
   athleteId: string;
@@ -10,8 +10,6 @@ export interface SwitchOption {
 
 interface SwitchSources {
   me: { id: string; name: string } | undefined;
-  /** Coach links; only the active ones give access. */
-  coached: { athlete_id: string; athlete_name: string; status: string }[];
   /** The rosters of the clubs the user administers. */
   rosters: { clubName: string; athletes: { id: string; display_name: string }[] }[];
 }
@@ -19,11 +17,12 @@ interface SwitchSources {
 const byName = (a: SwitchOption, b: SwitchOption) => a.name.localeCompare(b.name);
 
 /**
- * Whose data the user can switch to: themself first, then the athletes they
- * coach, then the rosters of the clubs they administer. An athlete reachable
- * several ways is listed once, under the first way.
+ * Whose data the user can switch to: themself first, then the rosters of the
+ * clubs they administer. An athlete on several rosters is listed once. The
+ * athletes a coach coaches aren't here: a coach reads them under
+ * `/coach/athletes/:id`, never as a switch.
  */
-export function buildSwitchOptions({ me, coached, rosters }: SwitchSources): SwitchOption[] {
+export function buildSwitchOptions({ me, rosters }: SwitchSources): SwitchOption[] {
   const options: SwitchOption[] = [];
   const seen = new Set<string>();
   const add = (option: SwitchOption) => {
@@ -33,11 +32,6 @@ export function buildSwitchOptions({ me, coached, rosters }: SwitchSources): Swi
   };
 
   if (me) add({ athleteId: me.id, name: me.name, group: "me" });
-  coached
-    .filter((link) => link.status === "active")
-    .map((link) => ({ athleteId: link.athlete_id, name: link.athlete_name, group: "coached" as const }))
-    .sort(byName)
-    .forEach(add);
   for (const roster of rosters) {
     roster.athletes
       .map((athlete) => ({ athleteId: athlete.id, name: athlete.display_name, group: "club" as const, clubName: roster.clubName }))

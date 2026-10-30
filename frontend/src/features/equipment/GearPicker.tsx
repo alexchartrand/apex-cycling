@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { errorMessage } from "../../api/errors";
+import { useCanEdit } from "../athletes/athleteScope";
 import { Select, useToast } from "../../components/ui";
 import { gearChoices } from "./gear";
 import type { Bike } from "./types";
@@ -29,9 +30,11 @@ export function GearPicker({
 }) {
   const { t } = useTranslation("equipment");
   const { toast } = useToast();
+  const canEdit = useCanEdit();
   const choices = gearChoices(bikes);
 
   if (choices.length === 0 && value == null) {
+    if (!canEdit) return null;
     return (
       <p className="gear-picker__empty">
         <Link to="/equipment">{t("picker.addBike")}</Link>
@@ -45,7 +48,7 @@ export function GearPicker({
         label={label}
         scale="sm"
         value={value ?? ""}
-        disabled={pending}
+        disabled={pending || !canEdit}
         error={error ? errorMessage(error) : undefined}
         onChange={(e) => {
           const next = e.target.value || null;

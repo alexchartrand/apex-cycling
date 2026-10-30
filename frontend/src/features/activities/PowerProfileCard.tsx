@@ -5,6 +5,7 @@ import { errorMessage } from "../../api/errors";
 import { Button, Card, SkeletonGroup, StatTile, useToast } from "../../components/ui";
 import { localIsoDate } from "../../i18n/format";
 import { useFormat } from "../../i18n/useFormat";
+import { useCanEdit } from "../athletes/athleteScope";
 import { useCurrentMetrics, useRecordMetrics } from "../athletes/useAthlete";
 import { durationLabel } from "./format";
 import { dismiss, fitIsTrustworthy, isDismissed, PROFILE_DAYS, suggestedFtp, wPrimeKj } from "./powerProfile";
@@ -21,13 +22,15 @@ export function PowerProfileCard({ athleteId }: { athleteId: string }) {
   const weight = useCurrentMetrics(athleteId).data?.weight_kg?.value ?? null;
   const record = useRecordMetrics(athleteId);
   const [, rerender] = useState(0);
+  // Only the athlete's side changes their FTP.
+  const canEdit = useCanEdit();
 
   if (profile.isLoading) return <SkeletonGroup lines={3} />;
   if (!profile.data) return null;
 
   const fit = profile.data.critical_power;
   const watts = suggestedFtp(profile.data);
-  const showSuggestion = watts != null && !isDismissed(athleteId, watts);
+  const showSuggestion = canEdit && watts != null && !isDismissed(athleteId, watts);
 
   async function applySuggestion() {
     if (watts == null) return;

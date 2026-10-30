@@ -34,7 +34,7 @@ export default {
     label: "Changer d'athlète",
     viewing: "Affichage",
     me: "Mes données",
-    groups: { me: "Moi", coached: "Athlètes que j'entraîne", club: "Athlètes du club" },
+    groups: { me: "Moi", club: "Athlètes du club" },
   },
   viewing: {
     banner: "Vous consultez les données de {{name}}.",

@@ -14,10 +14,12 @@ import type { TrackSummary } from "../training/types";
 import { dueState, emptyGoalForm, goalCreatePayload, goalFormErrors, goalFormFrom, goalUpdatePayload, predictedGapMs, withEvent, type GoalForm } from "./goalForm";
 import type { Goal } from "./types";
 import { useDeleteGoal, useGoals, useSaveGoal } from "./useGoals";
+import { useCanEdit } from "../athletes/athleteScope";
 import "./Goals.css";
 
 /** The athlete's goals: the best so far against each target, and the time the latest power and CdA predict. */
 export function GoalsCard({ athleteId }: { athleteId: string }) {
+  const canEdit = useCanEdit();
   const { t } = useTranslation("goals");
   const { t: tc } = useTranslation("common");
   const { toast } = useToast();
@@ -32,9 +34,11 @@ export function GoalsCard({ athleteId }: { athleteId: string }) {
     <Card
       title={t("title")}
       actions={
-        <Button size="sm" variant="secondary" icon={<Plus aria-hidden />} onClick={() => setEditing("new")}>
-          {t("add")}
-        </Button>
+        canEdit && (
+          <Button size="sm" variant="secondary" icon={<Plus aria-hidden />} onClick={() => setEditing("new")}>
+            {t("add")}
+          </Button>
+        )
       }
     >
       {goals.isLoading && <SkeletonGroup lines={3} />}
@@ -79,6 +83,7 @@ export function GoalsCard({ athleteId }: { athleteId: string }) {
 }
 
 function GoalRow({ goal, onEdit, onDelete }: { goal: Goal; onEdit: () => void; onDelete: () => void }) {
+  const canEdit = useCanEdit();
   const { t } = useTranslation("goals");
   const { t: tr } = useTranslation("records");
   const fmt = useFormat();
@@ -96,18 +101,20 @@ function GoalRow({ goal, onEdit, onDelete }: { goal: Goal; onEdit: () => void; o
             {goal.bike_name ? `${goal.track_name ?? t("anyTrack")} · ${goal.bike_name}` : (goal.track_name ?? t("anyTrack"))}
           </span>
         </div>
-        <span className="goals__actions">
-          <Tooltip content={t("edit")}>
-            <IconButton size="sm" aria-label={`${t("edit")} — ${title}`} onClick={onEdit}>
-              <Pencil aria-hidden />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content={t("remove")}>
-            <IconButton size="sm" aria-label={`${t("remove")} — ${title}`} onClick={onDelete}>
-              <Trash2 aria-hidden />
-            </IconButton>
-          </Tooltip>
-        </span>
+        {canEdit && (
+          <span className="goals__actions">
+            <Tooltip content={t("edit")}>
+              <IconButton size="sm" aria-label={`${t("edit")} — ${title}`} onClick={onEdit}>
+                <Pencil aria-hidden />
+              </IconButton>
+            </Tooltip>
+            <Tooltip content={t("remove")}>
+              <IconButton size="sm" aria-label={`${t("remove")} — ${title}`} onClick={onDelete}>
+                <Trash2 aria-hidden />
+              </IconButton>
+            </Tooltip>
+          </span>
+        )}
       </div>
 
       <div className="goals__numbers">

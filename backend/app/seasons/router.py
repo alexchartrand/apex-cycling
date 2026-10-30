@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.athletes.coaching import speaks_for_athlete
 from app.athletes.models import Athlete
-from app.auth.deps import get_current_user, require_athlete_access
+from app.auth.deps import get_current_user, require_athlete_access, require_athlete_editor
 from app.auth.models import User
 from app.core.rate_limit import limiter
 from app.db.session import get_db
@@ -43,7 +43,7 @@ async def list_seasons(
 
 @router.post("/seasons", response_model=SeasonRead, status_code=status.HTTP_201_CREATED)
 async def create_season(
-    payload: SeasonWrite, athlete: Athlete = Depends(require_athlete_access), db: AsyncSession = Depends(get_db)
+    payload: SeasonWrite, athlete: Athlete = Depends(require_athlete_editor), db: AsyncSession = Depends(get_db)
 ) -> SeasonRead:
     try:
         return await service.create_season(db, athlete, payload)
@@ -66,7 +66,7 @@ async def season_summary(
 async def update_season(
     season_id: uuid.UUID,
     payload: SeasonUpdate,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> SeasonRead:
     try:
@@ -80,7 +80,7 @@ async def update_season(
 
 @router.delete("/seasons/{season_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_season(
-    season_id: uuid.UUID, athlete: Athlete = Depends(require_athlete_access), db: AsyncSession = Depends(get_db)
+    season_id: uuid.UUID, athlete: Athlete = Depends(require_athlete_editor), db: AsyncSession = Depends(get_db)
 ) -> Response:
     if not await service.delete_season(db, athlete.id, season_id):
         raise _NO_SEASON
@@ -100,7 +100,7 @@ async def list_competitions(
 
 @router.post("/competitions", response_model=CompetitionRead, status_code=status.HTTP_201_CREATED)
 async def create_competition(
-    payload: CompetitionWrite, athlete: Athlete = Depends(require_athlete_access), db: AsyncSession = Depends(get_db)
+    payload: CompetitionWrite, athlete: Athlete = Depends(require_athlete_editor), db: AsyncSession = Depends(get_db)
 ) -> CompetitionRead:
     try:
         return await service.create_competition(db, athlete, payload)
@@ -112,7 +112,7 @@ async def create_competition(
 async def update_competition(
     competition_id: uuid.UUID,
     payload: CompetitionUpdate,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> CompetitionRead:
     try:
@@ -126,7 +126,7 @@ async def update_competition(
 
 @router.delete("/competitions/{competition_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_competition(
-    competition_id: uuid.UUID, athlete: Athlete = Depends(require_athlete_access), db: AsyncSession = Depends(get_db)
+    competition_id: uuid.UUID, athlete: Athlete = Depends(require_athlete_editor), db: AsyncSession = Depends(get_db)
 ) -> Response:
     if not await service.delete_competition(db, athlete.id, competition_id):
         raise _NO_COMPETITION

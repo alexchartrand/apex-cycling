@@ -4,7 +4,7 @@ import { errorMessage } from "../../api/errors";
 import { Badge, Button, Card, useToast } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
 import { useMyAthlete } from "../athletes/useAthlete";
-import { useViewAthlete } from "../athletes/useViewAthlete";
+import { useOpenAthletePage } from "../athletes/useViewAthlete";
 import type { CoachLink } from "./types";
 import { useAcceptCoachLink, useCoachInbox, useCommentInbox, useRevokeCoachLink } from "./useCoaching";
 
@@ -13,7 +13,7 @@ export function WaitingForYou() {
   const { t } = useTranslation("coach");
   const fmt = useFormat();
   const { toast } = useToast();
-  const view = useViewAthlete();
+  const openAthletePage = useOpenAthletePage();
   const me = useMyAthlete().data;
   const requests = useCoachInbox();
   const comments = useCommentInbox();
@@ -76,7 +76,7 @@ export function WaitingForYou() {
                 size="sm"
                 variant="secondary"
                 icon={<MessageSquare aria-hidden />}
-                onClick={() => view(item.athlete_id, `/sessions/${item.external_event_id}?tab=comments`)}
+                onClick={() => openAthletePage(item.athlete_id, `/sessions/${item.external_event_id}?tab=comments`)}
               >
                 {t("waiting.open")}
               </Button>

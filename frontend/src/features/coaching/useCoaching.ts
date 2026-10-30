@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   acceptCoachLink,
+  fetchAthleteSummary,
   fetchDashboard,
   fetchSquad,
   listCoachedAthletes,
@@ -30,6 +31,15 @@ export function useCoachInbox() {
 
 export function useCoachDashboard() {
   return useQuery({ queryKey: ["coach-links", "dashboard"], queryFn: fetchDashboard });
+}
+
+/** The dashboard card of one athlete I coach (404 once the link ends). */
+export function useCoachAthleteSummary(athleteId: string) {
+  return useQuery({
+    queryKey: ["coach-links", "summary", athleteId],
+    queryFn: () => fetchAthleteSummary(athleteId),
+    enabled: athleteId !== "",
+  });
 }
 
 /** Every coached athlete's best at one event; `trackId` "" = anywhere. */

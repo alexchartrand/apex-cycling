@@ -251,19 +251,24 @@ async def _next_race(db: AsyncSession, athlete_ids: list[uuid.UUID], today: date
     return result
 
 
-async def coach_dashboard(db: AsyncSession, coach: User, today: date | None = None) -> list[AthleteCard]:
+async def coach_dashboard(
+    db: AsyncSession, coach: User, today: date | None = None, athlete_id: uuid.UUID | None = None
+) -> list[AthleteCard]:
+    """One card per athlete `coach` actively coaches, or only `athlete_id`'s
+    (empty when that athlete isn't actively coached by them)."""
     today = today or date.today()
     this_start = today - timedelta(days=WINDOW_DAYS - 1)
     previous_start = this_start - timedelta(days=WINDOW_DAYS)
 
-    athletes = list(
-        await db.scalars(
-            select(Athlete)
-            .join(CoachAthlete, CoachAthlete.athlete_id == Athlete.id)
-            .where(CoachAthlete.coach_user_id == coach.id, CoachAthlete.status == CoachAthleteStatus.ACTIVE)
-            .order_by(Athlete.display_name)
-        )
+    query = (
+        select(Athlete)
+        .join(CoachAthlete, CoachAthlete.athlete_id == Athlete.id)
+        .where(CoachAthlete.coach_user_id == coach.id, CoachAthlete.status == CoachAthleteStatus.ACTIVE)
+        .order_by(Athlete.display_name)
     )
+    if athlete_id is not None:
+        query = query.where(Athlete.id == athlete_id)
+    athletes = list(await db.scalars(query))
     if not athletes:
         return []
     ids = [a.id for a in athletes]

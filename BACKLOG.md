@@ -66,6 +66,7 @@
   - Notes: only if plain-Postgres progression queries get slow.
 
 ## ✅ Done
+- [x] Coaching rework: per-athlete summary + read-only coach view (`/coach/athletes/:id`), coaches limited to comments and plans (`require_athlete_editor`), no more "view as" for coaches — *added 10/30, done 10/30*
 - [x] D3 CP/W′ and FTP suggestion from the power curve — *added 10/22, done 10/23*
 - [x] D2 Seasons, competitions, ICS calendar feed (migration 0019) — *added 10/22, done 10/23*
 - [x] D1 Coach dashboard v2 (form, plan compliance, goal, next race) + squad ranking — *added 10/22, done 10/23*

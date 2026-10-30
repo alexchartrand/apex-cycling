@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.athletes.models import Athlete
-from app.auth.deps import require_athlete_access
+from app.auth.deps import require_athlete_access, require_athlete_editor
 from app.db.session import get_db
 from app.equipment import service
 from app.equipment.schemas import (
@@ -36,7 +36,7 @@ async def list_bikes(
 async def create_bike(
     athlete_id: uuid.UUID,
     payload: BikeWrite,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> BikeRead:
     return await service.create_bike(db, athlete.id, payload)
@@ -47,7 +47,7 @@ async def update_bike(
     athlete_id: uuid.UUID,
     bike_id: uuid.UUID,
     payload: BikeUpdate,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> BikeRead:
     updated = await service.update_bike(db, athlete.id, bike_id, payload)
@@ -60,7 +60,7 @@ async def update_bike(
 async def delete_bike(
     athlete_id: uuid.UUID,
     bike_id: uuid.UUID,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     if not await service.delete_bike(db, athlete.id, bike_id):
@@ -73,7 +73,7 @@ async def create_gear(
     athlete_id: uuid.UUID,
     bike_id: uuid.UUID,
     payload: GearWrite,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> GearRead:
     created = await service.create_gear(db, athlete.id, bike_id, payload)
@@ -87,7 +87,7 @@ async def update_gear(
     athlete_id: uuid.UUID,
     gear_id: uuid.UUID,
     payload: GearUpdate,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> GearRead:
     updated = await service.update_gear(db, athlete.id, gear_id, payload)
@@ -100,7 +100,7 @@ async def update_gear(
 async def delete_gear(
     athlete_id: uuid.UUID,
     gear_id: uuid.UUID,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     if not await service.delete_gear(db, athlete.id, gear_id):
@@ -113,7 +113,7 @@ async def set_session_gear(
     athlete_id: uuid.UUID,
     event_id: str,
     payload: GearAssignment,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     try:
@@ -131,7 +131,7 @@ async def set_effort_gear(
     event_id: str,
     first_lap_id: uuid.UUID,
     payload: GearAssignment,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     try:

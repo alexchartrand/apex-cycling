@@ -11,10 +11,13 @@ import type { StandardEventKey } from "../records/types";
 import { defaultSeasonForm, improvementMs, seasonPayload, type SeasonForm } from "./season";
 import type { Season, SeasonBest } from "./types";
 import { useDeleteSeason, useSaveSeason, useSeasons, useSeasonSummary } from "./useSeason";
+import { useAthletePath, useCanEdit } from "../athletes/athleteScope";
 import "./Season.css";
 
 /** Season start dates and, for the chosen season, the best at each place and event against what came before. */
 export function SeasonsCard({ athleteId }: { athleteId: string }) {
+  const canEdit = useCanEdit();
+  const path = useAthletePath();
   const { t } = useTranslation("season");
   const { t: tr } = useTranslation("records");
   const { t: tc } = useTranslation("common");
@@ -75,7 +78,7 @@ export function SeasonsCard({ athleteId }: { athleteId: string }) {
       id: "date",
       header: t("seasons.date"),
       cell: (best) =>
-        best.external_event_id ? <Link to={`/sessions/${best.external_event_id}`}>{fmt.date(best.achieved_on, "medium")}</Link> : fmt.date(best.achieved_on, "medium"),
+        best.external_event_id ? <Link to={path(`/sessions/${best.external_event_id}`)}>{fmt.date(best.achieved_on, "medium")}</Link> : fmt.date(best.achieved_on, "medium"),
       sortValue: (best) => best.achieved_on,
       hideOnMobile: true,
     },
@@ -86,9 +89,11 @@ export function SeasonsCard({ athleteId }: { athleteId: string }) {
       title={t("seasons.title")}
       as="section"
       actions={
-        <Button size="sm" variant="secondary" icon={<Plus aria-hidden />} onClick={() => setEditing("new")}>
-          {t("seasons.add")}
-        </Button>
+        canEdit && (
+          <Button size="sm" variant="secondary" icon={<Plus aria-hidden />} onClick={() => setEditing("new")}>
+            {t("seasons.add")}
+          </Button>
+        )
       }
     >
       <p className="season__hint">{t("seasons.description")}</p>
@@ -107,18 +112,20 @@ export function SeasonsCard({ athleteId }: { athleteId: string }) {
                 </option>
               ))}
             </Select>
-            <span className="season__actions">
-              <Tooltip content={t("seasons.edit")}>
-                <IconButton size="sm" aria-label={`${t("seasons.edit")} — ${selected.name}`} onClick={() => setEditing(selected)}>
-                  <Pencil aria-hidden />
-                </IconButton>
-              </Tooltip>
-              <Tooltip content={t("seasons.remove")}>
-                <IconButton size="sm" aria-label={`${t("seasons.remove")} — ${selected.name}`} onClick={() => setDeleting(selected)}>
-                  <Trash2 aria-hidden />
-                </IconButton>
-              </Tooltip>
-            </span>
+            {canEdit && (
+              <span className="season__actions">
+                <Tooltip content={t("seasons.edit")}>
+                  <IconButton size="sm" aria-label={`${t("seasons.edit")} — ${selected.name}`} onClick={() => setEditing(selected)}>
+                    <Pencil aria-hidden />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip content={t("seasons.remove")}>
+                  <IconButton size="sm" aria-label={`${t("seasons.remove")} — ${selected.name}`} onClick={() => setDeleting(selected)}>
+                    <Trash2 aria-hidden />
+                  </IconButton>
+                </Tooltip>
+              </span>
+            )}
           </div>
           <p className="season__sub">
             {selected.end_date

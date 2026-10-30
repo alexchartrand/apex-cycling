@@ -6,10 +6,12 @@ import { useFormat } from "../../i18n/useFormat";
 import { nextCompetition } from "./season";
 import { useCountdownLabel } from "./useCountdownLabel";
 import { useCompetitions } from "./useSeason";
+import { useAthletePath } from "../athletes/athleteScope";
 import "./Season.css";
 
 /** Home: the next race with its countdown and where the taper stands. Hidden without a race ahead. */
 export function NextRaceCard({ athleteId }: { athleteId: string }) {
+  const path = useAthletePath();
   const { t } = useTranslation("season");
   const fmt = useFormat();
   const competitions = useCompetitions(athleteId);
@@ -19,7 +21,7 @@ export function NextRaceCard({ athleteId }: { athleteId: string }) {
   const toTaper = race.days_to_taper;
 
   return (
-    <Card title={t("next.title")} as="section" actions={<Link to="/season">{t("next.all")}</Link>}>
+    <Card title={t("next.title")} as="section" actions={<Link to={path("/season")}>{t("next.all")}</Link>}>
       <div className="season__next">
         <Flag aria-hidden className="season__next-icon" />
         <div className="season__next-text">

@@ -184,3 +184,106 @@
 .squad__name:hover {
   text-decoration: underline;
 }
+
+.coach-card__name a {
+  color: inherit;
+}
+
+/* --- One athlete, /coach/athletes/:id ---------------------------------- */
+
+.coach-athlete__bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+  margin-bottom: var(--space-3);
+}
+
+.coach-athlete__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}
+
+.coach-athlete__back svg {
+  width: 1em;
+  height: 1em;
+}
+
+.coach-athlete__who {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.coach-athlete {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.coach-athlete__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.coach-athlete__icon {
+  width: 1.1em;
+  height: 1.1em;
+  color: var(--color-text-3);
+}
+
+.coach-athlete__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.coach-athlete__list li + li {
+  border-top: 1px solid var(--color-border);
+}
+
+.coach-athlete__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  color: var(--color-text);
+}
+
+.coach-athlete__row:hover {
+  text-decoration: none;
+  color: var(--color-accent);
+}
+
+.coach-athlete__date {
+  width: 52px;
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--color-text-3);
+}
+
+.coach-athlete__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.coach-athlete__sub {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-text-3);
+  overflow-wrap: anywhere;
+}

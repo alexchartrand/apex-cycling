@@ -120,6 +120,17 @@ async def dashboard(
     return await coach_dashboard(db, current_user)
 
 
+@router.get("/athletes/{athlete_id}/summary", response_model=AthleteCard)
+async def athlete_summary(
+    athlete_id: uuid.UUID, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+) -> AthleteCard:
+    """The dashboard card of one athlete I actively coach (404 otherwise)."""
+    cards = await coach_dashboard(db, current_user, athlete_id=athlete_id)
+    if not cards:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Athlete not found")
+    return cards[0]
+
+
 @router.get("/squad", response_model=Squad)
 async def squad(
     event_key: str,

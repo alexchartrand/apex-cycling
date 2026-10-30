@@ -1,11 +1,12 @@
 import { Users } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { Badge, Card, DataTable, EmptyState, Select, SkeletonGroup, type DataTableColumn } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
 import { formatRecordTime } from "../records/timeInput";
 import { EVENT_START_TYPES, STANDARD_EVENT_KEYS, type StandardEventKey } from "../records/types";
-import { useViewAthlete } from "../athletes/useViewAthlete";
+import { coachAthletePath } from "../athletes/athleteScope";
 import { gapToShow, splitSquad } from "./squad";
 import type { SquadRow } from "./types";
 import { useSquad } from "./useCoaching";
@@ -16,7 +17,7 @@ export function SquadPanel() {
   const { t: tr } = useTranslation("records");
   const { t: tc } = useTranslation("common");
   const fmt = useFormat();
-  const view = useViewAthlete();
+  const navigate = useNavigate();
   const [eventKey, setEventKey] = useState<StandardEventKey>("1km");
   const [startType, setStartType] = useState<"standing" | "flying">("standing");
   const [trackId, setTrackId] = useState("");
@@ -29,7 +30,7 @@ export function SquadPanel() {
       id: "athlete",
       header: t("squad.athlete"),
       cell: (row) => (
-        <button type="button" className="squad__name" onClick={() => view(row.athlete_id)}>
+        <button type="button" className="squad__name" onClick={() => navigate(coachAthletePath(row.athlete_id))}>
           {row.athlete_name}
         </button>
       ),

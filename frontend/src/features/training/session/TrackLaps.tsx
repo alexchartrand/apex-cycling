@@ -16,6 +16,7 @@ import {
 } from "../../../components/ui";
 import { PHONE_QUERY, useMediaQuery } from "../../../hooks/useMediaQuery";
 import { useFormat } from "../../../i18n/useFormat";
+import { useCanEdit } from "../../athletes/athleteScope";
 import { lapSpeedKmh, lapsToCsv, recordingColumns, splitColumns, splitMs } from "../lapTable";
 import {
   DEFAULT_LAP_DISTANCE_M,
@@ -68,6 +69,7 @@ export function TrackLaps({
   const { t } = useTranslation("training");
   const fmt = useFormat();
   const { toast } = useToast();
+  const canEdit = useCanEdit();
   const updateLap = useUpdateLap(athleteId);
   const [selectedLoopId, setSelectedLoopId] = useState<string | null>(null);
   const [labelling, setLabelling] = useState<LapRow | null>(null);
@@ -212,51 +214,55 @@ export function TrackLaps({
       sortValue: ({ lap }) => splitMs(lap, column.loopId),
       hideOnMobile: true,
     })),
-    {
-      id: "actions",
-      header: <span className="visually-hidden">{t("laps.actions")}</span>,
-      align: "right",
-      cell: (row) => (
-        <span className="track-laps__actions">
-          <Tooltip content={t("laps.editLabel", { n: row.n })}>
-            <IconButton
-              size="sm"
-              aria-label={t("laps.editLabel", { n: row.n })}
-              onClick={() => setLabelling(row)}
-            >
-              <Tag aria-hidden />
-            </IconButton>
-          </Tooltip>
-          <Tooltip
-            content={
-              row.lap.excluded
-                ? t("laps.include", { n: row.n })
-                : t("laps.exclude", { n: row.n })
-            }
-          >
-            <IconButton
-              size="sm"
-              aria-label={
-                row.lap.excluded
-                  ? t("laps.include", { n: row.n })
-                  : t("laps.exclude", { n: row.n })
-              }
-              aria-pressed={row.lap.excluded}
-              disabled={updateLap.isPending}
-              onClick={() =>
-                updateLap.mutate({
-                  lapId: row.lap.lap_id,
-                  excluded: !row.lap.excluded,
-                })
-              }
-            >
-              {row.lap.excluded ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
-            </IconButton>
-          </Tooltip>
-        </span>
-      ),
-      width: "6rem",
-    },
+    ...(canEdit
+      ? [
+          {
+            id: "actions",
+            header: <span className="visually-hidden">{t("laps.actions")}</span>,
+            align: "right",
+            cell: (row) => (
+              <span className="track-laps__actions">
+                <Tooltip content={t("laps.editLabel", { n: row.n })}>
+                  <IconButton
+                    size="sm"
+                    aria-label={t("laps.editLabel", { n: row.n })}
+                    onClick={() => setLabelling(row)}
+                  >
+                    <Tag aria-hidden />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip
+                  content={
+                    row.lap.excluded
+                      ? t("laps.include", { n: row.n })
+                      : t("laps.exclude", { n: row.n })
+                  }
+                >
+                  <IconButton
+                    size="sm"
+                    aria-label={
+                      row.lap.excluded
+                        ? t("laps.include", { n: row.n })
+                        : t("laps.exclude", { n: row.n })
+                    }
+                    aria-pressed={row.lap.excluded}
+                    disabled={updateLap.isPending}
+                    onClick={() =>
+                      updateLap.mutate({
+                        lapId: row.lap.lap_id,
+                        excluded: !row.lap.excluded,
+                      })
+                    }
+                  >
+                    {row.lap.excluded ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
+                  </IconButton>
+                </Tooltip>
+              </span>
+            ),
+            width: "6rem",
+          } satisfies DataTableColumn<LapRow>,
+        ]
+      : []),
   ];
 
   return (

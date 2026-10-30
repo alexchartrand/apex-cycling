@@ -12,6 +12,7 @@ import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { useCurrentMetrics } from "../features/athletes/useAthlete";
 import { useFormat } from "../i18n/useFormat";
 import "../features/activities/Activities.css";
+import { useAthletePath } from "../features/athletes/athleteScope";
 import "./PowerCurvePage.css";
 
 type CompareMode = "none" | "before" | "allTime";
@@ -21,6 +22,7 @@ const RANGES: RangeKey[] = ["28d", "90d", "365d", "all"];
 const RANGE_DAYS: Record<RangeKey, number> = { "28d": 28, "90d": 90, "365d": 365, all: 0 };
 
 export function PowerCurvePage() {
+  const path = useAthletePath();
   const { t } = useTranslation(["activities", "shell", "common"]);
   const fmt = useFormat();
   const athleteId = useActiveAthlete().data?.id ?? "";
@@ -119,7 +121,7 @@ export function PowerCurvePage() {
                       </span>
                     )}
                     {point && (
-                      <Link to={`/activities/${point.activity_id}`} className="power-page__source" title={t("power.open")}>
+                      <Link to={path(`/activities/${point.activity_id}`)} className="power-page__source" title={t("power.open")}>
                         {t("power.bestOn", { date: fmt.date(new Date(point.start_time), "medium") })}
                       </Link>
                     )}

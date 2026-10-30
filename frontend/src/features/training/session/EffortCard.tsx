@@ -12,6 +12,7 @@ import { useLabelEffort } from "../useTraining";
 import { effortCardModel } from "../../share/cardModels";
 import { ShareButton } from "../../share/ShareButton";
 import { compareHref } from "../../compare/compare";
+import { useAthletePath, useCanEdit } from "../../athletes/athleteScope";
 import { HalfLapSplitChart } from "./HalfLapSplitChart";
 import { PacingChart } from "./PacingChart";
 import "./EffortCard.css";
@@ -40,6 +41,8 @@ export function EffortCard({
   const { t: tr } = useTranslation("records");
   const { t: ts } = useTranslation("share");
   const fmt = useFormat();
+  const path = useAthletePath();
+  const canEdit = useCanEdit();
   const [renaming, setRenaming] = useState(false);
   const hasUnfinishedLap = effort.completed_lap_count < effort.lap_ids.length;
 
@@ -73,7 +76,7 @@ export function EffortCard({
           )}
           <Tooltip content={t("efforts.compare")}>
             <ButtonLink
-              to={compareHref({ eventId, firstLapId: effort.lap_ids[0] })}
+              to={path(compareHref({ eventId, firstLapId: effort.lap_ids[0] }))}
               variant="ghost"
               className="btn--icon"
               aria-label={t("efforts.compare")}
@@ -81,11 +84,13 @@ export function EffortCard({
               <GitCompare aria-hidden />
             </ButtonLink>
           </Tooltip>
-          <Tooltip content={t("efforts.rename")}>
-            <IconButton aria-label={t("efforts.rename")} variant="ghost" onClick={() => setRenaming(true)}>
-              <Pencil aria-hidden />
-            </IconButton>
-          </Tooltip>
+          {canEdit && (
+            <Tooltip content={t("efforts.rename")}>
+              <IconButton aria-label={t("efforts.rename")} variant="ghost" onClick={() => setRenaming(true)}>
+                <Pencil aria-hidden />
+              </IconButton>
+            </Tooltip>
+          )}
         </>
       }
     >

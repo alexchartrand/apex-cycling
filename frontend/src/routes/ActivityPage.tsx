@@ -6,6 +6,7 @@ import { EmptyState, PageHeader, SkeletonGroup } from "../components/ui";
 import { RecordingActions } from "../features/activities/RecordingActions";
 import { RecordingView } from "../features/activities/RecordingView";
 import { useActivity } from "../features/activities/useActivities";
+import { useAthletePath, useCanEdit } from "../features/athletes/athleteScope";
 import { useActiveAthlete, useViewingOther } from "../features/athletes/useActiveAthlete";
 import { useFormat } from "../i18n/useFormat";
 import "./ActivityPage.css";
@@ -20,7 +21,8 @@ export function ActivityPage() {
   const { viewing } = useViewingOther();
   const athleteId = athlete?.id ?? "";
   // A coach reads; the athlete (or a club admin for a managed athlete) edits.
-  const canEdit = !viewing || viewing.user_id === null;
+  const path = useAthletePath();
+  const canEdit = useCanEdit() && (!viewing || viewing.user_id === null);
 
   const activity = useActivity(athleteId, activityId);
   const notFound = activity.error instanceof ApiError && activity.error.status === 404;
@@ -29,14 +31,14 @@ export function ActivityPage() {
   if (notFound) {
     return (
       <>
-        <PageHeader title={t("activity.notFound")} back={{ to: "/log", label: t("activity.back") }} />
+        <PageHeader title={t("activity.notFound")} back={{ to: path("/log"), label: t("activity.back") }} />
         <EmptyState icon={<SearchX aria-hidden />} title={t("activity.notFound")} />
       </>
     );
   }
 
   if (data?.external_event_id) {
-    return <Navigate replace to={`/sessions/${encodeURIComponent(data.external_event_id)}?tab=ride&recording=${encodeURIComponent(data.id)}`} />;
+    return <Navigate replace to={path(`/sessions/${encodeURIComponent(data.external_event_id)}?tab=ride&recording=${encodeURIComponent(data.id)}`)} />;
   }
 
   const start = data ? new Date(data.start_time) : null;
@@ -45,11 +47,11 @@ export function ActivityPage() {
   return (
     <div className="activity-page">
       <PageHeader
-        back={{ to: "/log", label: t("activity.back") }}
+        back={{ to: path("/log"), label: t("activity.back") }}
         eyebrow={start ? `${fmt.date(start, "long")} · ${fmt.time(start)}` : undefined}
         title={title || <SkeletonGroup lines={1} />}
         description={data ? t(`sources.${data.source}`) : undefined}
-        actions={data && <RecordingActions athleteId={athleteId} activity={data} canEdit={canEdit} onDeleted={() => navigate("/log")} />}
+        actions={data && <RecordingActions athleteId={athleteId} activity={data} canEdit={canEdit} onDeleted={() => navigate(path("/log"))} />}
       />
 
       {activity.isLoading && <SkeletonGroup lines={6} />}

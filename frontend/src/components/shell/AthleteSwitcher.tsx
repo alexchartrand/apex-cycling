@@ -8,7 +8,7 @@ import type { SwitchGroup, SwitchOption } from "../../features/athletes/switchOp
 import { useMyAthlete } from "../../features/athletes/useAthlete";
 import { Avatar, Button, Menu, MenuItem, MenuLabel, MenuSeparator } from "../ui";
 
-const GROUP_ORDER: SwitchGroup[] = ["me", "coached", "club"];
+const GROUP_ORDER: SwitchGroup[] = ["me", "club"];
 
 /**
  * "Whose data am I looking at?" — for coaches and club admins. Renders

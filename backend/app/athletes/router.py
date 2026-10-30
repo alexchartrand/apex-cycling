@@ -17,7 +17,7 @@ from app.athletes.schemas import (
     CurrentMetricsRead,
 )
 from app.athletes.service import metrics_at
-from app.auth.deps import get_current_user, require_athlete_access
+from app.auth.deps import get_current_user, require_athlete_access, require_athlete_editor
 from app.auth.models import User
 from app.db.session import get_db
 
@@ -45,7 +45,7 @@ async def get_athlete(athlete: Athlete = Depends(require_athlete_access)) -> Ath
 @router.patch("/{athlete_id}", response_model=AthleteRead)
 async def update_athlete(
     payload: AthleteUpdate,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Athlete:
@@ -94,7 +94,7 @@ async def list_metrics(
 @router.post("/{athlete_id}/metrics", response_model=AthleteMetricRead, status_code=status.HTTP_201_CREATED)
 async def record_metrics(
     payload: AthleteMetricWrite,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> AthleteMetric:
     """Records measurements for a date. If that date already has a row, the
@@ -131,7 +131,7 @@ async def current_metrics(
 @router.delete("/{athlete_id}/metrics/{metric_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_metric(
     metric_id: uuid.UUID,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     row = await db.get(AthleteMetric, metric_id)

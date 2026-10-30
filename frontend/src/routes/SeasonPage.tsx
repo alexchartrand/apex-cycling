@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { PageHeader } from "../components/ui";
+import { useCanEdit } from "../features/athletes/athleteScope";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { CalendarFeedCard } from "../features/season/CalendarFeedCard";
 import { CompetitionsCard } from "../features/season/CompetitionsCard";
@@ -10,6 +11,7 @@ import "../features/season/Season.css";
 export function SeasonPage() {
   const { t } = useTranslation("season");
   const athleteId = useActiveAthlete().data?.id ?? "";
+  const canEdit = useCanEdit();
 
   return (
     <>
@@ -18,7 +20,7 @@ export function SeasonPage() {
         <div className="season__page">
           <CompetitionsCard athleteId={athleteId} />
           <SeasonsCard athleteId={athleteId} />
-          <CalendarFeedCard athleteId={athleteId} />
+          {canEdit && <CalendarFeedCard athleteId={athleteId} />}
         </div>
       )}
     </>

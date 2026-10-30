@@ -17,6 +17,10 @@ export function fetchDashboard(): Promise<AthleteCard[]> {
   return apiFetch<AthleteCard[]>("/coach-links/dashboard");
 }
 
+export function fetchAthleteSummary(athleteId: string): Promise<AthleteCard> {
+  return apiFetch<AthleteCard>(`/coach-links/athletes/${encodeURIComponent(athleteId)}/summary`);
+}
+
 export function fetchSquad(eventKey: string, startType: string, trackId: string): Promise<Squad> {
   const query = new URLSearchParams({ event_key: eventKey, start_type: startType });
   if (trackId) query.set("track_id", trackId);

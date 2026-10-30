@@ -14,6 +14,8 @@ const AdminPage = lazy(() => import("./routes/AdminPage").then((m) => ({ default
 const ClubPage = lazy(() => import("./routes/ClubPage").then((m) => ({ default: m.ClubPage })));
 const ClubsPage = lazy(() => import("./routes/ClubsPage").then((m) => ({ default: m.ClubsPage })));
 const ComparePage = lazy(() => import("./routes/ComparePage").then((m) => ({ default: m.ComparePage })));
+const CoachAthleteLayout = lazy(() => import("./routes/CoachAthleteLayout").then((m) => ({ default: m.CoachAthleteLayout })));
+const CoachAthletePage = lazy(() => import("./routes/CoachAthletePage").then((m) => ({ default: m.CoachAthletePage })));
 const CoachPage = lazy(() => import("./routes/CoachPage").then((m) => ({ default: m.CoachPage })));
 const HomePage = lazy(() => import("./routes/HomePage").then((m) => ({ default: m.HomePage })));
 const ActivityPage = lazy(() => import("./routes/ActivityPage").then((m) => ({ default: m.ActivityPage })));
@@ -77,6 +79,18 @@ export function App() {
           <Route path="/aero" element={<AeroPage />} />
           <Route path="/equipment" element={<EquipmentPage />} />
           <Route path="/coach" element={<CoachPage />} />
+          {/* A coach reads one athlete here, read-only; the athlete pages follow the scope. */}
+          <Route path="/coach/athletes/:athleteId" element={<CoachAthleteLayout />}>
+            <Route index element={<CoachAthletePage />} />
+            <Route path="log" element={<LogPage />} />
+            <Route path="sessions/:eventId" element={<SessionDetailPage />} />
+            <Route path="activities/:activityId" element={<ActivityPage />} />
+            <Route path="compare" element={<ComparePage />} />
+            <Route path="records" element={<RecordsPage />} />
+            <Route path="progress" element={<ProgressPage />} />
+            <Route path="power" element={<PowerCurvePage />} />
+            <Route path="season" element={<SeasonPage />} />
+          </Route>
           <Route path="/club" element={<ClubsPage />} />
           <Route path="/club/:clubId/*" element={<ClubPage />} />
           <Route path="/join" element={<JoinPage />} />

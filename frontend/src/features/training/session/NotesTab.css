@@ -5,6 +5,11 @@
   max-width: 640px;
 }
 
+/* Disabled as a whole while a coach reads; lays out as if it weren't there. */
+.notes-tab__fields {
+  display: contents;
+}
+
 .notes-tab__actions {
   display: flex;
   justify-content: flex-end;

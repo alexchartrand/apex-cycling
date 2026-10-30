@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.athletes.models import Athlete
-from app.auth.deps import require_athlete_access
+from app.auth.deps import require_athlete_access, require_athlete_editor
 from app.db.session import get_db
 from app.training.efforts import StartType
 from app.training.records_service import (
@@ -58,7 +58,7 @@ async def manual_results(
 async def add_manual_result(
     athlete_id: uuid.UUID,
     payload: ManualResultWrite,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> ManualResultRead:
     try:
@@ -72,7 +72,7 @@ async def replace_manual_result(
     athlete_id: uuid.UUID,
     result_id: uuid.UUID,
     payload: ManualResultWrite,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> ManualResultRead:
     try:
@@ -88,7 +88,7 @@ async def replace_manual_result(
 async def remove_manual_result(
     athlete_id: uuid.UUID,
     result_id: uuid.UUID,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     if not await delete_manual_result(db, athlete.id, result_id):

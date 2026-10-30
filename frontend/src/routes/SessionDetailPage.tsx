@@ -8,6 +8,7 @@ import { RecordingActions } from "../features/activities/RecordingActions";
 import { RecordingStreams, RecordingView } from "../features/activities/RecordingView";
 import { effortBands, lapSpeeds, recordingClockStart, sessionGearing, type SessionOverlay } from "../features/activities/sessionOverlay";
 import { useActivity } from "../features/activities/useActivities";
+import { useAthletePath, useCanEdit } from "../features/athletes/athleteScope";
 import { useActiveAthlete, useViewingOther } from "../features/athletes/useActiveAthlete";
 import { CommentsTab } from "../features/comments/CommentsTab";
 import { GearPicker } from "../features/equipment/GearPicker";
@@ -39,8 +40,10 @@ export function SessionDetailPage() {
 
   const athleteId = useActiveAthlete().data?.id ?? "";
   const { viewing } = useViewingOther();
+  const path = useAthletePath();
+  const canEdit = useCanEdit();
   // A coach reads a recording; the athlete (or a club admin for a managed athlete) edits it.
-  const canEditRecording = !viewing || viewing.user_id === null;
+  const canEditRecording = canEdit && (!viewing || viewing.user_id === null);
   const detail = useSessionDetail(athleteId, eventId);
   const sessions = useSessions(athleteId);
   const tracks = useTracks(athleteId);
@@ -81,7 +84,7 @@ export function SessionDetailPage() {
   const navButton = (target: typeof older, label: string, icon: React.ReactNode) =>
     target ? (
       <Tooltip content={label}>
-        <ButtonLink to={`/sessions/${target.external_event_id}${tab === "overview" ? "" : `?tab=${tab}`}`} variant="secondary" className="btn--icon" aria-label={label}>
+        <ButtonLink to={path(`/sessions/${target.external_event_id}${tab === "overview" ? "" : `?tab=${tab}`}`)} variant="secondary" className="btn--icon" aria-label={label}>
           {icon}
         </ButtonLink>
       </Tooltip>
@@ -112,12 +115,12 @@ export function SessionDetailPage() {
     />
   );
 
-  const rideHref = (id: string) => `/sessions/${encodeURIComponent(eventId)}?tab=ride&recording=${encodeURIComponent(id)}`;
+  const rideHref = (id: string) => path(`/sessions/${encodeURIComponent(eventId)}?tab=ride&recording=${encodeURIComponent(id)}`);
 
   return (
     <>
       <PageHeader
-        back={{ to: "/log", label: t("session.back") }}
+        back={{ to: path("/log"), label: t("session.back") }}
         eyebrow={session ? `${fmt.date(session.event_date, "long")}${summary ? ` · ${summary.track_names.join(", ")}` : ""}` : undefined}
         title={session?.event_name ?? summary?.event_name ?? " "}
         actions={
@@ -148,7 +151,7 @@ export function SessionDetailPage() {
               {recording.name ?? fmt.time(recording.start_time)}
             </Link>
           ))}
-          {session.activities.some((recording) => recording.has_power) && (
+          {canEdit && session.activities.some((recording) => recording.has_power) && (
             <Link to={`/aero?session=${encodeURIComponent(session.external_event_id)}`} className="session-detail__recording">
               {t("session.estimateCda")}
             </Link>

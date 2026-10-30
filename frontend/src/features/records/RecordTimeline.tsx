@@ -10,10 +10,12 @@ import { formatRecordTime } from "./timeInput";
 import type { RecordSelection, StandardEventKey } from "./types";
 import { useRecordHistory } from "./useRecords";
 import { Trophy } from "lucide-react";
+import { useAthletePath } from "../athletes/athleteScope";
 import "./RecordTimeline.css";
 
 /** The chain of results that each set a new record, as a step line plus a list with the gain of each. */
 export function RecordTimeline({ athleteId, selection }: { athleteId: string; selection: RecordSelection | null }) {
+  const path = useAthletePath();
   const { t } = useTranslation("records");
   const fmt = useFormat();
   const history = useRecordHistory(athleteId, selection);
@@ -101,7 +103,7 @@ export function RecordTimeline({ athleteId, selection }: { athleteId: string; se
                       <td>{gain == null ? <span className="record-timeline__muted">{t("timeline.first")}</span> : <Badge tone="positive">{fmt.deltaSeconds(gain)} s</Badge>}</td>
                       <td>
                         {entry.source === "sqorz" && entry.external_event_id ? (
-                          <Link className="records-board__link" to={`/sessions/${entry.external_event_id}`}>
+                          <Link className="records-board__link" to={path(`/sessions/${entry.external_event_id}`)}>
                             {t("board.session")}
                           </Link>
                         ) : (

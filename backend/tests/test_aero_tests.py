@@ -103,15 +103,15 @@ async def test_creating_needs_a_session_of_the_athlete(client, db_session):
     assert (await client.get(f"{url}/{uuid.uuid4()}")).status_code == 404
 
 
-async def test_a_coach_sees_the_tests_but_never_strava_numbers(client, db_session):
+async def test_a_coach_reads_the_tests_but_never_strava_numbers(client, db_session):
     athlete_id = await _setup(client, db_session)
     url = f"/athletes/{athlete_id}/aero-tests"
     created = (await client.post(url, json={"external_event_id": "evt-aero", "label": "A"})).json()
     async with _coach_of(db_session, athlete_id) as coach:
         theirs = (await coach.get(url)).json()
         assert [t["fit"]["cda_m2"] for t in theirs] == [pytest.approx(created["fit"]["cda_m2"])]
-        # A coach may set up tests for their athlete too.
-        assert (await coach.post(url, json={"external_event_id": "evt-aero", "label": "Coach's"})).status_code == 201
+        # A coach reads; setting tests up is the athlete's.
+        assert (await coach.post(url, json={"external_event_id": "evt-aero", "label": "Coach's"})).status_code == 403
 
         async with db_session() as session:
             await session.execute(update(Activity).values(source=ActivitySource.STRAVA, external_id="s-1"))

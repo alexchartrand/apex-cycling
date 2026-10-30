@@ -12,12 +12,14 @@ import { competitionFormErrors, competitionFormFrom, competitionPayload, emptyCo
 import type { Competition, Priority } from "./types";
 import { useCountdownLabel } from "./useCountdownLabel";
 import { useCompetitions, useDeleteCompetition, useSaveCompetition } from "./useSeason";
+import { useAthletePath, useCanEdit } from "../athletes/athleteScope";
 import "./Season.css";
 
 const PRIORITIES: Priority[] = ["A", "B", "C"];
 
 /** The race calendar: coming races with the days to go and the taper, then the past ones. */
 export function CompetitionsCard({ athleteId }: { athleteId: string }) {
+  const canEdit = useCanEdit();
   const { t } = useTranslation("season");
   const { t: tc } = useTranslation("common");
   const { toast } = useToast();
@@ -31,9 +33,11 @@ export function CompetitionsCard({ athleteId }: { athleteId: string }) {
       title={t("races.title")}
       as="section"
       actions={
-        <Button size="sm" variant="secondary" icon={<Plus aria-hidden />} onClick={() => setEditing("new")}>
-          {t("races.add")}
-        </Button>
+        canEdit && (
+          <Button size="sm" variant="secondary" icon={<Plus aria-hidden />} onClick={() => setEditing("new")}>
+            {t("races.add")}
+          </Button>
+        )
       }
     >
       <p className="season__hint">{t("races.description")}</p>
@@ -77,6 +81,8 @@ export function CompetitionsCard({ athleteId }: { athleteId: string }) {
 }
 
 function RaceRow({ race, onEdit, onDelete }: { race: Competition; onEdit: () => void; onDelete: () => void }) {
+  const canEdit = useCanEdit();
+  const path = useAthletePath();
   const { t } = useTranslation("season");
   const { t: tr } = useTranslation("records");
   const fmt = useFormat();
@@ -93,18 +99,20 @@ function RaceRow({ race, onEdit, onDelete }: { race: Competition; onEdit: () => 
             {race.location ? ` · ${race.location}` : ""}
           </span>
         </div>
-        <span className="season__actions">
-          <Tooltip content={t("races.edit")}>
-            <IconButton size="sm" aria-label={`${t("races.edit")} — ${race.name}`} onClick={onEdit}>
-              <Pencil aria-hidden />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content={t("races.remove")}>
-            <IconButton size="sm" aria-label={`${t("races.remove")} — ${race.name}`} onClick={onDelete}>
-              <Trash2 aria-hidden />
-            </IconButton>
-          </Tooltip>
-        </span>
+        {canEdit && (
+          <span className="season__actions">
+            <Tooltip content={t("races.edit")}>
+              <IconButton size="sm" aria-label={`${t("races.edit")} — ${race.name}`} onClick={onEdit}>
+                <Pencil aria-hidden />
+              </IconButton>
+            </Tooltip>
+            <Tooltip content={t("races.remove")}>
+              <IconButton size="sm" aria-label={`${t("races.remove")} — ${race.name}`} onClick={onDelete}>
+                <Trash2 aria-hidden />
+              </IconButton>
+            </Tooltip>
+          </span>
+        )}
       </div>
       <p className="season__badges">
         <Badge tone={race.phase === "taper" || race.phase === "race_day" ? "highlight" : race.phase === "past" ? "neutral" : "accent"} icon={<Flag aria-hidden />}>
@@ -127,7 +135,7 @@ function RaceRow({ race, onEdit, onDelete }: { race: Competition; onEdit: () => 
       )}
       {race.race_session_id && (
         <p className="season__sub">
-          <Link to={`/sessions/${race.race_session_id}`}>{t("races.openSession")}</Link>
+          <Link to={path(`/sessions/${race.race_session_id}`)}>{t("races.openSession")}</Link>
         </p>
       )}
       {race.notes && <p className="season__notes">{race.notes}</p>}

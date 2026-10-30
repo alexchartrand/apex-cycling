@@ -6,6 +6,7 @@ import { useFormat } from "../../i18n/useFormat";
 import { entryId, groupByPlace, isEventKey } from "./recordsBoard";
 import { formatRecordTime } from "./timeInput";
 import type { RecordEntry } from "./types";
+import { useAthletePath } from "../athletes/athleteScope";
 import "./RecordsBoard.css";
 
 /** The records board: one card per track (or manual venue), one row per event and start type. */
@@ -18,6 +19,7 @@ export function RecordsBoard({
   selectedId: string | null;
   onSelect: (entry: RecordEntry) => void;
 }) {
+  const path = useAthletePath();
   const { t } = useTranslation("records");
   const fmt = useFormat();
 
@@ -42,7 +44,7 @@ export function RecordsBoard({
       header: t("board.source"),
       cell: (entry) =>
         entry.source === "sqorz" && entry.external_event_id ? (
-          <Link className="records-board__link" to={`/sessions/${entry.external_event_id}`} onClick={(e) => e.stopPropagation()}>
+          <Link className="records-board__link" to={path(`/sessions/${entry.external_event_id}`)} onClick={(e) => e.stopPropagation()}>
             {t("board.session")}
           </Link>
         ) : (

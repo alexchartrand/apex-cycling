@@ -12,10 +12,12 @@ import { PlanResults } from "./PlanResults";
 import { effortText, linkCandidates, STATUS_TONE } from "./planForm";
 import type { PlannedSession } from "./types";
 import { useDeletePlan, usePlanAnswer } from "./usePlan";
+import { useAthletePath } from "../athletes/athleteScope";
 import "./Plan.css";
 
 /** One planned session: what is asked, and what the viewer may do about it. */
 export function PlanDetailDialog({ athleteId, plan, onClose }: { athleteId: string; plan: PlannedSession; onClose: () => void }) {
+  const path = useAthletePath();
   const { t } = useTranslation("plan");
   const { t: tr } = useTranslation("records");
   const { t: tc } = useTranslation("common");
@@ -67,7 +69,7 @@ export function PlanDetailDialog({ athleteId, plan, onClose }: { athleteId: stri
           {plan.session && (
             <p>
               {t("detail.linkedTo")}{" "}
-              <Link to={`/sessions/${plan.session.external_event_id}`} onClick={onClose}>
+              <Link to={path(`/sessions/${plan.session.external_event_id}`)} onClick={onClose}>
                 {plan.session.event_name} · {fmt.date(plan.session.event_date, "medium")}
               </Link>
             </p>

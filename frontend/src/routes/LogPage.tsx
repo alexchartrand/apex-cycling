@@ -7,6 +7,7 @@ import { localDay, mpsToKmh } from "../features/activities/format";
 import { groupItemsByMonth, mergeLog, monthCalendar, type LogItem } from "../features/activities/logItems";
 import type { Activity } from "../features/activities/types";
 import { useActivities } from "../features/activities/useActivities";
+import { useAthletePath, useCanEdit } from "../features/athletes/athleteScope";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { PlanDetailDialog } from "../features/plan/PlanDetailDialog";
 import { PlanDialog } from "../features/plan/PlanDialog";
@@ -34,6 +35,8 @@ export function LogPage() {
   const fmt = useFormat();
   const athlete = useActiveAthlete();
   const athleteId = athlete.data?.id ?? "";
+  const path = useAthletePath();
+  const canEdit = useCanEdit();
   const sessions = useSessions(athleteId);
   const activities = useActivities(athleteId);
   const plans = usePlannedSessions(athleteId);
@@ -85,9 +88,11 @@ export function LogPage() {
             <Button variant="secondary" icon={<CalendarPlus aria-hidden />} onClick={() => setPlanning(true)} disabled={athleteId === ""}>
               {t("plan:add")}
             </Button>
-            <ButtonLink to="/import" variant="secondary" icon={<CloudDownload aria-hidden />}>
-              {t("shell:nav.import")}
-            </ButtonLink>
+            {canEdit && (
+              <ButtonLink to="/import" variant="secondary" icon={<CloudDownload aria-hidden />}>
+                {t("shell:nav.import")}
+              </ButtonLink>
+            )}
           </>
         }
       />
@@ -102,7 +107,7 @@ export function LogPage() {
           icon={<CalendarDays aria-hidden />}
           title={t("log.emptyTitle")}
           description={t("log.emptyDescription")}
-          action={<ButtonLink to="/import">{t("log.emptyAction")}</ButtonLink>}
+          action={canEdit && <ButtonLink to="/import">{t("log.emptyAction")}</ButtonLink>}
         />
       )}
 
@@ -115,7 +120,7 @@ export function LogPage() {
                 <ul className="log__list">
                   {group.items.map((item) => (
                     <li key={itemKey(item)}>
-                      <Link to={itemHref(item)} className="log__row">
+                      <Link to={path(itemHref(item))} className="log__row">
                         <LogRow item={item} />
                         <ChevronRight className="log__chevron" aria-hidden />
                       </Link>
@@ -225,6 +230,7 @@ function DateBlock({ date }: { date: Date }) {
 }
 
 function Calendar({ year, monthIndex, items, plans, onOpenPlan }: { year: number; monthIndex: number; items: LogItem[]; plans: PlannedSession[]; onOpenPlan: (plan: PlannedSession) => void }) {
+  const path = useAthletePath();
   const { t } = useTranslation(["activities", "plan"]);
   const fmt = useFormat();
   const weeks = monthCalendar(year, monthIndex, items);
@@ -266,7 +272,7 @@ function Calendar({ year, monthIndex, items, plans, onOpenPlan }: { year: number
                 return (
                   <li key={itemKey(item)}>
                     <Link
-                      to={itemHref(item)}
+                      to={path(itemHref(item))}
                       className={`log-calendar__chip log-calendar__chip--${item.kind}`}
                       title={recorded ? `${name} · ${t(recorded === "power" ? "activities:log.withPower" : "activities:log.withHeartRate")}` : name}
                     >

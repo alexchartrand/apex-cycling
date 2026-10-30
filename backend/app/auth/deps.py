@@ -43,15 +43,9 @@ async def require_platform_admin(current_user: User = Depends(get_current_user))
     return current_user
 
 
-async def require_athlete_access(
-    athlete_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+async def _athlete_for(
+    athlete_id: uuid.UUID, current_user: User, db: AsyncSession, *, allow_coach: bool
 ) -> Athlete:
-    """Allows access if the current user IS the athlete (via `athletes.user_id`),
-    has an ACTIVE `coach_athletes` link to them, or is a `club_admin` of the
-    athlete's club. Route path parameter must be named `athlete_id`.
-    """
     athlete = await db.get(Athlete, athlete_id)
     if athlete is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Athlete not found")
@@ -59,15 +53,16 @@ async def require_athlete_access(
     if athlete.user_id == current_user.id:
         return athlete
 
-    coach_link = await db.scalar(
-        select(CoachAthlete).where(
-            CoachAthlete.coach_user_id == current_user.id,
-            CoachAthlete.athlete_id == athlete.id,
-            CoachAthlete.status == CoachAthleteStatus.ACTIVE,
+    if allow_coach:
+        coach_link = await db.scalar(
+            select(CoachAthlete).where(
+                CoachAthlete.coach_user_id == current_user.id,
+                CoachAthlete.athlete_id == athlete.id,
+                CoachAthlete.status == CoachAthleteStatus.ACTIVE,
+            )
         )
-    )
-    if coach_link is not None:
-        return athlete
+        if coach_link is not None:
+            return athlete
 
     if athlete.club_ids:
         membership = await db.scalar(
@@ -83,6 +78,29 @@ async def require_athlete_access(
             return athlete
 
     raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized for this athlete")
+
+
+async def require_athlete_access(
+    athlete_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Athlete:
+    """Read access: the current user IS the athlete (via `athletes.user_id`),
+    has an ACTIVE `coach_athletes` link to them, or is a `club_admin` of one of
+    the athlete's clubs. Route path parameter must be named `athlete_id`.
+    """
+    return await _athlete_for(athlete_id, current_user, db, allow_coach=True)
+
+
+async def require_athlete_editor(
+    athlete_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Athlete:
+    """Write access to the athlete's data: like `require_athlete_access` but
+    without the coach grant — a coach reads, comments and plans, nothing else.
+    """
+    return await _athlete_for(athlete_id, current_user, db, allow_coach=False)
 
 
 async def require_club_admin(

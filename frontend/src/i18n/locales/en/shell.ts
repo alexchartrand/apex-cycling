@@ -31,7 +31,7 @@ export default {
     label: "Switch athlete",
     viewing: "Viewing",
     me: "My data",
-    groups: { me: "Me", coached: "Athletes I coach", club: "Club athletes" },
+    groups: { me: "Me", club: "Club athletes" },
   },
   viewing: {
     banner: "You're viewing {{name}}'s data.",

@@ -246,13 +246,15 @@ async def test_a_lap_goal_needs_the_track_length(client, db_session):
     assert goal["prediction_problem"] == "no_track_length"
 
 
-async def test_a_coach_can_set_goals_but_strangers_cannot(client, db_session):
+async def test_a_coach_reads_goals_but_only_the_athlete_sets_them(client, db_session):
     athlete_id = await _setup(client, db_session, upload=False)
     url = f"/athletes/{athlete_id}/goals"
-    async with _coach_of(db_session, athlete_id) as coach:
-        assert (await coach.post(url, json=_goal())).status_code == 201
-        assert len((await coach.get(url)).json()) == 1
+    assert (await client.post(url, json=_goal())).status_code == 201
     goal_id = (await client.get(url)).json()[0]["id"]
+    async with _coach_of(db_session, athlete_id) as coach:
+        assert (await coach.post(url, json=_goal())).status_code == 403
+        assert (await coach.delete(f"{url}/{goal_id}")).status_code == 403
+        assert len((await coach.get(url)).json()) == 1
     async with _other_client() as stranger:
         await _signup(stranger, "stranger@example.com")
         assert (await stranger.get(url)).status_code in (403, 404)

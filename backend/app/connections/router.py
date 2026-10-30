@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.athletes.models import Athlete
-from app.auth.deps import get_current_user, require_athlete_access
+from app.auth.deps import get_current_user, require_athlete_access, require_athlete_editor
 from app.auth.models import User
 from app.connections.models import DataSourceConnection, TransponderAssignment
 from app.connections.schemas import (
@@ -44,7 +44,7 @@ async def _to_read_model(db: AsyncSession, assignment: TransponderAssignment) ->
 async def report_transponder_usage(
     athlete_id: uuid.UUID,
     payload: TransponderAssignmentCreate,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TransponderAssignmentRead:
@@ -87,7 +87,7 @@ async def list_transponder_assignments(
 async def import_transponder_assignment_now(
     athlete_id: uuid.UUID,
     assignment_id: uuid.UUID,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> IngestionRunRead:
     assignment = await db.get(TransponderAssignment, assignment_id)
@@ -102,7 +102,7 @@ async def import_transponder_assignment_now(
 async def stop_transponder_assignment_route(
     athlete_id: uuid.UUID,
     assignment_id: uuid.UUID,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> TransponderAssignmentRead:
     assignment = await stop_transponder_assignment(db, athlete_id=athlete.id, assignment_id=assignment_id)

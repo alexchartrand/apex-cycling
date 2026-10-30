@@ -8,6 +8,7 @@ import { formatRecordTime } from "./timeInput";
 import type { TrackSummary } from "../training/types";
 import type { ManualResult, StandardEventKey } from "./types";
 import { useDeleteManualResult, useManualResults } from "./useRecords";
+import { useCanEdit } from "../athletes/athleteScope";
 import "./ManualResultsList.css";
 
 /** The results the athlete typed in, with edit and delete. The dialog to add one is opened by the page. */
@@ -26,6 +27,7 @@ export function ManualResultsList({
   const { t: tc } = useTranslation("common");
   const fmt = useFormat();
   const { toast } = useToast();
+  const canEdit = useCanEdit();
   const results = useManualResults(athleteId);
   const remove = useDeleteManualResult(athleteId);
   const [editing, setEditing] = useState<ManualResult | null>(null);
@@ -52,26 +54,30 @@ export function ManualResultsList({
         </span>
       ),
     },
-    {
-      id: "actions",
-      header: <span className="visually-hidden">{t("manual.actions")}</span>,
-      align: "right",
-      width: "6rem",
-      cell: (r) => (
-        <span className="manual-list__actions">
-          <Tooltip content={t("manual.edit")}>
-            <IconButton size="sm" aria-label={`${t("manual.edit")} — ${eventLabel(r)}, ${fmt.date(r.achieved_on, "medium")}`} onClick={() => setEditing(r)}>
-              <Pencil aria-hidden />
-            </IconButton>
-          </Tooltip>
-          <Tooltip content={t("manual.delete")}>
-            <IconButton size="sm" aria-label={`${t("manual.delete")} — ${eventLabel(r)}, ${fmt.date(r.achieved_on, "medium")}`} onClick={() => setDeleting(r)}>
-              <Trash2 aria-hidden />
-            </IconButton>
-          </Tooltip>
-        </span>
-      ),
-    },
+    ...(canEdit
+      ? [
+          {
+            id: "actions",
+            header: <span className="visually-hidden">{t("manual.actions")}</span>,
+            align: "right",
+            width: "6rem",
+            cell: (r) => (
+              <span className="manual-list__actions">
+                <Tooltip content={t("manual.edit")}>
+                  <IconButton size="sm" aria-label={`${t("manual.edit")} — ${eventLabel(r)}, ${fmt.date(r.achieved_on, "medium")}`} onClick={() => setEditing(r)}>
+                    <Pencil aria-hidden />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip content={t("manual.delete")}>
+                  <IconButton size="sm" aria-label={`${t("manual.delete")} — ${eventLabel(r)}, ${fmt.date(r.achieved_on, "medium")}`} onClick={() => setDeleting(r)}>
+                    <Trash2 aria-hidden />
+                  </IconButton>
+                </Tooltip>
+              </span>
+            ),
+          } satisfies DataTableColumn<ManualResult>,
+        ]
+      : []),
   ];
 
   return (

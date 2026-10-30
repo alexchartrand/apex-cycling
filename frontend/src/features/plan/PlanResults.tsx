@@ -6,11 +6,13 @@ import { formatRecordTime } from "../records/timeInput";
 import type { StandardEventKey } from "../records/types";
 import type { RepStatus } from "./types";
 import { usePlanComparison } from "./usePlan";
+import { useAthletePath } from "../athletes/athleteScope";
 
 const STATUS_TONES: Record<RepStatus, BadgeTone> = { hit: "positive", miss: "negative", ridden: "accent", not_ridden: "neutral", free: "neutral" };
 
 /** The plan's reps against the efforts of the session ridden: hit or miss per rep. */
 export function PlanResults({ athleteId, planId, eventId }: { athleteId: string; planId: string; eventId: string }) {
+  const path = useAthletePath();
   const { t } = useTranslation("plan");
   const { t: tr } = useTranslation("records");
   const fmt = useFormat();
@@ -37,7 +39,7 @@ export function PlanResults({ athleteId, planId, eventId }: { athleteId: string;
               {rep.time_ms != null && (
                 <>
                   {rep.effort_index != null ? (
-                    <Link to={`/sessions/${encodeURIComponent(eventId)}?tab=efforts`}>{formatRecordTime(rep.time_ms, fmt)}</Link>
+                    <Link to={path(`/sessions/${encodeURIComponent(eventId)}?tab=efforts`)}>{formatRecordTime(rep.time_ms, fmt)}</Link>
                   ) : (
                     formatRecordTime(rep.time_ms, fmt)
                   )}

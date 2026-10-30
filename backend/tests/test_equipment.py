@@ -163,13 +163,13 @@ async def test_gear_of_another_athlete_is_refused(client, db_session):
     assert (await client.get(f"/athletes/{athlete_id}/sessions/evt-aero")).json()["gear_setup_id"] is None
 
 
-async def test_coach_can_set_gear_but_another_athlete_cannot_read_it(client, db_session):
+async def test_coach_reads_gear_but_cannot_set_it_and_strangers_cannot_read_it(client, db_session):
     athlete_id = await _setup(client, db_session, upload=False)
     _, gear = await _bike_and_gear(client, athlete_id)
     async with _coach_of(db_session, athlete_id) as coach:
         assert (await coach.get(f"/athletes/{athlete_id}/bikes")).status_code == 200
         resp = await coach.put(f"/athletes/{athlete_id}/sessions/evt-aero/gear", json={"gear_setup_id": gear["id"]})
-        assert resp.status_code == 204
+        assert resp.status_code == 403
     async with _other_client() as other:
         await _signup(other, "stranger@example.com")
         assert (await other.get(f"/athletes/{athlete_id}/bikes")).status_code in (403, 404)

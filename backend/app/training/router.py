@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.activities.fusion_service import add_activity_metrics_to_efforts, add_activity_metrics_to_session
 from app.athletes.models import Athlete
-from app.auth.deps import get_current_user, require_athlete_access
+from app.auth.deps import get_current_user, require_athlete_access, require_athlete_editor
 from app.auth.models import User
 from app.db.session import get_db
 from app.equipment.service import add_gear_to_efforts, add_gear_to_session
@@ -108,7 +108,7 @@ async def edit_session(
     athlete_id: uuid.UUID,
     event_id: str,
     payload: SessionUpdate,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> SessionMeta:
     updated = await update_session(db, athlete.id, event_id, payload)
@@ -122,7 +122,7 @@ async def edit_lap(
     athlete_id: uuid.UUID,
     lap_id: uuid.UUID,
     payload: LapUpdate,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> LapEdit:
     updated = await update_lap(db, athlete.id, lap_id, payload)
@@ -137,7 +137,7 @@ async def label_effort(
     event_id: str,
     first_lap_id: uuid.UUID,
     payload: EffortLabelUpdate,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> EffortLabel:
     labelled = await set_effort_label(db, athlete.id, event_id, first_lap_id, payload.label)

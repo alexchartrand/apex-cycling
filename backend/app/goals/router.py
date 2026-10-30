@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.athletes.models import Athlete
-from app.auth.deps import get_current_user, require_athlete_access
+from app.auth.deps import get_current_user, require_athlete_access, require_athlete_editor
 from app.auth.models import User
 from app.db.session import get_db
 from app.goals import service
@@ -32,7 +32,7 @@ async def list_goals(
 async def create_goal(
     athlete_id: uuid.UUID,
     payload: GoalWrite,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> GoalRead:
@@ -49,7 +49,7 @@ async def update_goal(
     athlete_id: uuid.UUID,
     goal_id: uuid.UUID,
     payload: GoalUpdate,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> GoalRead:
@@ -68,7 +68,7 @@ async def update_goal(
 async def delete_goal(
     athlete_id: uuid.UUID,
     goal_id: uuid.UUID,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     if not await service.delete_goal(db, athlete.id, goal_id):

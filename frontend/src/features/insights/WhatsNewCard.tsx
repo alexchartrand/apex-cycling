@@ -5,6 +5,7 @@ import { useFormat } from "../../i18n/useFormat";
 import { groupBySession } from "./insights";
 import { InsightRow } from "./InsightRow";
 import { useInsightsFeed } from "./useInsights";
+import { useAthletePath } from "../athletes/athleteScope";
 import "./Insights.css";
 
 const MAX_SESSIONS = 3;
@@ -12,6 +13,7 @@ const MAX_PER_SESSION = 4;
 
 /** Home: headlines from the last weeks of sessions, grouped by session. Hidden until there are some. */
 export function WhatsNewCard({ athleteId }: { athleteId: string }) {
+  const path = useAthletePath();
   const { t } = useTranslation("insights");
   const fmt = useFormat();
   const feed = useInsightsFeed(athleteId);
@@ -24,7 +26,7 @@ export function WhatsNewCard({ athleteId }: { athleteId: string }) {
           .slice(0, MAX_SESSIONS)
           .map((group) => (
             <li key={group.external_event_id} className="whats-new__session">
-              <Link to={`/sessions/${group.external_event_id}`} className="whats-new__link">
+              <Link to={path(`/sessions/${group.external_event_id}`)} className="whats-new__link">
                 <span className="whats-new__date">{fmt.date(group.event_date, "dayMonth")}</span>
                 <span className="whats-new__name">{group.session_name}</span>
               </Link>
@@ -34,7 +36,7 @@ export function WhatsNewCard({ athleteId }: { athleteId: string }) {
                 ))}
               </div>
               {group.insights.length > MAX_PER_SESSION && (
-                <Link to={`/sessions/${group.external_event_id}`} className="whats-new__more">
+                <Link to={path(`/sessions/${group.external_event_id}`)} className="whats-new__more">
                   {t("whatsNew.more", { count: group.insights.length - MAX_PER_SESSION })}
                 </Link>
               )}

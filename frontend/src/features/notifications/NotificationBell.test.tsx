@@ -97,13 +97,14 @@ describe("NotificationBell", () => {
     expect(viewing()).toBeNull();
   });
 
-  it("opens a comment as the athlete it is about", async () => {
+  it("opens a comment on a coached athlete's session in the coach's read-only view", async () => {
     renderWith(<NotificationBell variant="icon" />);
     await userEvent.click(await screen.findByRole("button", { name: /Notifications/ }));
     await userEvent.click(await screen.findByText("Rider commented"));
 
-    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/sessions/evt-2?tab=comments"));
-    expect(viewing()).toBe("ath-9");
+    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/coach/athletes/ath-9/sessions/evt-2?tab=comments"));
+    // Not a switch: the rest of the app stays on the coach's own data.
+    expect(viewing()).toBeNull();
     // Already read: nothing is sent.
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/notifications/read"))).toBe(false);
   });

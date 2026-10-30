@@ -3,8 +3,7 @@ import { Popover } from "radix-ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-import { useMyAthlete } from "../athletes/useAthlete";
-import { setViewingAthleteId } from "../athletes/viewing";
+import { useOpenAthletePage } from "../athletes/useViewAthlete";
 import { useFormat } from "../../i18n/useFormat";
 import { Button, Skeleton } from "../../components/ui";
 import { useNotificationText } from "./NotificationItem";
@@ -74,18 +73,17 @@ export function NotificationBell({ variant }: { variant: "row" | "compact" | "ic
 function NotificationRow({ notification, onOpened }: { notification: AppNotification; onOpened: () => void }) {
   const fmt = useFormat();
   const navigate = useNavigate();
-  const me = useMyAthlete().data;
+  const openAthletePage = useOpenAthletePage();
   const markRead = useMarkRead();
   const { title, body, Icon } = useNotificationText(notification);
   const unread = notification.read_at === null;
 
   function open() {
     const target = notificationTarget(notification);
-    // A coach's athlete's thread is only reachable while viewing as them.
-    if (target.athleteId && target.athleteId !== me?.id) setViewingAthleteId(target.athleteId);
     if (unread) markRead.mutate([notification.id]);
     onOpened();
-    navigate(target.to);
+    if (target.athleteId) openAthletePage(target.athleteId, target.to);
+    else navigate(target.to);
   }
 
   return (

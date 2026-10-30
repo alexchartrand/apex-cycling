@@ -7,6 +7,7 @@ import { Badge, Card, SegmentedControl, SkeletonGroup, StatTile } from "../../co
 import { useFormat } from "../../i18n/useFormat";
 import { FORM_TONE, loadChartRows, summarizeLoad } from "./fitness";
 import { useTrainingLoad } from "./useActivities";
+import { useAthletePath, useCanEdit } from "../athletes/athleteScope";
 
 const RANGES = [42, 90, 180] as const;
 type Range = (typeof RANGES)[number];
@@ -16,6 +17,8 @@ type Range = (typeof RANGES)[number];
  * itself until there is load to show; on the progress page it explains why not.
  */
 export function FitnessCard({ athleteId, hideWhenEmpty = false }: { athleteId: string; hideWhenEmpty?: boolean }) {
+  const canEdit = useCanEdit();
+  const path = useAthletePath();
   const { t } = useTranslation(["activities", "common"]);
   const fmt = useFormat();
   const [days, setDays] = useState<Range>(90);
@@ -101,9 +104,9 @@ export function FitnessCard({ athleteId, hideWhenEmpty = false }: { athleteId: s
 
       {unrated > 0 && <p className="source-card__note">{t("fitness.unrated", { count: unrated })}</p>}
       <p className="source-card__note">
-        <Link to="/power">{t("fitness.powerCurveLink")}</Link>
+        <Link to={path("/power")}>{t("fitness.powerCurveLink")}</Link>
         {" · "}
-        <Link to="/settings/physiology">{t("fitness.managePhysiology")}</Link>
+        {canEdit && <Link to="/settings/physiology">{t("fitness.managePhysiology")}</Link>}
       </p>
     </Card>
   );

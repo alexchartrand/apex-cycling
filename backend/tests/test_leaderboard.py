@@ -180,7 +180,7 @@ async def test_only_the_athlete_decides_to_appear(client, db_session):
 
         async with _coach_of(db_session, ann_id) as coach:
             assert (await coach.put(consent, json={"opt_in": False})).status_code == 403
-            assert (await coach.patch(f"/athletes/{ann_id}", json={"height_cm": 170})).status_code == 200  # the rest still works
+            assert (await coach.patch(f"/athletes/{ann_id}", json={"height_cm": 170})).status_code == 403  # nor the profile
         assert (await ann.put(consent, json={"opt_in": None})).status_code == 422
     finally:
         await _close(riders)

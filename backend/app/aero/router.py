@@ -14,7 +14,7 @@ from app.aero.schemas import (
     AeroTestUpdate,
 )
 from app.athletes.models import Athlete
-from app.auth.deps import get_current_user, require_athlete_access
+from app.auth.deps import get_current_user, require_athlete_access, require_athlete_editor
 from app.auth.models import User
 from app.db.session import get_db
 
@@ -65,7 +65,7 @@ async def list_aero_tests(
 async def create_aero_test(
     athlete_id: uuid.UUID,
     payload: AeroTestCreate,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> AeroTestDetail:
@@ -94,7 +94,7 @@ async def update_aero_test(
     athlete_id: uuid.UUID,
     test_id: uuid.UUID,
     payload: AeroTestUpdate,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> AeroTestDetail:
@@ -105,7 +105,7 @@ async def update_aero_test(
 async def delete_aero_test(
     athlete_id: uuid.UUID,
     test_id: uuid.UUID,
-    athlete: Athlete = Depends(require_athlete_access),
+    athlete: Athlete = Depends(require_athlete_editor),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     await db.delete(await _test(test_id, athlete, db))

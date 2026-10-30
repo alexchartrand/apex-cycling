@@ -10,9 +10,11 @@ import { RecordTimeline } from "../features/records/RecordTimeline";
 import type { RecordEntry } from "../features/records/types";
 import { useRecords } from "../features/records/useRecords";
 import { useTracks } from "../features/training/useTraining";
+import { useCanEdit } from "../features/athletes/athleteScope";
 import "./RecordsPage.css";
 
 export function RecordsPage() {
+  const canEdit = useCanEdit();
   const { t } = useTranslation("records");
   const athleteId = useActiveAthlete().data?.id ?? "";
   const records = useRecords(athleteId);
@@ -31,9 +33,11 @@ export function RecordsPage() {
         title={t("page.title")}
         description={t("page.description")}
         actions={
-          <Button icon={<Plus aria-hidden />} onClick={() => setAdding(true)}>
-            {t("page.addResult")}
-          </Button>
+          canEdit && (
+            <Button icon={<Plus aria-hidden />} onClick={() => setAdding(true)}>
+              {t("page.addResult")}
+            </Button>
+          )
         }
       />
 
