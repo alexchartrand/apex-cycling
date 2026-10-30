@@ -1,0 +1,1366 @@
+[
+  {
+    "key": "flying-200s",
+    "name": {
+      "en": "Flying 200s",
+      "fr": "200 m lancés"
+    },
+    "description": {
+      "en": "Top-speed session: four flying 200 m with full recovery. Ride your race gear.",
+      "fr": "Séance de vitesse maximale : quatre 200 m lancés avec récupération complète. Braquet de course."
+    },
+    "tags": {
+      "en": [
+        "track",
+        "sprint",
+        "speed"
+      ],
+      "fr": [
+        "piste",
+        "sprint",
+        "vitesse"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 1200,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "rpe": 3,
+        "notes": {
+          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+        }
+      },
+      {
+        "type": "repeat",
+        "count": 2,
+        "steps": [
+          {
+            "duration_s": 8,
+            "label": {
+              "en": "Activation jump",
+              "fr": "Relance d'activation"
+            },
+            "rpe": 8,
+            "cadence": {
+              "low": 110,
+              "high": 130
+            }
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 180,
+            "label": {
+              "en": "Easy",
+              "fr": "Facile"
+            },
+            "rpe": 2
+          }
+        ]
+      },
+      {
+        "kind": "recovery",
+        "duration_s": 300,
+        "label": {
+          "en": "Rest",
+          "fr": "Repos"
+        },
+        "rpe": 1
+      },
+      {
+        "type": "repeat",
+        "count": 4,
+        "steps": [
+          {
+            "event_key": "f200",
+            "start_type": "flying",
+            "laps": 3,
+            "label": {
+              "en": "Flying 200",
+              "fr": "200 m lancé"
+            },
+            "rpe": 10,
+            "notes": {
+              "en": "Wind up high on the banking, dive at the 200 line, hold the black line.",
+              "fr": "Lancer en haut du virage, plonger à la ligne des 200, tenir la corde."
+            }
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 720,
+            "label": {
+              "en": "Full recovery",
+              "fr": "Récupération complète"
+            },
+            "rpe": 1
+          }
+        ]
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "rpe": 2,
+        "notes": {
+          "en": "Easy laps, then rollers if available.",
+          "fr": "Tours faciles, puis rouleaux si disponibles."
+        }
+      }
+    ]
+  },
+  {
+    "key": "standing-500s",
+    "name": {
+      "en": "Standing 500s",
+      "fr": "500 m départ arrêté"
+    },
+    "description": {
+      "en": "Starts and acceleration: short standing starts, then three 500 m from the gate.",
+      "fr": "Départs et accélération : départs arrêtés courts, puis trois 500 m départ arrêté."
+    },
+    "tags": {
+      "en": [
+        "track",
+        "sprint",
+        "starts"
+      ],
+      "fr": [
+        "piste",
+        "sprint",
+        "départs"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 1200,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "rpe": 3,
+        "notes": {
+          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+        }
+      },
+      {
+        "type": "repeat",
+        "count": 3,
+        "steps": [
+          {
+            "distance_m": 125,
+            "label": {
+              "en": "Standing start 125 m",
+              "fr": "Départ arrêté 125 m"
+            },
+            "rpe": 9,
+            "notes": {
+              "en": "Out of the saddle, drive the first three pedal strokes.",
+              "fr": "En danseuse, appuyer les trois premiers coups de pédale."
+            }
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 300,
+            "label": {
+              "en": "Easy",
+              "fr": "Facile"
+            },
+            "rpe": 2
+          }
+        ]
+      },
+      {
+        "type": "repeat",
+        "count": 3,
+        "steps": [
+          {
+            "event_key": "500m",
+            "start_type": "standing",
+            "label": {
+              "en": "500 m standing",
+              "fr": "500 m départ arrêté"
+            },
+            "rpe": 10
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 900,
+            "label": {
+              "en": "Full recovery",
+              "fr": "Récupération complète"
+            },
+            "rpe": 1
+          }
+        ]
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "rpe": 2,
+        "notes": {
+          "en": "Easy laps, then rollers if available.",
+          "fr": "Tours faciles, puis rouleaux si disponibles."
+        }
+      }
+    ]
+  },
+  {
+    "key": "kilo-openers",
+    "name": {
+      "en": "Kilo openers",
+      "fr": "Préparation kilomètre"
+    },
+    "description": {
+      "en": "Race-week session for the 1 km: quarter-distance starts at race pace, then one full kilo.",
+      "fr": "Séance de semaine de course pour le kilomètre : quarts de distance à l'allure de course, puis un kilomètre complet."
+    },
+    "tags": {
+      "en": [
+        "track",
+        "kilo",
+        "race prep"
+      ],
+      "fr": [
+        "piste",
+        "kilomètre",
+        "affûtage"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 1200,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "rpe": 3,
+        "notes": {
+          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+        }
+      },
+      {
+        "type": "repeat",
+        "count": 3,
+        "steps": [
+          {
+            "distance_m": 250,
+            "label": {
+              "en": "250 m standing at race pace",
+              "fr": "250 m départ arrêté, allure course"
+            },
+            "rpe": 9
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 600,
+            "label": {
+              "en": "Easy",
+              "fr": "Facile"
+            },
+            "rpe": 2
+          }
+        ]
+      },
+      {
+        "event_key": "1km",
+        "start_type": "standing",
+        "label": {
+          "en": "1 km standing",
+          "fr": "1 km départ arrêté"
+        },
+        "rpe": 10
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "rpe": 2,
+        "notes": {
+          "en": "Easy laps, then rollers if available.",
+          "fr": "Tours faciles, puis rouleaux si disponibles."
+        }
+      }
+    ]
+  },
+  {
+    "key": "pursuit-pace",
+    "name": {
+      "en": "Pursuit pace 3 × 2 km",
+      "fr": "Allure poursuite 3 × 2 km"
+    },
+    "description": {
+      "en": "Three 2 km at your 4 km schedule. Set the target time per lap from your pursuit plan.",
+      "fr": "Trois 2 km sur le tableau de marche du 4 km. Fixer le temps au tour selon votre plan de poursuite."
+    },
+    "tags": {
+      "en": [
+        "track",
+        "pursuit",
+        "endurance"
+      ],
+      "fr": [
+        "piste",
+        "poursuite",
+        "endurance"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 1200,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "rpe": 3,
+        "notes": {
+          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+        }
+      },
+      {
+        "type": "repeat",
+        "count": 3,
+        "steps": [
+          {
+            "event_key": "2km",
+            "start_type": "standing",
+            "label": {
+              "en": "2 km at pursuit pace",
+              "fr": "2 km allure poursuite"
+            },
+            "rpe": 8,
+            "notes": {
+              "en": "Even laps after the start; don't chase the first lap.",
+              "fr": "Tours réguliers après le départ ; ne pas forcer le premier tour."
+            }
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 600,
+            "label": {
+              "en": "Recovery",
+              "fr": "Récupération"
+            },
+            "rpe": 2
+          }
+        ]
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "rpe": 2,
+        "notes": {
+          "en": "Easy laps, then rollers if available.",
+          "fr": "Tours faciles, puis rouleaux si disponibles."
+        }
+      }
+    ]
+  },
+  {
+    "key": "pursuit-lap-repeats",
+    "name": {
+      "en": "Pursuit lap repeats",
+      "fr": "Tours allure poursuite"
+    },
+    "description": {
+      "en": "Two sets of six laps on and one lap off at pursuit pace, to groove the lap time.",
+      "fr": "Deux séries de six tours à l'allure de poursuite et un tour facile, pour caler le temps au tour."
+    },
+    "tags": {
+      "en": [
+        "track",
+        "pursuit",
+        "pacing"
+      ],
+      "fr": [
+        "piste",
+        "poursuite",
+        "allure"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 1200,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "rpe": 3,
+        "notes": {
+          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+        }
+      },
+      {
+        "type": "repeat",
+        "count": 2,
+        "steps": [
+          {
+            "type": "repeat",
+            "count": 6,
+            "steps": [
+              {
+                "laps": 1,
+                "label": {
+                  "en": "Pursuit lap",
+                  "fr": "Tour allure poursuite"
+                },
+                "rpe": 8
+              },
+              {
+                "kind": "recovery",
+                "laps": 1,
+                "label": {
+                  "en": "Easy lap",
+                  "fr": "Tour facile"
+                },
+                "rpe": 3
+              }
+            ]
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 480,
+            "label": {
+              "en": "Between sets",
+              "fr": "Entre les séries"
+            },
+            "rpe": 2
+          }
+        ]
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "rpe": 2,
+        "notes": {
+          "en": "Easy laps, then rollers if available.",
+          "fr": "Tours faciles, puis rouleaux si disponibles."
+        }
+      }
+    ]
+  },
+  {
+    "key": "flying-laps",
+    "name": {
+      "en": "Flying laps",
+      "fr": "Tours lancés"
+    },
+    "description": {
+      "en": "Six flying laps from a two-lap build, long recovery. Speed endurance for sprint and keirin.",
+      "fr": "Six tours lancés après deux tours d'élan, longue récupération. Endurance de vitesse pour sprint et keirin."
+    },
+    "tags": {
+      "en": [
+        "track",
+        "sprint",
+        "keirin"
+      ],
+      "fr": [
+        "piste",
+        "sprint",
+        "keirin"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 1200,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "rpe": 3,
+        "notes": {
+          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+        }
+      },
+      {
+        "type": "repeat",
+        "count": 6,
+        "steps": [
+          {
+            "kind": "work",
+            "laps": 2,
+            "label": {
+              "en": "Build",
+              "fr": "Élan"
+            },
+            "rpe": 6
+          },
+          {
+            "event_key": "lap",
+            "start_type": "flying",
+            "label": {
+              "en": "Flying lap",
+              "fr": "Tour lancé"
+            },
+            "rpe": 10
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 480,
+            "label": {
+              "en": "Recovery",
+              "fr": "Récupération"
+            },
+            "rpe": 1
+          }
+        ]
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "rpe": 2,
+        "notes": {
+          "en": "Easy laps, then rollers if available.",
+          "fr": "Tours faciles, puis rouleaux si disponibles."
+        }
+      }
+    ]
+  },
+  {
+    "key": "track-tempo",
+    "name": {
+      "en": "Track tempo 3 × 20 laps",
+      "fr": "Tempo sur piste 3 × 20 tours"
+    },
+    "description": {
+      "en": "Steady tempo blocks on the track for bunch-race endurance.",
+      "fr": "Blocs de tempo réguliers sur la piste pour l'endurance des courses en peloton."
+    },
+    "tags": {
+      "en": [
+        "track",
+        "endurance",
+        "tempo"
+      ],
+      "fr": [
+        "piste",
+        "endurance",
+        "tempo"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 1200,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "rpe": 3,
+        "notes": {
+          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+        }
+      },
+      {
+        "type": "repeat",
+        "count": 3,
+        "steps": [
+          {
+            "laps": 20,
+            "label": {
+              "en": "Tempo",
+              "fr": "Tempo"
+            },
+            "rpe": 6,
+            "cadence": {
+              "low": 100,
+              "high": 110
+            }
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 300,
+            "label": {
+              "en": "Easy",
+              "fr": "Facile"
+            },
+            "rpe": 2
+          }
+        ]
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "rpe": 2,
+        "notes": {
+          "en": "Easy laps, then rollers if available.",
+          "fr": "Tours faciles, puis rouleaux si disponibles."
+        }
+      }
+    ]
+  },
+  {
+    "key": "spin-ups",
+    "name": {
+      "en": "Spin-ups",
+      "fr": "Vélocité"
+    },
+    "description": {
+      "en": "Leg speed for fixed-gear riding: one-minute high-cadence blocks at low power.",
+      "fr": "Vélocité pour le pignon fixe : blocs d'une minute à haute cadence, puissance basse."
+    },
+    "tags": {
+      "en": [
+        "cadence",
+        "technique"
+      ],
+      "fr": [
+        "cadence",
+        "technique"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 600,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 50,
+          "high": 65
+        },
+        "rpe": 3
+      },
+      {
+        "type": "repeat",
+        "count": 6,
+        "steps": [
+          {
+            "duration_s": 60,
+            "label": {
+              "en": "Spin-up",
+              "fr": "Vélocité"
+            },
+            "cadence": {
+              "low": 130,
+              "high": 150
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 60,
+              "high": 75
+            }
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 120,
+            "label": {
+              "en": "Easy",
+              "fr": "Facile"
+            },
+            "cadence": {
+              "low": 90,
+              "high": 100
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 50
+            }
+          }
+        ]
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 45,
+          "high": 55
+        },
+        "rpe": 2
+      }
+    ]
+  },
+  {
+    "key": "endurance-90",
+    "name": {
+      "en": "Endurance 90 min",
+      "fr": "Endurance 90 min"
+    },
+    "description": {
+      "en": "Aerobic base: 90 minutes in zone 2.",
+      "fr": "Fond aérobie : 90 minutes en zone 2."
+    },
+    "tags": {
+      "en": [
+        "endurance",
+        "base"
+      ],
+      "fr": [
+        "endurance",
+        "foncier"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 600,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 50,
+          "high": 65
+        },
+        "rpe": 3
+      },
+      {
+        "duration_s": 4200,
+        "label": {
+          "en": "Zone 2",
+          "fr": "Zone 2"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 65,
+          "high": 75
+        },
+        "cadence": {
+          "low": 85,
+          "high": 95
+        }
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 45,
+          "high": 55
+        },
+        "rpe": 2
+      }
+    ]
+  },
+  {
+    "key": "recovery-spin",
+    "name": {
+      "en": "Recovery spin",
+      "fr": "Récupération active"
+    },
+    "description": {
+      "en": "45 easy minutes to flush the legs the day after a hard session.",
+      "fr": "45 minutes faciles pour délier les jambes le lendemain d'une séance dure."
+    },
+    "tags": {
+      "en": [
+        "recovery"
+      ],
+      "fr": [
+        "récupération"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "recovery",
+        "duration_s": 2700,
+        "label": {
+          "en": "Easy spin",
+          "fr": "Pédalage facile"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 45,
+          "high": 55
+        },
+        "cadence": {
+          "low": 90,
+          "high": 100
+        }
+      }
+    ]
+  },
+  {
+    "key": "sweet-spot-3x12",
+    "name": {
+      "en": "Sweet spot 3 × 12 min",
+      "fr": "Sweet spot 3 × 12 min"
+    },
+    "description": {
+      "en": "Three 12-minute blocks just under threshold.",
+      "fr": "Trois blocs de 12 minutes juste sous le seuil."
+    },
+    "tags": {
+      "en": [
+        "sweet spot",
+        "threshold"
+      ],
+      "fr": [
+        "sweet spot",
+        "seuil"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 900,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 50,
+          "high": 65
+        },
+        "rpe": 3
+      },
+      {
+        "type": "repeat",
+        "count": 3,
+        "steps": [
+          {
+            "duration_s": 720,
+            "label": {
+              "en": "Sweet spot",
+              "fr": "Sweet spot"
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 88,
+              "high": 94
+            }
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 300,
+            "label": {
+              "en": "Recovery",
+              "fr": "Récupération"
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 50
+            }
+          }
+        ]
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 45,
+          "high": 55
+        },
+        "rpe": 2
+      }
+    ]
+  },
+  {
+    "key": "threshold-2x20",
+    "name": {
+      "en": "Threshold 2 × 20 min",
+      "fr": "Seuil 2 × 20 min"
+    },
+    "description": {
+      "en": "Two 20-minute efforts at FTP.",
+      "fr": "Deux efforts de 20 minutes au seuil (FTP)."
+    },
+    "tags": {
+      "en": [
+        "threshold"
+      ],
+      "fr": [
+        "seuil"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 900,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 50,
+          "high": 65
+        },
+        "rpe": 3
+      },
+      {
+        "type": "repeat",
+        "count": 2,
+        "steps": [
+          {
+            "duration_s": 900,
+            "label": {
+              "en": "Threshold",
+              "fr": "Seuil"
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 95,
+              "high": 100
+            }
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 480,
+            "label": {
+              "en": "Recovery",
+              "fr": "Récupération"
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 50
+            }
+          }
+        ]
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 45,
+          "high": 55
+        },
+        "rpe": 2
+      }
+    ]
+  },
+  {
+    "key": "vo2max-5x4",
+    "name": {
+      "en": "VO₂max 5 × 4 min",
+      "fr": "VO₂max 5 × 4 min"
+    },
+    "description": {
+      "en": "Five 4-minute efforts above threshold with equal recovery. Builds the engine for the pursuit.",
+      "fr": "Cinq efforts de 4 minutes au-dessus du seuil, récupération égale. Développe le moteur pour la poursuite."
+    },
+    "tags": {
+      "en": [
+        "vo2max",
+        "pursuit"
+      ],
+      "fr": [
+        "vo2max",
+        "poursuite"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 900,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 50,
+          "high": 65
+        },
+        "rpe": 3
+      },
+      {
+        "type": "repeat",
+        "count": 5,
+        "steps": [
+          {
+            "duration_s": 240,
+            "label": {
+              "en": "VO₂max",
+              "fr": "VO₂max"
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 110,
+              "high": 120
+            }
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 240,
+            "label": {
+              "en": "Recovery",
+              "fr": "Récupération"
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 50
+            }
+          }
+        ]
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 45,
+          "high": 55
+        },
+        "rpe": 2
+      }
+    ]
+  },
+  {
+    "key": "thirty-thirties",
+    "name": {
+      "en": "30/30s",
+      "fr": "30/30"
+    },
+    "description": {
+      "en": "Two sets of ten 30-second efforts with 30 seconds easy. Repeatability for bunch races.",
+      "fr": "Deux séries de dix efforts de 30 secondes, 30 secondes faciles. Répétabilité pour les courses en peloton."
+    },
+    "tags": {
+      "en": [
+        "vo2max",
+        "anaerobic"
+      ],
+      "fr": [
+        "vo2max",
+        "anaérobie"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 900,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 50,
+          "high": 65
+        },
+        "rpe": 3
+      },
+      {
+        "type": "repeat",
+        "count": 2,
+        "steps": [
+          {
+            "type": "repeat",
+            "count": 10,
+            "steps": [
+              {
+                "duration_s": 30,
+                "label": {
+                  "en": "On",
+                  "fr": "Effort"
+                },
+                "power": {
+                  "unit": "ftp_pct",
+                  "low": 130
+                }
+              },
+              {
+                "kind": "recovery",
+                "duration_s": 30,
+                "label": {
+                  "en": "Off",
+                  "fr": "Récup"
+                },
+                "power": {
+                  "unit": "ftp_pct",
+                  "low": 50
+                }
+              }
+            ]
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 300,
+            "label": {
+              "en": "Between sets",
+              "fr": "Entre les séries"
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 50
+            }
+          }
+        ]
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 45,
+          "high": 55
+        },
+        "rpe": 2
+      }
+    ]
+  },
+  {
+    "key": "sprint-openers",
+    "name": {
+      "en": "Sprint openers",
+      "fr": "Déblocage sprint"
+    },
+    "description": {
+      "en": "Short pre-race activation: three sprints and three short efforts above threshold.",
+      "fr": "Activation courte avant course : trois sprints et trois efforts courts au-dessus du seuil."
+    },
+    "tags": {
+      "en": [
+        "sprint",
+        "race prep"
+      ],
+      "fr": [
+        "sprint",
+        "affûtage"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 900,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 50,
+          "high": 65
+        },
+        "rpe": 3
+      },
+      {
+        "type": "repeat",
+        "count": 3,
+        "steps": [
+          {
+            "duration_s": 10,
+            "label": {
+              "en": "Sprint",
+              "fr": "Sprint"
+            },
+            "rpe": 10,
+            "cadence": {
+              "low": 110,
+              "high": 130
+            }
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 180,
+            "label": {
+              "en": "Easy",
+              "fr": "Facile"
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 50
+            }
+          }
+        ]
+      },
+      {
+        "type": "repeat",
+        "count": 3,
+        "steps": [
+          {
+            "duration_s": 60,
+            "label": {
+              "en": "Opener",
+              "fr": "Ouverture"
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 105,
+              "high": 110
+            }
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 120,
+            "label": {
+              "en": "Easy",
+              "fr": "Facile"
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 50
+            }
+          }
+        ]
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 45,
+          "high": 55
+        },
+        "rpe": 2
+      }
+    ]
+  },
+  {
+    "key": "low-cadence-torque",
+    "name": {
+      "en": "Low-cadence torque",
+      "fr": "Force à basse cadence"
+    },
+    "description": {
+      "en": "Big-gear strength: five 5-minute blocks at low cadence and sweet-spot power.",
+      "fr": "Force sur gros braquet : cinq blocs de 5 minutes à basse cadence, puissance sweet spot."
+    },
+    "tags": {
+      "en": [
+        "strength",
+        "cadence"
+      ],
+      "fr": [
+        "force",
+        "cadence"
+      ]
+    },
+    "steps": [
+      {
+        "kind": "warmup",
+        "duration_s": 900,
+        "label": {
+          "en": "Warm-up",
+          "fr": "Échauffement"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 50,
+          "high": 65
+        },
+        "rpe": 3
+      },
+      {
+        "type": "repeat",
+        "count": 5,
+        "steps": [
+          {
+            "duration_s": 300,
+            "label": {
+              "en": "Low cadence",
+              "fr": "Basse cadence"
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 85,
+              "high": 90
+            },
+            "cadence": {
+              "low": 50,
+              "high": 60
+            }
+          },
+          {
+            "kind": "recovery",
+            "duration_s": 300,
+            "label": {
+              "en": "Recovery",
+              "fr": "Récupération"
+            },
+            "power": {
+              "unit": "ftp_pct",
+              "low": 50
+            },
+            "cadence": {
+              "low": 90,
+              "high": 100
+            }
+          }
+        ]
+      },
+      {
+        "kind": "cooldown",
+        "duration_s": 600,
+        "label": {
+          "en": "Cool-down",
+          "fr": "Retour au calme"
+        },
+        "power": {
+          "unit": "ftp_pct",
+          "low": 45,
+          "high": 55
+        },
+        "rpe": 2
+      }
+    ]
+  }
+]

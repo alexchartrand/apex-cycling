@@ -239,8 +239,15 @@ class WorkoutEstimate(BaseModel):
     segments: list[ProfileSegment]
 
 
+class WorkoutSource(str, enum.Enum):
+    MINE = "mine"
+    COACH = "coach"  # an active coach's library
+    PRESET = "preset"  # built in (`presets.json`)
+
+
 class WorkoutSummary(BaseModel):
     id: uuid.UUID
+    source: WorkoutSource
     name: str
     description: str | None
     tags: list[str]
@@ -250,7 +257,8 @@ class WorkoutSummary(BaseModel):
     owner_name: str | None
     # Only the owner edits; everyone who sees it may duplicate it.
     can_edit: bool
-    created_at: datetime
+    # Null for a preset.
+    created_at: datetime | None
 
 
 class WorkoutRead(WorkoutSummary):

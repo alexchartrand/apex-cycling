@@ -4,12 +4,19 @@ import io
 import uuid
 import zipfile
 
+import pytest
 from sqlalchemy import select
 
 from app.workouts.models import Workout
 from tests.test_account import PASSWORD, _other_client, _rows_referencing, _signup
 from tests.test_activity_fusion import _coach_of
 from tests.test_aero_api import _setup
+
+
+@pytest.fixture(autouse=True)
+def _no_presets(monkeypatch):
+    """The library without the built-in workouts (`test_workout_presets.py`)."""
+    monkeypatch.setattr("app.workouts.service.presets", lambda: {})
 
 
 def _workout(**over) -> dict:
@@ -100,8 +107,8 @@ async def test_athletes_browse_their_coaches_library_but_only_owners_edit(client
         listed = (await client.get("/workouts")).json()
         assert [(w["name"], w["can_edit"]) for w in listed] == [("Coach's kilo", False), ("Mine", True)]
         assert listed[0]["owner_name"] == "Rider"
-        assert [w["name"] for w in (await client.get("/workouts", params={"mine": True})).json()] == ["Mine"]
-        assert [w["name"] for w in (await client.get("/workouts", params={"mine": False})).json()] == ["Coach's kilo"]
+        assert [w["name"] for w in (await client.get("/workouts", params={"source": "mine"})).json()] == ["Mine"]
+        assert [w["name"] for w in (await client.get("/workouts", params={"source": "coach"})).json()] == ["Coach's kilo"]
         assert [w["name"] for w in (await client.get("/workouts", params={"track": True})).json()] == ["Coach's kilo"]
         assert [w["name"] for w in (await client.get("/workouts", params={"tag": "ENDURANCE"})).json()] == ["Mine"]
         assert [w["name"] for w in (await client.get("/workouts", params={"q": "kilo"})).json()] == ["Coach's kilo"]

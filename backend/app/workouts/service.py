@@ -1,7 +1,8 @@
-"""The workout library. A viewer sees their own workouts and those of every
-coach actively coaching them, and edits only their own; anything they see
-they may duplicate into their own library. Functions return None for a
-workout the viewer can't see; those that change something commit.
+"""The workout library. A viewer sees their own workouts, those of every
+coach actively coaching them and the built-in presets (in their language),
+and edits only their own; anything they see they may duplicate into their
+own library. Functions return None for a workout the viewer can't see;
+those that change something commit.
 """
 
 import uuid
@@ -15,13 +16,21 @@ from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus
 from app.auth.models import User
 from app.workouts import structure
 from app.workouts.models import Workout
-from app.workouts.schemas import WorkoutItem, WorkoutRead, WorkoutSummary, WorkoutUpdate, WorkoutWrite
+from app.workouts.presets import Preset, presets
+from app.workouts.schemas import (
+    WorkoutItem,
+    WorkoutRead,
+    WorkoutSource,
+    WorkoutSummary,
+    WorkoutUpdate,
+    WorkoutWrite,
+)
 
 _ITEMS = TypeAdapter(list[WorkoutItem])
 
 
 class NotAllowed(Exception):
-    """Only the owner changes a workout."""
+    """Only the owner changes a workout (nobody changes a preset)."""
 
 
 async def visible_owner_ids(db: AsyncSession, viewer: User) -> set[uuid.UUID]:
@@ -44,22 +53,59 @@ async def _owner_names(db: AsyncSession, owner_ids: set[uuid.UUID]) -> dict[uuid
     return dict(rows.all())
 
 
-def _read(workout: Workout, viewer: User, names: dict[uuid.UUID, str]) -> WorkoutRead:
-    steps = _ITEMS.validate_python(workout.steps)
-    estimate = structure.estimate(steps)
+def _assemble(
+    *,
+    id: uuid.UUID,
+    source: WorkoutSource,
+    content: WorkoutWrite,
+    owner_name: str | None,
+    can_edit: bool,
+    created_at,
+) -> WorkoutRead:
+    estimate = structure.estimate(content.steps)
     return WorkoutRead(
-        id=workout.id,
+        id=id,
+        source=source,
+        name=content.name,
+        description=content.description,
+        tags=content.tags,
+        is_track=structure.is_track(content.steps),
+        duration_s=estimate.duration_s,
+        tss=estimate.tss,
+        owner_name=owner_name,
+        can_edit=can_edit,
+        created_at=created_at,
+        steps=content.steps,
+        estimate=estimate,
+    )
+
+
+def _read(workout: Workout, viewer: User, names: dict[uuid.UUID, str]) -> WorkoutRead:
+    mine = workout.owner_user_id == viewer.id
+    content = WorkoutWrite.model_construct(
         name=workout.name,
         description=workout.description,
         tags=list(workout.tags or []),
-        is_track=structure.is_track(steps),
-        duration_s=estimate.duration_s,
-        tss=estimate.tss,
+        steps=_ITEMS.validate_python(workout.steps),
+    )
+    return _assemble(
+        id=workout.id,
+        source=WorkoutSource.MINE if mine else WorkoutSource.COACH,
+        content=content,
         owner_name=names.get(workout.owner_user_id),
-        can_edit=workout.owner_user_id == viewer.id,
+        can_edit=mine,
         created_at=workout.created_at,
-        steps=steps,
-        estimate=estimate,
+    )
+
+
+def _preset_read(preset: Preset, viewer: User) -> WorkoutRead:
+    return _assemble(
+        id=preset.id,
+        source=WorkoutSource.PRESET,
+        content=preset.localized(viewer.locale),
+        owner_name=None,
+        can_edit=False,
+        created_at=None,
     )
 
 
@@ -78,27 +124,29 @@ async def list_workouts(
     query: str | None = None,
     tag: str | None = None,
     track: bool | None = None,
-    mine: bool | None = None,
+    source: WorkoutSource | None = None,
     min_duration_s: float | None = None,
     max_duration_s: float | None = None,
 ) -> list[WorkoutSummary]:
-    """By name. `mine` True keeps the viewer's own, False their coaches';
-    `track` True keeps workouts with a track step, False the others. The
-    filters on derived values run here rather than in SQL: a library is a
-    few dozen rows."""
-    owners = await visible_owner_ids(db, viewer)
-    if mine is True:
-        owners = {viewer.id}
-    elif mine is False:
-        owners.discard(viewer.id)
-    workouts = list(
-        await db.scalars(select(Workout).where(Workout.owner_user_id.in_(owners)).order_by(Workout.name, Workout.created_at))
-    )
-    names = await _owner_names(db, {w.owner_user_id for w in workouts})
+    """By name. `track` True keeps workouts with a track step, False the
+    others. The filters on derived values run here rather than in SQL: a
+    library is a few dozen rows."""
+    reads: list[WorkoutRead] = []
+    if source in (None, WorkoutSource.MINE, WorkoutSource.COACH):
+        owners = await visible_owner_ids(db, viewer)
+        if source is WorkoutSource.MINE:
+            owners = {viewer.id}
+        elif source is WorkoutSource.COACH:
+            owners.discard(viewer.id)
+        workouts = list(await db.scalars(select(Workout).where(Workout.owner_user_id.in_(owners))))
+        names = await _owner_names(db, {w.owner_user_id for w in workouts})
+        reads += [_read(w, viewer, names) for w in workouts]
+    if source in (None, WorkoutSource.PRESET):
+        reads += [_preset_read(p, viewer) for p in presets().values()]
+
     tag = tag.strip().lower() if tag else None
     summaries = []
-    for workout in workouts:
-        read = _read(workout, viewer, names)
+    for read in sorted(reads, key=lambda r: (r.name.casefold(), r.source != WorkoutSource.MINE)):
         if not _matches(read, query) or (tag and tag not in read.tags):
             continue
         if track is not None and read.is_track != track:
@@ -123,6 +171,8 @@ async def _read_one(db: AsyncSession, viewer: User, workout: Workout) -> Workout
 
 
 async def get_workout(db: AsyncSession, viewer: User, workout_id: uuid.UUID) -> WorkoutRead | None:
+    if (preset := presets().get(workout_id)) is not None:
+        return _preset_read(preset, viewer)
     workout = await _visible(db, viewer, workout_id)
     return None if workout is None else await _read_one(db, viewer, workout)
 
@@ -131,23 +181,29 @@ def _stored_steps(steps: list) -> list[dict]:
     return _ITEMS.dump_python(steps, mode="json", exclude_none=True)
 
 
-async def create_workout(db: AsyncSession, viewer: User, payload: WorkoutWrite) -> WorkoutRead:
+async def _store(db: AsyncSession, viewer: User, content: WorkoutWrite) -> WorkoutRead:
     workout = Workout(
         owner_user_id=viewer.id,
-        name=payload.name,
-        description=payload.description,
-        tags=payload.tags,
-        steps=_stored_steps(payload.steps),
+        name=content.name,
+        description=content.description,
+        tags=list(content.tags),
+        steps=_stored_steps(content.steps),
     )
     db.add(workout)
     await db.commit()
     return await _read_one(db, viewer, workout)
 
 
+async def create_workout(db: AsyncSession, viewer: User, payload: WorkoutWrite) -> WorkoutRead:
+    return await _store(db, viewer, payload)
+
+
 async def update_workout(
     db: AsyncSession, viewer: User, workout_id: uuid.UUID, payload: WorkoutUpdate
 ) -> WorkoutRead | None:
-    """Raises `NotAllowed` for someone else's workout."""
+    """Raises `NotAllowed` for someone else's workout or a preset."""
+    if workout_id in presets():
+        raise NotAllowed
     workout = await _visible(db, viewer, workout_id)
     if workout is None:
         return None
@@ -164,6 +220,8 @@ async def update_workout(
 
 async def delete_workout(db: AsyncSession, viewer: User, workout_id: uuid.UUID) -> bool:
     """Raises `NotAllowed`; False when the viewer can't see it."""
+    if workout_id in presets():
+        raise NotAllowed
     workout = await _visible(db, viewer, workout_id)
     if workout is None:
         return False
@@ -175,7 +233,10 @@ async def delete_workout(db: AsyncSession, viewer: User, workout_id: uuid.UUID) 
 
 
 async def duplicate_workout(db: AsyncSession, viewer: User, workout_id: uuid.UUID) -> WorkoutRead | None:
-    """A copy in the viewer's own library, to adapt."""
+    """A copy in the viewer's own library, to adapt; a preset is copied in
+    the viewer's language."""
+    if (preset := presets().get(workout_id)) is not None:
+        return await _store(db, viewer, preset.localized(viewer.locale))
     source = await _visible(db, viewer, workout_id)
     if source is None:
         return None

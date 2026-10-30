@@ -10,6 +10,7 @@ from app.workouts import service, structure
 from app.workouts.schemas import (
     WorkoutEstimate,
     WorkoutRead,
+    WorkoutSource,
     WorkoutSteps,
     WorkoutSummary,
     WorkoutUpdate,
@@ -27,20 +28,20 @@ async def list_workouts(
     q: str | None = Query(default=None, max_length=100),
     tag: str | None = Query(default=None, max_length=30),
     track: bool | None = None,
-    mine: bool | None = None,
+    source: WorkoutSource | None = None,
     min_duration_s: float | None = Query(default=None, ge=0),
     max_duration_s: float | None = Query(default=None, ge=0),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[WorkoutSummary]:
-    """My workouts and my active coaches' libraries."""
+    """My workouts, my active coaches' libraries and the presets."""
     return await service.list_workouts(
         db,
         current_user,
         query=q,
         tag=tag,
         track=track,
-        mine=mine,
+        source=source,
         min_duration_s=min_duration_s,
         max_duration_s=max_duration_s,
     )

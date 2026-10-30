@@ -16,7 +16,7 @@
 
 ## ✨ Features
 
-- [~] 🟡 Sprint W — Workout builder & library — *added 10/30; spec agreed with the user; W1 done 10/30 (migration 0020)*
+- [~] 🟡 Sprint W — Workout builder & library — *added 10/30; spec agreed with the user; W1–W2 done 10/30 (migration 0020)*
   - Why: plans are free-form today (`PlannedEffort` targets) and nothing reaches a head unit or trainer. Workouts should be bike-generic (power/cadence on a trainer or the road) with track-specific steps (laps/meters, standing/flying start), sent to devices and scored afterwards.
   - **Model**: a `Workout` = name, description, tags, `steps` JSON tree: steps (kind warmup/work/recovery/cooldown, free text) and repeat blocks **nested one level** (e.g. 3 × [4 × (flying 200, 3 laps easy)], 10 min between sets). Step length: time, **or distance in m / laps** (laps × track `length_m`; a lap step on a track without a length has no distance), **or open** (lap button). Targets, any of: power (% FTP or W, single or range), cadence range, RPE/free text. A track step can also carry a standard `event_key` + `start_type` (as `PlannedEffort` does today) and an optional `target_time_ms` and gear — as teeth (`GearRatio`), not a `gear_setup_id`, since a library workout belongs to no athlete; scheduling (W4) maps it to the athlete's matching gear. HR targets are left out on purpose. Derived on read: estimated duration, TSS, and an intensity profile.
   - **Library & permissions**: owner = an athlete (personal) or a coach (coach library); built-in presets come from a hand-maintained, bilingual `workouts/presets.json` (FR/EN names and descriptions, loaded like `facilities.json`). Athletes browse their own, presets and **the full library of every active coach**; only the owner edits. Tags + search/filter (type, duration, track vs generic); "Duplicate" copies any visible workout into my library.
@@ -29,7 +29,7 @@
   - **Housekeeping**: workouts are in account export and deletion (`build_export`, `delete_athlete`/`delete_account`; a coach deleting their account keeps the athletes' snapshots), new i18n namespace `workouts`, migration with clean `alembic check`.
   - Tasks:
     - ~~W1 Model + schemas + step tree validation + derived duration/TSS (pure, tested), CRUD + library visibility rules.~~ Done: `app/workouts/`, `/api/workouts` (+ `/estimate` compute-only for the editor, `/{id}/duplicate`). Watt targets count as unrated in the library (no FTP there); presets (W2) aren't in the list yet.
-    - W2 Presets file (Claude drafts ~10–15 classic track + generic sessions, the user reviews).
+    - ~~W2 Presets file~~ Done: 16 drafted in `app/workouts/presets.json` (7 track, 9 generic), FR/EN. **Still needs the user's review of the content** (efforts, recoveries, French wording).
     - W3 Library page + visual editor + intensity chart.
     - W4 Scheduling: snapshot on `PlannedSession`, plan dialog uses the editor.
     - W5 Exporters `.fit` / `.zwo` / `.erg` / `.mrc` (pure, tested; `.fit` checked with `fitdecode` round-trip) + track-step duration estimate.
