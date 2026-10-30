@@ -8,6 +8,7 @@ export default {
     records: "Records",
     progress: "Progression",
     season: "Saison",
+    workouts: "Entraînements",
     power: "Puissance",
     tools: "Outils",
     aero: "Labo aéro",

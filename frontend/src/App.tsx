@@ -31,6 +31,9 @@ const PursuitBoardPage = lazy(() => import("./routes/PursuitBoardPage").then((m)
 const SeasonPage = lazy(() => import("./routes/SeasonPage").then((m) => ({ default: m.SeasonPage })));
 const SessionDetailPage = lazy(() => import("./routes/SessionDetailPage").then((m) => ({ default: m.SessionDetailPage })));
 const SettingsPage = lazy(() => import("./routes/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const WorkoutEditPage = lazy(() => import("./routes/WorkoutEditPage").then((m) => ({ default: m.WorkoutEditPage })));
+const WorkoutPage = lazy(() => import("./routes/WorkoutPage").then((m) => ({ default: m.WorkoutPage })));
+const WorkoutsPage = lazy(() => import("./routes/WorkoutsPage").then((m) => ({ default: m.WorkoutsPage })));
 const ToolsPage = lazy(() => import("./routes/ToolsPage").then((m) => ({ default: m.ToolsPage })));
 
 // Dev-only living style guide; the lazy import keeps it out of prod bundles.
@@ -75,6 +78,10 @@ export function App() {
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/power" element={<PowerCurvePage />} />
           <Route path="/season" element={<SeasonPage />} />
+          <Route path="/workouts" element={<WorkoutsPage />} />
+          <Route path="/workouts/new" element={<WorkoutEditPage />} />
+          <Route path="/workouts/:workoutId" element={<WorkoutPage />} />
+          <Route path="/workouts/:workoutId/edit" element={<WorkoutEditPage />} />
           <Route path="/tools/*" element={<ToolsPage />} />
           <Route path="/aero" element={<AeroPage />} />
           <Route path="/equipment" element={<EquipmentPage />} />

@@ -5,6 +5,7 @@ export default {
     records: "Records",
     progress: "Progress",
     season: "Season",
+    workouts: "Workouts",
     power: "Power",
     tools: "Tools",
     aero: "Aero lab",

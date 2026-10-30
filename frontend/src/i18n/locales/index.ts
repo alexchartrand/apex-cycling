@@ -20,6 +20,7 @@ import enSettings from "./en/settings";
 import enShell from "./en/shell";
 import enTools from "./en/tools";
 import enTraining from "./en/training";
+import enWorkouts from "./en/workouts";
 import frActivities from "./fr/activities";
 import frAero from "./fr/aero";
 import frAdmin from "./fr/admin";
@@ -42,6 +43,7 @@ import frSettings from "./fr/settings";
 import frShell from "./fr/shell";
 import frTools from "./fr/tools";
 import frTraining from "./fr/training";
+import frWorkouts from "./fr/workouts";
 
 export const resources = {
   en: {
@@ -67,6 +69,7 @@ export const resources = {
     share: enShare,
     notifications: enNotifications,
     season: enSeason,
+    workouts: enWorkouts,
   },
   fr: {
     common: frCommon,
@@ -91,6 +94,7 @@ export const resources = {
     share: frShare,
     notifications: frNotifications,
     season: frSeason,
+    workouts: frWorkouts,
   },
 } as const;
 
