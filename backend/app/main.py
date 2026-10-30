@@ -35,6 +35,7 @@ from app.training.comments_router import inbox_router as comments_inbox_router
 from app.training.comments_router import router as comments_router
 from app.training.records_router import router as records_router
 from app.training.router import router as training_router
+from app.workouts.router import router as workouts_router
 from app.training.tracks_router import router as tracks_router
 
 logger = logging.getLogger("app.main")
@@ -89,6 +90,7 @@ api_router.include_router(planning_router)
 api_router.include_router(seasons_router)
 api_router.include_router(seasons_public_router)
 api_router.include_router(notifications_router)
+api_router.include_router(workouts_router)
 
 
 @api_router.get("/health")

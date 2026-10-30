@@ -32,6 +32,7 @@ from app.equipment.models import Bike, GearSetup
 from app.goals.models import Goal
 from app.notifications.models import Notification, NotificationPreference, PushSubscription
 from app.planning.models import PlannedSession
+from app.workouts.models import Workout
 from app.seasons.models import CalendarFeed, Competition, Season
 from app.training.models import (
     EventClass,
@@ -235,6 +236,10 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
             files[filename] = _csv(model, rows)
         await _add_activities(db, athlete, files)
 
+    files["workouts.csv"] = _csv(
+        Workout,
+        list(await db.scalars(select(Workout).where(Workout.owner_user_id == user.id).order_by(Workout.created_at))),
+    )
     files["notifications.csv"] = _csv(
         Notification,
         list(await db.scalars(select(Notification).where(Notification.user_id == user.id).order_by(Notification.created_at))),
@@ -364,6 +369,7 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     await db.execute(
         update(PlannedSession).where(PlannedSession.created_by_user_id == user.id).values(created_by_user_id=None)
     )
+    await db.execute(delete(Workout).where(Workout.owner_user_id == user.id))
     await db.execute(delete(Notification).where(Notification.user_id == user.id))
     await db.execute(delete(NotificationPreference).where(NotificationPreference.user_id == user.id))
     await db.execute(delete(PushSubscription).where(PushSubscription.user_id == user.id))
