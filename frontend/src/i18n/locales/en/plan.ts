@@ -9,6 +9,7 @@ export default {
   answered: "Updated",
   saved: "Planned session saved",
   status: { planned: "Planned", done: "Done", skipped: "Skipped" },
+  intervals: { pending: "Sending to Intervals.icu", sent: "On Intervals.icu", failed: "Not on Intervals.icu yet" },
   chip: "Plan: {{title}}",
   detail: {
     workout: "Workout",

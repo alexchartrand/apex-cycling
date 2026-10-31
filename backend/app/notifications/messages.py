@@ -74,6 +74,11 @@ class Message:
     url: str  # path inside the app
 
 
+def event_name(event_key: str, locale: str | None) -> str:
+    """"flying 200" / "200 m lancé"; the key itself for an unknown event."""
+    return _EVENTS.get(locale or DEFAULT_LOCALE, _EVENTS[DEFAULT_LOCALE]).get(event_key, event_key)
+
+
 def format_time(ms: int) -> str:
     if ms < 60_000:
         return f"{ms / 1000:.3f} s"

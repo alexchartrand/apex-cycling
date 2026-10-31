@@ -8,7 +8,12 @@ import app.db.models  # noqa: F401 -- registers all models on Base.metadata befo
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.session import AsyncSessionLocal
-from app.ingestion.jobs import poll_active_connections, poll_intervals_connections, poll_strava_connections
+from app.ingestion.jobs import (
+    poll_active_connections,
+    poll_intervals_connections,
+    poll_strava_connections,
+    push_intervals_plans,
+)
 from app.notifications.service import deliver_pending
 from app.ops.heartbeat import record_beat, touch_heartbeat_file
 
@@ -59,6 +64,13 @@ async def sync_intervals() -> None:
         logger.exception("Intervals.icu sync run failed")
 
 
+async def push_plans() -> None:
+    try:
+        await push_intervals_plans()
+    except Exception:
+        logger.exception("Pushing plans to Intervals.icu failed")
+
+
 async def sync_strava() -> None:
     if not (get_settings().strava_client_id and get_settings().strava_client_secret):
         return
@@ -106,6 +118,7 @@ async def main() -> None:
         coalesce=True,
     )
     scheduler.add_job(send_notifications, "interval", seconds=60, max_instances=1, coalesce=True)
+    scheduler.add_job(push_plans, "interval", seconds=60, max_instances=1, coalesce=True)
     scheduler.add_job(beat, "interval", seconds=60)
     scheduler.start()
     logger.info(

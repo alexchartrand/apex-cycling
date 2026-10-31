@@ -31,7 +31,7 @@ from app.db.base import Base
 from app.equipment.models import Bike, GearSetup
 from app.goals.models import Goal
 from app.notifications.models import Notification, NotificationPreference, PushSubscription
-from app.planning.models import PlannedSession
+from app.planning.models import IntervalsPlanEvent, PlannedSession
 from app.workouts.models import Workout
 from app.seasons.models import CalendarFeed, Competition, Season
 from app.training.models import (
@@ -201,6 +201,17 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
                 ),
             ),
             (
+                "intervals_plan_events.csv",
+                IntervalsPlanEvent,
+                list(
+                    await db.scalars(
+                        select(IntervalsPlanEvent)
+                        .where(IntervalsPlanEvent.athlete_id == athlete.id)
+                        .order_by(IntervalsPlanEvent.created_at)
+                    )
+                ),
+            ),
+            (
                 "seasons.csv",
                 Season,
                 list(await db.scalars(select(Season).where(Season.athlete_id == athlete.id).order_by(Season.start_date))),
@@ -307,6 +318,7 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     await db.execute(delete(Activity).where(Activity.athlete_id == athlete.id))
 
     await db.execute(delete(AeroTest).where(AeroTest.athlete_id == athlete.id))  # they point at sessions too
+    await db.execute(delete(IntervalsPlanEvent).where(IntervalsPlanEvent.athlete_id == athlete.id))
     await db.execute(delete(PlannedSession).where(PlannedSession.athlete_id == athlete.id))
     event_ids = select(TrainingEvent.id).where(TrainingEvent.athlete_id == athlete.id)
     lap_ids = select(TrainingLap.id).where(TrainingLap.athlete_id == athlete.id)

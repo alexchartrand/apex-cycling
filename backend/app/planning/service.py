@@ -19,6 +19,7 @@ from app.equipment.models import Bike, GearSetup
 from app.notifications.producers import notify_plan_added
 from app.planning.comparison import NoLinkedSession, compare_plan  # noqa: F401  (re-exported for the router)
 from app.planning.models import PlannedSession, PlanStatus
+from app.planning.push import plan_changed, push_states
 from app.planning.schemas import (
     PlanComparison,
     LinkedSession,
@@ -118,6 +119,7 @@ async def _reads(
     with_workout = [p for p in plans if p.workout]
     metric_rows = await _metric_rows(db, athlete.id) if with_workout else []
     sources = await visible_workout_ids(db, viewer, {p.source_workout_id for p in plans if p.source_workout_id})
+    pushed = await push_states(db, {p.id for p in plans})
     reads = []
     for plan in plans:
         event = events.get(plan.training_event_id) if plan.training_event_id else None
@@ -146,6 +148,7 @@ async def _reads(
                 else None,
                 can_edit=athlete_side or plan.created_by_user_id == viewer.id,
                 can_mark=athlete_side,
+                intervals=pushed.get(plan.id),
             )
         )
     return reads
@@ -198,6 +201,7 @@ async def create_plan(
     )
     db.add(plan)
     await notify_plan_added(db, athlete, viewer, payload.title, payload.planned_date)
+    await plan_changed(db, plan)
     await db.commit()
     return await _read_one(db, athlete, viewer, plan)
 
@@ -231,6 +235,7 @@ async def update_plan(
         plan.status = new_status.value
         if new_status is not PlanStatus.DONE:
             plan.training_event_id = None  # only a done plan stays linked
+    await plan_changed(db, plan)
     await db.commit()
     return await _read_one(db, athlete, viewer, plan)
 
@@ -242,6 +247,7 @@ async def delete_plan(db: AsyncSession, athlete: Athlete, viewer: User, plan_id:
         return False
     if not (plan.created_by_user_id == viewer.id or await speaks_for_athlete(db, viewer, athlete)):
         raise NotAllowed
+    await plan_changed(db, plan)  # its event goes too
     await db.delete(plan)
     await db.commit()
     return True

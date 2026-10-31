@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     intervals_poll_interval_minutes: int = 30
     intervals_backfill_days: int = 365
     intervals_max_downloads_per_run: int = 100
+    # Planned workouts pushed to Intervals.icu calendars: events sent per worker round.
+    intervals_push_batch_size: int = 50
 
     # Strava (app/ingestion/strava). Register an API application at
     # strava.com/settings/api with the authorization callback domain of this

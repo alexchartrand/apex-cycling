@@ -12,7 +12,8 @@ from app.connections.models import (
     TransponderAssignment,
 )
 from app.db.session import AsyncSessionLocal
-from app.ingestion.intervals.factory import build_intervals_sync_service
+from app.ingestion.intervals.dtos import PushResult
+from app.ingestion.intervals.factory import build_intervals_sync_service, build_plan_push_service
 from app.ingestion.sqorz.factory import build_sqorz_ingestion_service
 from app.ingestion.strava.factory import build_strava_sync_service
 
@@ -90,6 +91,18 @@ async def poll_intervals_connections() -> PollResult:
             logger.exception("Intervals.icu sync failed for connection %s", connection_id)
             result.failures += 1
             result.last_error = f"{connection_id}: {type(exc).__name__}: {exc}"[:500]
+    return result
+
+
+async def push_intervals_plans() -> PushResult:
+    """Sends the planned workouts that changed to the Intervals.icu calendars."""
+    async with AsyncSessionLocal() as db:
+        result = await build_plan_push_service(db).run()
+    if result.sent or result.removed or result.failed:
+        logger.info(
+            "Intervals.icu plans: %d sent, %d removed, %d failed%s",
+            result.sent, result.removed, result.failed, " (rate limited)" if result.rate_limited else "",
+        )  # fmt: skip
     return result
 
 

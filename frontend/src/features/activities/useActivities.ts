@@ -16,6 +16,7 @@ import {
   getTrainingLoad,
   linkActivitySession,
   listActivities,
+  setIntervalsPush,
   syncIntervals,
   syncStrava,
   unlinkActivitySession,
@@ -199,6 +200,18 @@ export function useSyncIntervals(athleteId: string) {
         queryClient.invalidateQueries({ queryKey: ["intervals", athleteId] });
         invalidate();
       }, 2500);
+    },
+  });
+}
+
+export function useIntervalsPush(athleteId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (enabled: boolean) => setIntervalsPush(athleteId, enabled),
+    onSuccess: (status) => {
+      queryClient.setQueryData(["intervals", athleteId], status);
+      // The worker sends them within a minute; plans show where they stand.
+      queryClient.invalidateQueries({ queryKey: ["planned-sessions"] });
     },
   });
 }

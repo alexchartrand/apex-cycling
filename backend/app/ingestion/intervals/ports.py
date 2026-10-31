@@ -6,7 +6,7 @@ from collections.abc import Collection
 from datetime import date, datetime
 from typing import Literal, Protocol
 
-from app.ingestion.intervals.dtos import IntervalsConnectionRecord, RemoteActivity, RemoteAthlete
+from app.ingestion.intervals.dtos import IntervalsConnectionRecord, PlanPushJob, RemoteActivity, RemoteAthlete
 
 
 class ActivityRejected(Exception):
@@ -47,4 +47,34 @@ class ActivityImporterPort(Protocol):
         """Stores an activity that has no file, from the numbers Intervals.icu
         gives. Raises `ActivityRejected` when those don't say when it was and
         how long it lasted."""
+        ...
+
+
+class IntervalsCalendarPort(Protocol):
+    async def save_event(self, api_key: str, event_id: str | None, event: dict) -> str:
+        """Updates the event, or creates it (idempotent on its `uid`); its id."""
+        ...
+
+    async def delete_event(self, api_key: str, event_id: str, uid: str) -> None:
+        """Deletes it unless it is already gone or isn't ours (`uid`)."""
+        ...
+
+
+class PlanPushRepositoryPort(Protocol):
+    async def due(self, now: datetime, limit: int) -> list[PlanPushJob]:
+        """Oldest first, only for athletes whose connection is active."""
+        ...
+
+    async def mark_sent(self, job_id: uuid.UUID, event_id: str, payload_hash: str) -> None: ...
+
+    async def forget(self, job_id: uuid.UUID) -> None:
+        """The event is gone (or never was): stop tracking it."""
+        ...
+
+    async def mark_failed(self, job_id: uuid.UUID, error: str, retry_at: datetime | None) -> None:
+        """Counts an attempt; None = give up until the plan changes again."""
+        ...
+
+    async def postpone(self, job_id: uuid.UUID, until: datetime) -> None:
+        """Try again later without counting an attempt (rate limited)."""
         ...

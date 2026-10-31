@@ -151,6 +151,10 @@ export interface IntervalsStatus {
   intervals_athlete_name: string | null;
   last_synced_at: string | null;
   runs: SyncRun[];
+  /** Planned workouts are put on the athlete's Intervals.icu calendar. */
+  push_plans: boolean;
+  /** Plans whose last push failed (they are retried). */
+  push_failures: number;
 }
 
 export interface StravaStatus {

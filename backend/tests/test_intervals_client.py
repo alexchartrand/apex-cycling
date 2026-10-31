@@ -110,3 +110,56 @@ async def test_oversized_downloads_are_refused(monkeypatch):
 def test_gunzip_limited_rejects_garbage():
     with pytest.raises(IntervalsClientError, match="corrupt"):
         gunzip_limited(b"\x1f\x8b" + b"garbage", 1000)
+
+
+# --- calendar events ---------------------------------------------------------------
+
+
+async def test_save_event_creates_by_uid_and_updates_by_id():
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.method, request.url.path, dict(request.url.params)))
+        if request.method == "PUT" and request.url.path.endswith("/gone"):
+            return httpx.Response(404)
+        return httpx.Response(200, json={"id": 77, "uid": "u"})
+
+    client = _client(handler)
+    assert await client.save_event("k", None, {"uid": "u"}) == "77"
+    assert await client.save_event("k", "77", {"uid": "u"}) == "77"
+    # Deleted on Intervals.icu: created again.
+    assert await client.save_event("k", "gone", {"uid": "u"}) == "77"
+    assert seen == [
+        ("POST", "/api/v1/athlete/0/events", {"upsertOnUid": "true"}),
+        ("PUT", "/api/v1/athlete/0/events/77", {}),
+        ("PUT", "/api/v1/athlete/0/events/gone", {}),
+        ("POST", "/api/v1/athlete/0/events", {"upsertOnUid": "true"}),
+    ]
+
+
+async def test_save_event_reports_errors():
+    with pytest.raises(IntervalsRateLimited):
+        await _client(lambda r: httpx.Response(429, headers={"Retry-After": "5"})).save_event("k", None, {})
+    with pytest.raises(IntervalsAuthError):
+        await _client(lambda r: httpx.Response(403)).save_event("k", "1", {})
+    with pytest.raises(IntervalsClientError):
+        await _client(lambda r: httpx.Response(200, json=[])).save_event("k", None, {})
+
+
+async def test_delete_event_only_deletes_our_own_event():
+    deleted = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        event_id = request.url.path.rsplit("/", 1)[1]
+        if request.method == "DELETE":
+            deleted.append(event_id)
+            return httpx.Response(200, json={})
+        if event_id == "gone":
+            return httpx.Response(404)
+        return httpx.Response(200, json={"id": event_id, "uid": "ours" if event_id == "1" else "someone-else"})
+
+    client = _client(handler)
+    await client.delete_event("k", "1", "ours")
+    await client.delete_event("k", "2", "ours")
+    await client.delete_event("k", "gone", "ours")
+    assert deleted == ["1"]

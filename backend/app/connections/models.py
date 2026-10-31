@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import JSON, Date, DateTime, Enum, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import JSON, Boolean, Date, DateTime, Enum, ForeignKey, Index, Integer, String, Text, UniqueConstraint, false, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.crypto import EncryptedJSON
@@ -57,6 +57,9 @@ class DataSourceConnection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # again unless an assignment changed since or the version moved on.
     normalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     normalizer_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Intervals.icu only: the athlete asked for their planned workouts to be
+    # put on their Intervals.icu calendar (`planning.models.IntervalsPlanEvent`).
+    push_plans: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     # Informational only for sqorz (the facility's own account), never an FK
     # to our `clubs` table — see plan Data Model.

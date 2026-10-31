@@ -12,6 +12,7 @@ export default {
   answered: "Mis à jour",
   saved: "Séance planifiée enregistrée",
   status: { planned: "Planifiée", done: "Faite", skipped: "Sautée" },
+  intervals: { pending: "Envoi vers Intervals.icu", sent: "Dans Intervals.icu", failed: "Pas encore dans Intervals.icu" },
   chip: "Prévu : {{title}}",
   detail: {
     workout: "Entraînement",

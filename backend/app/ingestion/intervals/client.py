@@ -150,9 +150,46 @@ class IntervalsHttpClient:
         data = bytes(content)
         return gunzip_limited(data, limit) if data[:2] == b"\x1f\x8b" else data
 
+    # --- calendar events (planned workouts pushed from ApexCycling) ---
 
-async def _send(client: httpx.AsyncClient, path: str, **kwargs) -> httpx.Response:
+    @staticmethod
+    def _event_id(response: httpx.Response) -> str:
+        body = response.json()
+        if not isinstance(body, dict) or body.get("id") is None:
+            raise IntervalsClientError("Intervals.icu did not return the event")
+        return str(body["id"])
+
+    async def save_event(self, api_key: str, event_id: str | None, event: dict) -> str:
+        """Updates our event, or creates it — upserting on its `uid`, so a
+        create retried after a lost answer doesn't duplicate it. Returns the
+        event's id."""
+        async with self._client(api_key) as client:
+            if event_id is not None:
+                response = await _send(client, f"/athlete/0/events/{event_id}", "PUT", json=event)
+                if response.status_code != 404:  # deleted on Intervals.icu: create it again
+                    self._check(response)
+                    return self._event_id(response)
+            response = await _send(client, "/athlete/0/events", "POST", params={"upsertOnUid": "true"}, json=event)
+        self._check(response)
+        return self._event_id(response)
+
+    async def delete_event(self, api_key: str, event_id: str, uid: str) -> None:
+        """Deletes the event if it is still there and still ours (`uid`)."""
+        async with self._client(api_key) as client:
+            response = await _send(client, f"/athlete/0/events/{event_id}")
+            if response.status_code == 404:
+                return
+            self._check(response)
+            body = response.json()
+            if not isinstance(body, dict) or body.get("uid") != uid:
+                return
+            response = await _send(client, f"/athlete/0/events/{event_id}", "DELETE")
+        if response.status_code != 404:
+            self._check(response)
+
+
+async def _send(client: httpx.AsyncClient, path: str, method: str = "GET", **kwargs) -> httpx.Response:
     try:
-        return await client.get(path, **kwargs)
+        return await client.request(method, path, **kwargs)
     except httpx.HTTPError as exc:
         raise IntervalsClientError(f"could not reach Intervals.icu: {type(exc).__name__}") from exc

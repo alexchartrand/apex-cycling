@@ -5,7 +5,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "../../components/ui";
 import { IntervalsSource } from "./IntervalsSource";
 
-const disconnected = { connected: false, active: false, intervals_athlete_id: null, intervals_athlete_name: null, last_synced_at: null, runs: [] };
+const disconnected = {
+  connected: false,
+  active: false,
+  intervals_athlete_id: null,
+  intervals_athlete_name: null,
+  last_synced_at: null,
+  runs: [],
+  push_plans: false,
+  push_failures: 0,
+};
 const connected = {
   connected: true,
   active: true,
@@ -13,6 +22,8 @@ const connected = {
   intervals_athlete_name: "Alex",
   last_synced_at: null,
   runs: [{ status: "success", requested_at: "2026-06-01T07:00:00Z", completed_at: "2026-06-01T07:00:05Z", error_message: null, imported_count: 3 }],
+  push_plans: false,
+  push_failures: 0,
 };
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
@@ -80,5 +91,22 @@ describe("IntervalsSource", () => {
     await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Disconnect" }));
 
     await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(true));
+  });
+
+  it("turns the planned-workout push on and says when some didn't go", async () => {
+    fetchMock
+      .mockResolvedValueOnce(json(connected))
+      .mockResolvedValueOnce(json({ ...connected, push_plans: true, push_failures: 2 }));
+    renderCard();
+
+    const toggle = await screen.findByLabelText("Put my planned workouts on my Intervals.icu calendar");
+    expect(toggle).not.toBeChecked();
+    await userEvent.click(toggle);
+
+    expect(await screen.findByText(/2 planned workouts couldn't be sent yet/)).toBeInTheDocument();
+    expect(toggle).toBeChecked();
+    const put = fetchMock.mock.calls.find(([, init]) => init?.method === "PUT");
+    expect(put?.[0]).toBe("/api/athletes/ath-1/intervals/push");
+    expect(JSON.parse(put?.[1].body)).toEqual({ enabled: true });
   });
 });

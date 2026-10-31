@@ -32,6 +32,7 @@ const plan = (over: Partial<PlannedSession> = {}): PlannedSession => ({
   session: null,
   can_edit: false,
   can_mark: true,
+  intervals: null,
   ...over,
 });
 

@@ -1,5 +1,6 @@
 """An athlete's Intervals.icu connection: connect with an API key, see its
-status, sync now, disconnect. The key is stored encrypted and never returned."""
+status, sync now, put planned workouts on the Intervals.icu calendar,
+disconnect. The key is stored encrypted and never returned."""
 
 import uuid
 from collections.abc import Callable
@@ -7,9 +8,10 @@ from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.activities.metrics_service import athlete_timezone, local_day
 from app.athletes.coaching import speaks_for_athlete
 from app.athletes.models import Athlete
 from app.auth.deps import get_current_user, require_athlete_access
@@ -22,10 +24,13 @@ from app.connections.models import (
     IngestionRunStatus,
 )
 from app.core.rate_limit import limiter
+from app.db.base import utcnow
 from app.db.session import AsyncSessionLocal, get_db
 from app.ingestion.intervals.client import IntervalsAuthError, IntervalsClientError, IntervalsHttpClient
 from app.ingestion.intervals.factory import build_intervals_sync_service
 from app.ingestion.intervals.ports import IntervalsClientPort
+from app.planning.models import IntervalsPlanEvent
+from app.planning.push import forget_athlete, push_switched
 
 router = APIRouter(prefix="/athletes/{athlete_id}/intervals", tags=["connections"])
 
@@ -41,6 +46,10 @@ def get_session_factory() -> Callable:
 
 class IntervalsConnect(BaseModel):
     api_key: str = Field(min_length=8, max_length=200)
+
+
+class IntervalsPush(BaseModel):
+    enabled: bool
 
 
 class IntervalsRunRead(BaseModel):
@@ -59,6 +68,10 @@ class IntervalsStatus(BaseModel):
     intervals_athlete_name: str | None
     last_synced_at: datetime | None
     runs: list[IntervalsRunRead]
+    # Planned workouts are put on the Intervals.icu calendar; how many of
+    # them the last attempt failed to send (they are retried).
+    push_plans: bool = False
+    push_failures: int = 0
 
 
 async def _require_data_owner(db: AsyncSession, user: User, athlete: Athlete) -> None:
@@ -87,8 +100,15 @@ async def _status(db: AsyncSession, connection: DataSourceConnection | None) -> 
         .order_by(IngestionRun.requested_at.desc())
         .limit(10)
     )
+    failures = await db.scalar(
+        select(func.count())
+        .select_from(IntervalsPlanEvent)
+        .where(IntervalsPlanEvent.athlete_id == connection.athlete_id, IntervalsPlanEvent.last_error.is_not(None))
+    )
     return IntervalsStatus(
         connected=True,
+        push_plans=connection.push_plans,
+        push_failures=failures or 0,
         active=connection.status == DataSourceConnectionStatus.ACTIVE,
         intervals_athlete_id=connection.external_id,
         intervals_athlete_name=(connection.credentials or {}).get("athlete_name"),
@@ -189,17 +209,42 @@ async def sync_intervals_now(
     return await _status(db, connection)
 
 
+@router.put("/push", response_model=IntervalsStatus)
+async def push_plans_to_intervals(
+    payload: IntervalsPush,
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> IntervalsStatus:
+    """Turns on (or off) putting planned workouts on the athlete's
+    Intervals.icu calendar. The worker sends them; turning it off removes
+    the upcoming ones it sent."""
+    await _require_data_owner(db, current_user, athlete)
+    connection = await _connection(db, athlete)
+    if connection is None or connection.status != DataSourceConnectionStatus.ACTIVE:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Connect Intervals.icu first")
+    if connection.push_plans != payload.enabled:
+        connection.push_plans = payload.enabled
+        await db.flush()
+        await push_switched(db, athlete.id, local_day(utcnow(), await athlete_timezone(db, athlete)))
+        await db.commit()
+    return await _status(db, connection)
+
+
 @router.delete("", response_model=IntervalsStatus)
 async def disconnect_intervals(
     athlete: Athlete = Depends(require_athlete_access),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> IntervalsStatus:
-    """Forgets the API key and stops syncing. Activities already imported stay."""
+    """Forgets the API key and stops syncing and pushing plans. Activities
+    already imported stay, and so do the plans already on Intervals.icu."""
     await _require_data_owner(db, current_user, athlete)
     connection = await _connection(db, athlete)
     if connection is not None:
         connection.credentials = None
         connection.status = DataSourceConnectionStatus.INACTIVE
+        connection.push_plans = False
+        await forget_athlete(db, athlete.id)
         await db.commit()
     return await _status(db, connection)

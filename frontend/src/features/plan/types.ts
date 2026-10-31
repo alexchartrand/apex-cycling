@@ -51,6 +51,8 @@ export interface PlannedSession {
   can_edit: boolean;
   /** Only the athlete's side marks it done, skipped or linked. */
   can_mark: boolean;
+  /** Its copy on the athlete's Intervals.icu calendar, when they push plans there. */
+  intervals: "pending" | "sent" | "failed" | null;
 }
 
 export interface PlannedSessionWrite {

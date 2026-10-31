@@ -101,6 +101,10 @@ export function syncIntervals(athleteId: string): Promise<IntervalsStatus> {
   return apiFetch<IntervalsStatus>(`${base(athleteId)}/intervals/sync`, { method: "POST" });
 }
 
+export function setIntervalsPush(athleteId: string, enabled: boolean): Promise<IntervalsStatus> {
+  return apiFetch<IntervalsStatus>(`${base(athleteId)}/intervals/push`, { method: "PUT", body: JSON.stringify({ enabled }) });
+}
+
 export function disconnectIntervals(athleteId: string): Promise<IntervalsStatus> {
   return apiFetch<IntervalsStatus>(`${base(athleteId)}/intervals`, { method: "DELETE" });
 }

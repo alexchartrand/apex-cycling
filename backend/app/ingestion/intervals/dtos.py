@@ -2,7 +2,7 @@
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 
 @dataclass(frozen=True)
@@ -66,3 +66,40 @@ class SyncResult:
     failed: int
     complete: bool
     error: str | None = None
+
+
+@dataclass(frozen=True)
+class PlanContent:
+    """What a planned session puts on the calendar."""
+
+    id: uuid.UUID
+    title: str
+    planned_date: date
+    description: str | None
+    workout: list[dict] | None
+    status: str
+
+
+@dataclass(frozen=True)
+class PlanPushJob:
+    """A plan whose Intervals.icu event is due to be created, updated or
+    deleted. `plan` is None once the plan is deleted."""
+
+    id: uuid.UUID
+    connection_id: uuid.UUID
+    api_key: str
+    push_enabled: bool
+    plan_id: uuid.UUID
+    plan: PlanContent | None
+    remote_event_id: str | None
+    payload_hash: str | None
+    attempts: int
+    locale: str | None
+
+
+@dataclass(frozen=True)
+class PushResult:
+    sent: int = 0
+    removed: int = 0
+    failed: int = 0
+    rate_limited: bool = False

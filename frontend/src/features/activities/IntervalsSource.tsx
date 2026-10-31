@@ -2,10 +2,10 @@ import { useState, type FormEvent } from "react";
 import { RefreshCw, Unplug, Waves } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { errorMessage } from "../../api/errors";
-import { Badge, Button, Card, ConfirmDialog, Input, SkeletonGroup, useToast } from "../../components/ui";
+import { Badge, Button, Card, Checkbox, ConfirmDialog, Input, SkeletonGroup, useToast } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
 import { SyncHistory } from "./SyncHistory";
-import { useConnectIntervals, useDisconnectIntervals, useIntervalsStatus, useSyncIntervals } from "./useActivities";
+import { useConnectIntervals, useDisconnectIntervals, useIntervalsPush, useIntervalsStatus, useSyncIntervals } from "./useActivities";
 
 export function IntervalsSource({ athleteId }: { athleteId: string }) {
   const { t } = useTranslation(["activities", "common"]);
@@ -15,6 +15,7 @@ export function IntervalsSource({ athleteId }: { athleteId: string }) {
   const connect = useConnectIntervals(athleteId);
   const sync = useSyncIntervals(athleteId);
   const disconnect = useDisconnectIntervals(athleteId);
+  const push = useIntervalsPush(athleteId);
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -38,6 +39,15 @@ export function IntervalsSource({ athleteId }: { athleteId: string }) {
     try {
       await sync.mutateAsync();
       toast({ title: t("intervals.toasts.syncing") });
+    } catch (err) {
+      toast({ title: errorMessage(err), tone: "error" });
+    }
+  }
+
+  async function handlePush(enabled: boolean) {
+    try {
+      await push.mutateAsync(enabled);
+      toast({ title: t(enabled ? "intervals.toasts.pushOn" : "intervals.toasts.pushOff") });
     } catch (err) {
       toast({ title: errorMessage(err), tone: "error" });
     }
@@ -78,6 +88,18 @@ export function IntervalsSource({ athleteId }: { athleteId: string }) {
             <Button size="sm" variant="ghost" icon={<Unplug aria-hidden />} onClick={() => setConfirming(true)}>
               {t("intervals.disconnect")}
             </Button>
+          </div>
+          <div className="source-card__push">
+            <Checkbox
+              label={t("intervals.push")}
+              checked={data.push_plans}
+              disabled={push.isPending}
+              onChange={(e) => void handlePush(e.target.checked)}
+            />
+            <p className="source-card__note">{t("intervals.pushHint")}</p>
+            {data.push_plans && data.push_failures > 0 && (
+              <p className="source-card__warning">{t("intervals.pushFailures", { count: data.push_failures })}</p>
+            )}
           </div>
           <SyncHistory runs={data.runs} />
         </>
