@@ -3,7 +3,9 @@ import type { DraftRepeat, DraftStep } from "../workouts/workoutDraft";
 import {
   emptyPlanForm,
   hasPlanErrors,
+  hasRecordingTargets,
   linkCandidates,
+  linkChoices,
   outstanding,
   planFormErrors,
   planFormFrom,
@@ -27,6 +29,7 @@ const plan = (over: Partial<PlannedSession> = {}): PlannedSession => ({
   status: "planned",
   created_by_name: null,
   session: null,
+  activity: null,
   can_edit: true,
   can_mark: true,
   intervals: null,
@@ -130,5 +133,27 @@ describe("plan lists", () => {
     const sessions = [{ event_date: "2026-11-13" }, { event_date: "2026-11-09" }, { event_date: "2026-11-10" }, { event_date: "2026-11-12" }];
     expect(linkCandidates(plan(), sessions).map((s) => s.event_date)).toEqual(["2026-11-10", "2026-11-09", "2026-11-12"]);
     expect(linkCandidates(plan(), sessions, 0).map((s) => s.event_date)).toEqual(["2026-11-10"]);
+  });
+
+  it("offers the recordings that aren't part of a session alongside the sessions", () => {
+    const sessions = [{ external_event_id: "evt1", event_name: "Track night", event_date: "2026-11-11" }];
+    const activities = [
+      { id: "a1", name: "Trainer", start_time: "2026-11-10T12:00:00Z", external_event_id: null },
+      { id: "a2", name: "Head unit at the track", start_time: "2026-11-11T12:00:00Z", external_event_id: "evt1" },
+      { id: "a3", name: "Long ago", start_time: "2026-10-01T12:00:00Z", external_event_id: null },
+    ];
+    expect(linkChoices(plan(), sessions, activities).map((c) => [c.value, c.kind, c.id, c.event_date])).toEqual([
+      ["activity:a1", "activity", "a1", "2026-11-10"],
+      ["session:evt1", "session", "evt1", "2026-11-11"],
+    ]);
+  });
+});
+
+describe("hasRecordingTargets", () => {
+  const step = { kind: "work" as const, label: null, notes: null, duration_s: 60, distance_m: null, laps: null, power: null, cadence: null, rpe: null, event_key: null, start_type: null, target_time_ms: null, gear: null };
+  it("looks for a power or cadence target, inside repeats too", () => {
+    expect(hasRecordingTargets([step, { ...step, rpe: 7 }])).toBe(false);
+    expect(hasRecordingTargets([{ type: "repeat", count: 3, steps: [{ type: "repeat", count: 2, steps: [{ ...step, cadence: { low: 100, high: null } }] }] }])).toBe(true);
+    expect(hasRecordingTargets([{ ...step, power: { unit: "watts", low: 200, high: null } }])).toBe(true);
   });
 });

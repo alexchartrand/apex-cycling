@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Literal
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
@@ -20,6 +20,7 @@ from app.activities.summary import summarize
 from app.athletes.models import Athlete
 from app.auth.models import User
 from app.core.config import get_settings
+from app.planning.models import PlannedSession
 
 # The same ride exported twice (FIT and TCX of one recording, or an upload
 # followed by a sync) differs in bytes but not in when it started and how long it ran.
@@ -64,6 +65,8 @@ async def delete_activities(db: AsyncSession, activities: list[Activity]) -> Non
         return
     ids = [a.id for a in activities]
     delete_originals_after_commit(db, [a.file_path for a in activities if a.file_path])
+    # A plan answered by the ride stays done, just without its recording.
+    await db.execute(update(PlannedSession).where(PlannedSession.activity_id.in_(ids)).values(activity_id=None))
     await db.execute(delete(ActivityPowerCurve).where(ActivityPowerCurve.activity_id.in_(ids)))
     await db.execute(delete(ActivityStream).where(ActivityStream.activity_id.in_(ids)))
     await db.execute(delete(Activity).where(Activity.id.in_(ids)))
@@ -143,6 +146,7 @@ async def import_activity_file(
     parsed = await asyncio.to_thread(parse_activity_file, content)
     same_ride = await find_same_ride(db, athlete_id, parsed.start_time, parsed.elapsed_s)
     carried: dict = {}
+    answered_plans: list[uuid.UUID] = []
     if same_ride is not None:
         if same_ride.source != ActivitySource.STRAVA or source == ActivitySource.STRAVA:
             return ImportOutcome("duplicate", same_ride)
@@ -150,6 +154,9 @@ async def import_activity_file(
         # athlete's own file replaces it, keeping what they wrote on it.
         carried = {"rpe": same_ride.rpe, "notes": same_ride.notes}
         name = same_ride.name or name
+        answered_plans = list(
+            await db.scalars(select(PlannedSession.id).where(PlannedSession.activity_id == same_ride.id))
+        )
         await delete_activities(db, [same_ride])
 
     parsed.name = parsed.name or name
@@ -172,6 +179,8 @@ async def import_activity_file(
             raise RuntimeError("activity insert hit a unique index but the conflicting row is gone")
         return ImportOutcome("duplicate", winner)
 
+    if answered_plans:  # plans that the Strava copy answered now point at this one
+        await db.execute(update(PlannedSession).where(PlannedSession.id.in_(answered_plans)).values(activity_id=activity.id))
     activity.file_path = await asyncio.to_thread(storage.save_original, athlete_id, sha256, file_format, content)
     if "power_w" in parsed.channels:
         await apply_power_metrics(db, activity, parsed.time_s, parsed.channels["power_w"])

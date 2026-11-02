@@ -21,8 +21,9 @@ class PlannedSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     (`workouts/schemas.py::WorkoutItem`), taken when it was scheduled so later
     edits to the library workout (`source_workout_id`, no FK since presets
     aren't rows) never rewrite the plan.
-    The athlete marks it done or skipped, or links it to the sqorz session
-    that was actually ridden (`training_event_id`, which makes it done).
+    The athlete marks it done or skipped, or links it to what was actually
+    ridden — the sqorz session (`training_event_id`) and/or a recording
+    (`activity_id`, for a ride without sqorz timing) — which makes it done.
     """
 
     __tablename__ = "planned_sessions"
@@ -38,6 +39,7 @@ class PlannedSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     source_workout_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(16), default=PlanStatus.PLANNED.value)
     training_event_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("training_events.id"), nullable=True)
+    activity_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("activities.id"), nullable=True, index=True)
 
 
 class IntervalsPlanEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):

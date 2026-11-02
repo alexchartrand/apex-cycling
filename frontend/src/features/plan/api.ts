@@ -32,6 +32,17 @@ export function unlinkPlannedSession(athleteId: string, planId: string): Promise
   return apiFetch<PlannedSession>(`${base(athleteId)}/${planId}/session`, { method: "DELETE" });
 }
 
+export function linkPlanActivity(athleteId: string, planId: string, activityId: string): Promise<PlannedSession> {
+  return apiFetch<PlannedSession>(`${base(athleteId)}/${planId}/activity`, {
+    method: "PUT",
+    body: JSON.stringify({ activity_id: activityId }),
+  });
+}
+
+export function unlinkPlanActivity(athleteId: string, planId: string): Promise<PlannedSession> {
+  return apiFetch<PlannedSession>(`${base(athleteId)}/${planId}/activity`, { method: "DELETE" });
+}
+
 export function getPlanComparison(athleteId: string, planId: string): Promise<PlanComparison> {
   return apiFetch<PlanComparison>(`${base(athleteId)}/${planId}/comparison`);
 }

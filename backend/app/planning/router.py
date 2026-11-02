@@ -17,6 +17,7 @@ from app.planning.schemas import (
     PlannedSessionRead,
     PlannedSessionUpdate,
     PlannedSessionWrite,
+    PlanActivityLink,
     PlanSessionLink,
 )
 
@@ -133,18 +134,58 @@ async def unlink_planned_session(
     return unlinked
 
 
+@router.put("/{plan_id}/activity", response_model=PlannedSessionRead)
+async def link_planned_activity(
+    athlete_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    payload: PlanActivityLink,
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> PlannedSessionRead:
+    """Link the plan to the recording of the ride (marks it done)."""
+    try:
+        linked = await service.link_activity(db, athlete, current_user, plan_id, payload.activity_id)
+    except service.NotAllowed:
+        raise _FORBIDDEN from None
+    except service.UnknownActivity:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Activity not found") from None
+    if linked is None:
+        raise _NO_PLAN
+    return linked
+
+
+@router.delete("/{plan_id}/activity", response_model=PlannedSessionRead)
+async def unlink_planned_activity(
+    athlete_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> PlannedSessionRead:
+    try:
+        unlinked = await service.unlink_activity(db, athlete, current_user, plan_id)
+    except service.NotAllowed:
+        raise _FORBIDDEN from None
+    if unlinked is None:
+        raise _NO_PLAN
+    return unlinked
+
+
 @router.get("/{plan_id}/comparison", response_model=PlanComparison)
 async def planned_vs_ridden(
     athlete_id: uuid.UUID,
     plan_id: uuid.UUID,
     athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PlanComparison:
-    """Each rep of the plan against the efforts of the session linked to it."""
+    """Each rep of the plan against the efforts of the session linked to it,
+    and each power step against the recording."""
     try:
-        result = await service.comparison(db, athlete, plan_id)
+        result = await service.comparison(db, athlete, current_user, plan_id)
     except service.NoLinkedSession:
-        raise HTTPException(status.HTTP_409_CONFLICT, "This plan has no linked session") from None
+        raise HTTPException(status.HTTP_409_CONFLICT, "This plan has no linked session or recording") from None
     if result is None:
         raise _NO_PLAN
     return result

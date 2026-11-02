@@ -1,8 +1,8 @@
-import type { Formatters } from "../../i18n/format";
+import { localIsoDate, type Formatters } from "../../i18n/format";
 import type { Gear } from "../equipment/types";
 import { timeToInput } from "../records/timeInput";
 import { STANDARD_EVENT_KEYS, type StandardEventKey } from "../records/types";
-import { gearKey, type Workout, type WorkoutItem } from "../workouts/types";
+import { gearKey, isRepeat, type InnerRepeat, type Workout, type WorkoutItem } from "../workouts/types";
 import { draftErrors, draftNodes, draftSteps, newRepeat, newStep, type DraftNode, type DraftRepeat, type DraftStep, type StepField, type WorkoutDraft } from "../workouts/workoutDraft";
 import type { PlannedEffort, PlannedSession, PlannedSessionWrite, PlanStatus } from "./types";
 
@@ -125,6 +125,30 @@ export function linkCandidates<T extends { event_date: string }>(plan: PlannedSe
   const target = Date.parse(`${plan.planned_date}T00:00:00Z`);
   const distance = (session: T) => Math.abs(Date.parse(`${session.event_date}T00:00:00Z`) - target) / 86_400_000;
   return sessions.filter((session) => distance(session) <= days).sort((a, b) => distance(a) - distance(b));
+}
+
+/** Something ridden the plan can be linked to: a sqorz session, or a recording that isn't part of one
+ * (a recording linked to a session is reached through it). `value` is unique across both. */
+export type LinkChoice = { value: string; kind: "session" | "activity"; id: string; name: string | null; event_date: string };
+
+export function linkChoices(
+  plan: PlannedSession,
+  sessions: { external_event_id: string; event_name: string; event_date: string }[],
+  activities: { id: string; name: string | null; start_time: string; external_event_id: string | null }[],
+  days = 2,
+): LinkChoice[] {
+  const choices: LinkChoice[] = [
+    ...sessions.map((s) => ({ value: `session:${s.external_event_id}`, kind: "session" as const, id: s.external_event_id, name: s.event_name, event_date: s.event_date })),
+    ...activities
+      .filter((a) => a.external_event_id == null)
+      .map((a) => ({ value: `activity:${a.id}`, kind: "activity" as const, id: a.id, name: a.name, event_date: localIsoDate(new Date(a.start_time)) })),
+  ];
+  return linkCandidates(plan, choices, days);
+}
+
+/** The workout has a power or cadence target, which a recording answers. */
+export function hasRecordingTargets(items: (WorkoutItem | InnerRepeat)[]): boolean {
+  return items.some((item) => (isRepeat(item) ? hasRecordingTargets(item.steps) : item.power != null || item.cadence != null));
 }
 
 export const STATUS_TONE: Record<PlanStatus, "neutral" | "positive" | "marker"> = { planned: "neutral", done: "positive", skipped: "marker" };

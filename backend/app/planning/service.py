@@ -1,5 +1,6 @@
 """Planned sessions: what the coach (or the athlete) put on the calendar,
-and the athlete's answer: done, skipped, or linked to the session ridden.
+and the athlete's answer: done, skipped, or linked to what was ridden (the
+sqorz session, a recording, or both).
 Functions return None when the plan isn't this athlete's; those that change
 something commit.
 """
@@ -11,7 +12,8 @@ from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.activities.metrics_service import _ftp_on, _metric_rows
+from app.activities.metrics_service import _ftp_on, _metric_rows, visible_conditions
+from app.activities.models import Activity
 from app.athletes.coaching import speaks_for_athlete
 from app.athletes.models import Athlete
 from app.auth.models import User
@@ -22,6 +24,7 @@ from app.planning.models import PlannedSession, PlanStatus
 from app.planning.push import plan_changed, push_states
 from app.planning.schemas import (
     PlanComparison,
+    LinkedRecording,
     LinkedSession,
     PlannedEffort,
     PlannedEffortRead,
@@ -114,6 +117,13 @@ async def _reads(
     )
     event_ids = {p.training_event_id for p in plans if p.training_event_id}
     events = {e.id: e for e in await db.scalars(select(TrainingEvent).where(TrainingEvent.id.in_(event_ids)))}
+    activity_ids = {p.activity_id for p in plans if p.activity_id}
+    activities = {
+        a.id: a
+        for a in await db.scalars(
+            select(Activity).where(*visible_conditions(athlete, viewer), Activity.id.in_(activity_ids))
+        )
+    }
     gears = await _gears(db, athlete.id)
     gear_labels = {gear.gear_setup_id: gear.label for gear in gears}
     with_workout = [p for p in plans if p.workout]
@@ -123,6 +133,7 @@ async def _reads(
     reads = []
     for plan in plans:
         event = events.get(plan.training_event_id) if plan.training_event_id else None
+        activity = activities.get(plan.activity_id) if plan.activity_id else None
         workout = _ITEMS.validate_python(plan.workout) if plan.workout else None
         reads.append(
             PlannedSessionRead(
@@ -145,6 +156,9 @@ async def _reads(
                     event_date=event.event_date,
                 )
                 if event
+                else None,
+                activity=LinkedRecording(id=activity.id, name=activity.name, start_time=activity.start_time)
+                if activity
                 else None,
                 can_edit=athlete_side or plan.created_by_user_id == viewer.id,
                 can_mark=athlete_side,
@@ -172,11 +186,11 @@ async def _own(db: AsyncSession, athlete: Athlete, plan_id: uuid.UUID) -> Planne
     return plan if plan is not None and plan.athlete_id == athlete.id else None
 
 
-async def comparison(db: AsyncSession, athlete: Athlete, plan_id: uuid.UUID) -> PlanComparison | None:
-    """The plan against its linked session. None when the plan isn't this
-    athlete's; raises `NoLinkedSession`."""
+async def comparison(db: AsyncSession, athlete: Athlete, viewer: User, plan_id: uuid.UUID) -> PlanComparison | None:
+    """The plan against its linked session and recording. None when the plan
+    isn't this athlete's; raises `NoLinkedSession`."""
     plan = await _own(db, athlete, plan_id)
-    return None if plan is None else await compare_plan(db, plan)
+    return None if plan is None else await compare_plan(db, athlete, viewer, plan)
 
 
 async def _read_one(db: AsyncSession, athlete: Athlete, viewer: User, plan: PlannedSession) -> PlannedSessionRead:
@@ -234,7 +248,7 @@ async def update_plan(
     if new_status is not None:
         plan.status = new_status.value
         if new_status is not PlanStatus.DONE:
-            plan.training_event_id = None  # only a done plan stays linked
+            plan.training_event_id = plan.activity_id = None  # only a done plan stays linked
     await plan_changed(db, plan)
     await db.commit()
     return await _read_one(db, athlete, viewer, plan)
@@ -283,13 +297,55 @@ async def link_session(
 async def unlink_session(
     db: AsyncSession, athlete: Athlete, viewer: User, plan_id: uuid.UUID
 ) -> PlannedSessionRead | None:
-    """Back to planned. Raises `NotAllowed`."""
+    """Back to planned, unless a recording is still linked. Raises `NotAllowed`."""
     plan = await _own(db, athlete, plan_id)
     if plan is None:
         return None
     if not await speaks_for_athlete(db, viewer, athlete):
         raise NotAllowed
     plan.training_event_id = None
-    plan.status = PlanStatus.PLANNED.value
+    if plan.activity_id is None:
+        plan.status = PlanStatus.PLANNED.value
+    await db.commit()
+    return await _read_one(db, athlete, viewer, plan)
+
+
+class UnknownActivity(Exception):
+    """The athlete has no such recording, or the viewer can't see it."""
+
+
+async def link_activity(
+    db: AsyncSession, athlete: Athlete, viewer: User, plan_id: uuid.UUID, activity_id: uuid.UUID
+) -> PlannedSessionRead | None:
+    """Ties the plan to the recording of the ride, which makes it done.
+    Raises `NotAllowed` and `UnknownActivity`."""
+    plan = await _own(db, athlete, plan_id)
+    if plan is None:
+        return None
+    if not await speaks_for_athlete(db, viewer, athlete):
+        raise NotAllowed
+    activity = await db.scalar(
+        select(Activity).where(*visible_conditions(athlete, viewer), Activity.id == activity_id)
+    )
+    if activity is None:
+        raise UnknownActivity
+    plan.activity_id = activity.id
+    plan.status = PlanStatus.DONE.value
+    await db.commit()
+    return await _read_one(db, athlete, viewer, plan)
+
+
+async def unlink_activity(
+    db: AsyncSession, athlete: Athlete, viewer: User, plan_id: uuid.UUID
+) -> PlannedSessionRead | None:
+    """Back to planned, unless a session is still linked. Raises `NotAllowed`."""
+    plan = await _own(db, athlete, plan_id)
+    if plan is None:
+        return None
+    if not await speaks_for_athlete(db, viewer, athlete):
+        raise NotAllowed
+    plan.activity_id = None
+    if plan.training_event_id is None:
+        plan.status = PlanStatus.PLANNED.value
     await db.commit()
     return await _read_one(db, athlete, viewer, plan)

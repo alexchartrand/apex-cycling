@@ -3,8 +3,10 @@ import {
   createPlannedSession,
   deletePlannedSession,
   getPlanComparison,
+  linkPlanActivity,
   linkPlannedSession,
   listPlannedSessions,
+  unlinkPlanActivity,
   unlinkPlannedSession,
   updatePlannedSession,
 } from "./api";
@@ -33,20 +35,31 @@ export function useDeletePlan(athleteId: string) {
   return useMutation({ mutationFn: (planId: string) => deletePlannedSession(athleteId, planId), onSuccess: invalidate });
 }
 
-/** Done, skipped or planned again, or a link to the session ridden (done) / its removal (planned). */
+export type PlanAnswer = { planId: string } & (
+  | { status: "planned" | "done" | "skipped" }
+  | { link: string }
+  | { unlink: true }
+  | { linkActivity: string }
+  | { unlinkActivity: true }
+);
+
+/** Done, skipped or planned again, or a link to the session or recording ridden (done) / its removal
+ * (planned again once nothing is linked). */
 export function usePlanAnswer(athleteId: string) {
   const invalidate = useInvalidatePlan(athleteId);
   return useMutation({
-    mutationFn: (args: { planId: string } & ({ status: "planned" | "done" | "skipped" } | { link: string } | { unlink: true })) => {
+    mutationFn: (args: PlanAnswer) => {
       if ("link" in args) return linkPlannedSession(athleteId, args.planId, args.link);
       if ("unlink" in args) return unlinkPlannedSession(athleteId, args.planId);
+      if ("linkActivity" in args) return linkPlanActivity(athleteId, args.planId, args.linkActivity);
+      if ("unlinkActivity" in args) return unlinkPlanActivity(athleteId, args.planId);
       return updatePlannedSession(athleteId, args.planId, { status: args.status });
     },
     onSuccess: invalidate,
   });
 }
 
-/** The plan's reps against the session linked to it; only asked for once linked. */
+/** The plan against the session and/or recording linked to it; only asked for once linked. */
 export function usePlanComparison(athleteId: string, planId: string, linked: boolean) {
   return useQuery({
     queryKey: ["planned-sessions", athleteId, planId, "comparison"],

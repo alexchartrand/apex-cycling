@@ -1,14 +1,15 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.planning.matching import RepStatus
+from app.planning.power_matching import StepStatus
 from app.planning.models import PlanStatus
 from app.training.distances import STANDARD_EVENTS_BY_KEY
 from app.training.efforts import StartType
-from app.workouts.schemas import WorkoutEstimate, WorkoutItem, check_steps
+from app.workouts.schemas import CadenceTarget, PowerTarget, StepKind, WorkoutEstimate, WorkoutItem, check_steps
 
 
 def _blank_is_none(value: str | None) -> str | None:
@@ -120,10 +121,22 @@ class PlanSessionLink(BaseModel):
     external_event_id: str = Field(min_length=1, max_length=255)
 
 
+class PlanActivityLink(BaseModel):
+    activity_id: uuid.UUID
+
+
 class LinkedSession(BaseModel):
     external_event_id: str
     event_name: str
     event_date: date
+
+
+class LinkedRecording(BaseModel):
+    """A recording of the ride (head unit, trainer)."""
+
+    id: uuid.UUID
+    name: str | None
+    start_time: datetime
 
 
 class PlanWorkoutGear(BaseModel):
@@ -152,6 +165,9 @@ class PlannedSessionRead(BaseModel):
     created_by_name: str | None
     # The session that was ridden, when linked.
     session: LinkedSession | None
+    # The recording linked to the plan itself, only while the viewer may see
+    # it (a Strava ride is its owner's only).
+    activity: LinkedRecording | None = None
     # What the viewer may do: the author and the athlete's side edit the
     # content; only the athlete's side marks it done, skipped or linked.
     can_edit: bool
@@ -178,10 +194,40 @@ class RepResult(BaseModel):
     delta_ms: int | None = None
 
 
+class StepResult(BaseModel):
+    """One step of the workout with a power or cadence target, and how the
+    recording answered it (`power_matching.py`)."""
+
+    # Position in riding order, repeats unrolled (0-based).
+    step_index: int
+    kind: StepKind
+    label: str | None
+    power: PowerTarget | None
+    cadence: CadenceTarget | None
+    # The power target in watts (with the FTP on the planned date for % FTP).
+    power_low_w: float | None
+    power_high_w: float | None
+    # Where it was found, in seconds from the start of the recording.
+    start_s: int | None
+    end_s: int | None
+    avg_power_w: float | None
+    avg_cadence: float | None
+    power_status: StepStatus | None
+    cadence_status: StepStatus | None
+
+
 class PlanComparison(BaseModel):
-    """The plan against the session linked to it. `measured` counts the reps
-    with a target time, `hits` those that made it."""
+    """The plan against what was ridden. `reps` are its track efforts against
+    the linked session (`measured` counts those with a target time, `hits`
+    those that made it); `steps` its power and cadence steps against the
+    recording (`recording`: the plan's own, else the first one linked to the
+    session that the viewer may see), `power_measured` / `power_hits` the
+    same count for the power targets."""
 
     reps: list[RepResult]
     measured: int
     hits: int
+    recording: LinkedRecording | None = None
+    steps: list[StepResult] = Field(default_factory=list)
+    power_measured: int = 0
+    power_hits: int = 0

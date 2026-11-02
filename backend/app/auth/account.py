@@ -303,7 +303,10 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     data, imported activities, records, metrics, transponder assignments,
     personal connections and coach links. Shared rows stay (sqorz connections and their snapshots,
     tracks). Doesn't commit."""
-    # Imported activities first (they point at sessions): rows now, original files once the deletion commits.
+    # Plans first (they point at sessions and activities), then imported
+    # activities (they point at sessions): rows now, original files once the deletion commits.
+    await db.execute(delete(IntervalsPlanEvent).where(IntervalsPlanEvent.athlete_id == athlete.id))
+    await db.execute(delete(PlannedSession).where(PlannedSession.athlete_id == athlete.id))
     activity_ids = select(Activity.id).where(Activity.athlete_id == athlete.id)
     delete_originals_after_commit(
         db,
@@ -318,8 +321,6 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     await db.execute(delete(Activity).where(Activity.athlete_id == athlete.id))
 
     await db.execute(delete(AeroTest).where(AeroTest.athlete_id == athlete.id))  # they point at sessions too
-    await db.execute(delete(IntervalsPlanEvent).where(IntervalsPlanEvent.athlete_id == athlete.id))
-    await db.execute(delete(PlannedSession).where(PlannedSession.athlete_id == athlete.id))
     event_ids = select(TrainingEvent.id).where(TrainingEvent.athlete_id == athlete.id)
     lap_ids = select(TrainingLap.id).where(TrainingLap.athlete_id == athlete.id)
     await db.execute(delete(SessionComment).where(SessionComment.training_event_id.in_(event_ids)))

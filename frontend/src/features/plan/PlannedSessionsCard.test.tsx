@@ -30,6 +30,7 @@ const plan = (over: Partial<PlannedSession> = {}): PlannedSession => ({
   status: "planned",
   created_by_name: "Coach Cam",
   session: null,
+  activity: null,
   can_edit: false,
   can_mark: true,
   intervals: null,
@@ -73,12 +74,15 @@ describe("PlannedSessionsCard", () => {
   const fetchMock = vi.fn();
   let plans: PlannedSession[];
   let sessions: { external_event_id: string; event_name: string; event_date: string; track_names: string[]; lap_count: number }[];
+  let activities: { id: string; name: string | null; start_time: string; external_event_id: string | null }[];
 
   beforeEach(() => {
     plans = [plan()];
     sessions = [{ external_event_id: "evt1", event_name: "Tuesday night", event_date: day(2), track_names: [], lap_count: 10 }];
+    activities = [];
     fetchMock.mockImplementation((url: string, init?: RequestInit) => {
       if (url.endsWith("/sessions")) return Promise.resolve(json(sessions));
+      if (url.includes("/activities")) return Promise.resolve(json(activities));
       if (url === "/api/workouts/estimate") return Promise.resolve(json({ duration_s: 1200, tss: 20, unrated_s: 0, open_steps: 0, segments: [] }));
       if (url === "/api/workouts/w1") return Promise.resolve(json(LIBRARY_WORKOUT));
       if (url.startsWith("/api/workouts")) return Promise.resolve(json([{ ...LIBRARY_WORKOUT, steps: undefined, estimate: undefined }]));
@@ -136,12 +140,31 @@ describe("PlannedSessionsCard", () => {
     expect(JSON.parse(init.body)).toEqual({ external_event_id: "evt1" });
   });
 
+  it("links a recording when the ride had no sqorz timing", async () => {
+    sessions = [];
+    activities = [
+      { id: "act1", name: "Trainer intervals", start_time: `${day(2)}T12:00:00Z`, external_event_id: null },
+      { id: "act2", name: "At the track", start_time: `${day(2)}T19:00:00Z`, external_event_id: "evt9" },
+    ];
+    renderCard();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /Kilo openers/ }));
+    const select = await screen.findByLabelText("What you rode");
+    expect(within(select).getAllByRole("option").map((o) => o.textContent)).toEqual([expect.stringContaining("Recording: Trainer intervals")]);
+    await user.click(screen.getByRole("button", { name: "Link it" }));
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PUT")).toBe(true));
+    const [url, init] = fetchMock.mock.calls.find(([, i]) => i?.method === "PUT")!;
+    expect(url).toBe("/api/athletes/a1/planned-sessions/p1/activity");
+    expect(JSON.parse(init.body)).toEqual({ activity_id: "act1" });
+  });
+
   it("marks it done or skips it", async () => {
     sessions = [];
     renderCard();
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /Kilo openers/ }));
-    expect(screen.getByText(/No session on this day/)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing ridden on this day/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Skip it" }));
 
     await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(true));
