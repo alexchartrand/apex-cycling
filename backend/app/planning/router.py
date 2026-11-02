@@ -9,6 +9,9 @@ from app.auth.deps import get_current_user, require_athlete_access
 from app.auth.models import User
 from app.db.session import get_db
 from app.planning import service
+from app.workouts import export_service
+from app.workouts.export import ExportFormat, NeedsFtp
+from app.workouts.router import NEEDS_FTP, file_response
 from app.planning.schemas import (
     PlanComparison,
     PlannedSessionRead,
@@ -145,3 +148,22 @@ async def planned_vs_ridden(
     if result is None:
         raise _NO_PLAN
     return result
+
+
+@router.get("/{plan_id}/export/{fmt}")
+async def export_planned_workout(
+    athlete_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    fmt: ExportFormat,
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """The plan's workout as a file, with the FTP in force on the planned date."""
+    try:
+        export = await export_service.export_plan(db, current_user, athlete, plan_id, fmt)
+    except NeedsFtp:
+        raise NEEDS_FTP from None
+    if export is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This planned session has no workout")
+    return file_response(export)

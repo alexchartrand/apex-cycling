@@ -3,10 +3,12 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.deps import get_current_user
+from app.athletes.coaching import self_athlete
+from app.auth.deps import get_current_user, require_athlete_access
 from app.auth.models import User
 from app.db.session import get_db
-from app.workouts import service, structure
+from app.workouts import export_service, service, structure
+from app.workouts.export import ExportFile, ExportFormat, NeedsFtp
 from app.workouts.schemas import (
     WorkoutEstimate,
     WorkoutRead,
@@ -21,6 +23,17 @@ router = APIRouter(prefix="/workouts", tags=["workouts"])
 
 _NO_WORKOUT = HTTPException(status.HTTP_404_NOT_FOUND, "Workout not found")
 _FORBIDDEN = HTTPException(status.HTTP_403_FORBIDDEN, "Only the owner changes this workout")
+NEEDS_FTP = HTTPException(
+    status.HTTP_409_CONFLICT, "This format needs an FTP to convert the power targets: set one in Settings"
+)
+
+
+def file_response(export: ExportFile) -> Response:
+    return Response(
+        content=export.content,
+        media_type=export.media_type,
+        headers={"Content-Disposition": f'attachment; filename="{export.filename}"'},
+    )
 
 
 @router.get("", response_model=list[WorkoutSummary])
@@ -116,3 +129,26 @@ async def duplicate_workout(
     if copy is None:
         raise _NO_WORKOUT
     return copy
+
+
+@router.get("/{workout_id}/export/{fmt}")
+async def export_workout(
+    workout_id: uuid.UUID,
+    fmt: ExportFormat,
+    athlete_id: uuid.UUID | None = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """The workout as a file, with the FTP and bests of `athlete_id` (one I
+    can read; default: my own athlete) as of today."""
+    if athlete_id is not None:
+        athlete = await require_athlete_access(athlete_id, current_user, db)
+    else:
+        athlete = await self_athlete(db, current_user.id)
+    try:
+        export = await export_service.export_library_workout(db, current_user, workout_id, fmt, athlete)
+    except NeedsFtp:
+        raise NEEDS_FTP from None
+    if export is None:
+        raise _NO_WORKOUT
+    return file_response(export)

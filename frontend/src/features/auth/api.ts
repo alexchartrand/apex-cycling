@@ -1,4 +1,5 @@
-import { apiFetch, apiRequest } from "../../api/client";
+import { apiFetch } from "../../api/client";
+import { downloadFile } from "../../api/download";
 import type { LoginPayload, Preferences, SignupPayload, User } from "./types";
 
 export function fetchCurrentUser(): Promise<User> {
@@ -42,16 +43,6 @@ export function deleteAccount(password: string): Promise<void> {
 }
 
 /** Downloads the "export my data" zip through the browser. */
-export async function downloadDataExport(): Promise<void> {
-  const response = await apiRequest("/auth/me/export");
-  const filename =
-    /filename="([^"]+)"/.exec(response.headers.get("Content-Disposition") ?? "")?.[1] ?? "apexcycling-export.zip";
-  const url = URL.createObjectURL(await response.blob());
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+export function downloadDataExport(): Promise<void> {
+  return downloadFile("/auth/me/export", "apexcycling-export.zip");
 }

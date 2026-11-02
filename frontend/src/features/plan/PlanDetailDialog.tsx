@@ -7,11 +7,13 @@ import { Badge, Button, ConfirmDialog, Dialog, Select, useToast } from "../../co
 import { useFormat } from "../../i18n/useFormat";
 import { formatRecordTime } from "../records/timeInput";
 import { useSessions } from "../training/useTraining";
+import { DownloadMenu } from "../workouts/DownloadMenu";
 import { IntensityChart } from "../workouts/IntensityChart";
 import { hasTrackEvents, hasWattTargets } from "../workouts/types";
 import { WorkoutSteps } from "../workouts/WorkoutSteps";
 import { useEstimateFtp } from "../workouts/useWorkouts";
 import { WorkoutTotals } from "../workouts/WorkoutTotals";
+import { downloadPlanWorkout } from "./api";
 import { PlanDialog } from "./PlanDialog";
 import { PlanResults } from "./PlanResults";
 import { effortText, linkCandidates, STATUS_TONE, workoutGearLabels } from "./planForm";
@@ -85,11 +87,14 @@ export function PlanDetailDialog({ athleteId, plan, onClose }: { athleteId: stri
                 </>
               )}
               <WorkoutSteps steps={plan.workout} gearLabels={workoutGearLabels(plan)} />
-              {plan.source_workout_id && (
-                <Link className="plan-detail__source" to={`/workouts/${plan.source_workout_id}`} onClick={onClose}>
-                  <Dumbbell aria-hidden /> {t("detail.openSource")}
-                </Link>
-              )}
+              <div className="plan-detail__workout-actions">
+                <DownloadMenu download={(format) => downloadPlanWorkout(athleteId, plan.id, format)} />
+                {plan.source_workout_id && (
+                  <Link className="plan-detail__source" to={`/workouts/${plan.source_workout_id}`} onClick={onClose}>
+                    <Dumbbell aria-hidden /> {t("detail.openSource")}
+                  </Link>
+                )}
+              </div>
             </section>
           )}
 

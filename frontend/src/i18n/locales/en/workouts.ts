@@ -16,6 +16,16 @@ export default {
   saved: "Workout saved",
   profile: "Profile",
   stepsTitle: "Steps",
+  download: {
+    button: "Download",
+    formats: {
+      fit: "Head unit (.fit)",
+      zwo: "Zwift (.zwo)",
+      erg: "ERG app, watts (.erg)",
+      mrc: "ERG app, % FTP (.mrc)",
+    },
+    needsFtp: "This file is in watts or % of FTP and some targets are in the other unit: set your FTP in Settings first.",
+  },
   filters: {
     search: "Search workouts",
     source: "Whose workouts",

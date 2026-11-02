@@ -19,6 +19,16 @@ export default {
   saved: "Entraînement enregistré",
   profile: "Profil",
   stepsTitle: "Étapes",
+  download: {
+    button: "Télécharger",
+    formats: {
+      fit: "Compteur GPS (.fit)",
+      zwo: "Zwift (.zwo)",
+      erg: "Appli ERG, watts (.erg)",
+      mrc: "Appli ERG, % FTP (.mrc)",
+    },
+    needsFtp: "Ce fichier est en watts ou en % de FTP et certaines cibles sont dans l'autre unité : indiquez d'abord votre FTP dans les Paramètres.",
+  },
   filters: {
     search: "Chercher un entraînement",
     source: "Entraînements de qui",

@@ -83,6 +83,13 @@ li:first-child > .plan-list__row {
   gap: var(--space-3);
 }
 
+.plan-detail__workout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .plan-detail__source {
   display: inline-flex;
   align-items: center;

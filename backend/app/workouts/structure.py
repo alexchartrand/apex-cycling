@@ -25,6 +25,9 @@ DEFAULT_TRACK_LENGTH_M = 250.0
 # m/s: about 50 km/h for an effort, 36 km/h for anything else.
 NOMINAL_SPEED_MPS = {StepKind.WORK: 14.0}
 EASY_SPEED_MPS = 10.0
+# What an open step (ends on the lap button) counts for where a step needs
+# a length — Intervals.icu, trainer files.
+OPEN_STEP_S = 60
 
 
 def expand(items: Sequence[WorkoutStep | RepeatBlock | InnerRepeat]) -> Iterator[WorkoutStep]:

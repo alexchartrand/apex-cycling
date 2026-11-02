@@ -1,5 +1,6 @@
 import { apiFetch } from "../../api/client";
-import type { Workout, WorkoutEstimate, WorkoutFilters, WorkoutItem, WorkoutSummary, WorkoutWrite } from "./types";
+import { downloadFile } from "../../api/download";
+import type { ExportFormat, Workout, WorkoutEstimate, WorkoutFilters, WorkoutItem, WorkoutSummary, WorkoutWrite } from "./types";
 
 export function listWorkouts(filters: WorkoutFilters): Promise<WorkoutSummary[]> {
   const params = new URLSearchParams();
@@ -33,4 +34,10 @@ export function duplicateWorkout(workoutId: string): Promise<Workout> {
 /** Duration, TSS and profile of steps being edited; stores nothing. */
 export function estimateWorkout(steps: WorkoutItem[], ftpW: number | null): Promise<WorkoutEstimate> {
   return apiFetch<WorkoutEstimate>("/workouts/estimate", { method: "POST", body: JSON.stringify({ steps, ftp_w: ftpW }) });
+}
+
+/** The workout as a file, with the FTP and bests of `athleteId` as of today. */
+export function downloadWorkout(workoutId: string, format: ExportFormat, athleteId: string | undefined): Promise<void> {
+  const query = athleteId ? `?athlete_id=${athleteId}` : "";
+  return downloadFile(`/workouts/${workoutId}/export/${format}${query}`, `workout.${format}`);
 }

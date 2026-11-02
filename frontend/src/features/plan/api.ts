@@ -1,4 +1,6 @@
 import { apiFetch } from "../../api/client";
+import { downloadFile } from "../../api/download";
+import type { ExportFormat } from "../workouts/types";
 import type { PlanComparison, PlannedSession, PlannedSessionUpdate, PlannedSessionWrite } from "./types";
 
 const base = (athleteId: string) => `/athletes/${athleteId}/planned-sessions`;
@@ -32,4 +34,9 @@ export function unlinkPlannedSession(athleteId: string, planId: string): Promise
 
 export function getPlanComparison(athleteId: string, planId: string): Promise<PlanComparison> {
   return apiFetch<PlanComparison>(`${base(athleteId)}/${planId}/comparison`);
+}
+
+/** The plan's workout as a file, with the FTP in force on the planned date. */
+export function downloadPlanWorkout(athleteId: string, planId: string, format: ExportFormat): Promise<void> {
+  return downloadFile(`${base(athleteId)}/${planId}/export/${format}`, `workout.${format}`);
 }

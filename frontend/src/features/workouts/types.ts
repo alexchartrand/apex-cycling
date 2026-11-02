@@ -5,6 +5,9 @@ export type StepKind = "warmup" | "work" | "recovery" | "cooldown";
 export const STEP_KINDS: StepKind[] = ["warmup", "work", "recovery", "cooldown"];
 
 export type WorkoutSource = "mine" | "coach" | "preset";
+/** The downloadable files: head units, Zwift, ERG apps in watts or % FTP. */
+export const EXPORT_FORMATS = ["fit", "zwo", "erg", "mrc"] as const;
+export type ExportFormat = (typeof EXPORT_FORMATS)[number];
 
 export interface PowerTarget {
   unit: "ftp_pct" | "watts";

@@ -20,24 +20,17 @@ import re
 from collections.abc import Sequence
 from datetime import date
 
-from app.notifications.messages import DEFAULT_LOCALE, event_name, format_time
+from app.notifications.messages import DEFAULT_LOCALE
 from app.workouts import structure
+from app.workouts.cues import language, step_cue
 from app.workouts.schemas import InnerRepeat, RepeatBlock, StepKind, WorkoutStep
-
-# What an open step (ends on the lap button) counts for in Intervals.icu's
-# duration and load: it needs some length to be a step at all.
-OPEN_STEP_S = 60
+from app.workouts.structure import OPEN_STEP_S
 
 _INTENSITY = {
     StepKind.WARMUP: "warmup",
     StepKind.WORK: "interval",
     StepKind.RECOVERY: "recovery",
     StepKind.COOLDOWN: "cooldown",
-}
-
-_WORDS = {
-    "en": {"standing": "standing start", "flying": "flying start", "laps": "{n} laps", "lap": "1 lap"},
-    "fr": {"standing": "départ arrêté", "flying": "départ lancé", "laps": "{n} tours", "lap": "1 tour"},
 }
 
 # A number glued to something the parser reads as a unit, and zone names.
@@ -68,32 +61,9 @@ def format_distance(metres: float) -> str:
     return f"{round(metres / 1000)}km" if metres >= 1000 and metres % 1000 == 0 else f"{round(metres)}mtr"
 
 
-def _cue(step: WorkoutStep, locale: str) -> str:
-    words = _WORDS.get(locale, _WORDS[DEFAULT_LOCALE])
-    parts: list[str] = []
-    if step.label:
-        parts.append(step.label)
-    if step.event_key:
-        event = event_name(step.event_key, locale)
-        if step.start_type is not None and step.start_type.value in words:
-            event = f"{event} ({words[step.start_type.value]})"
-        parts.append(event)
-    if step.laps is not None and step.duration_s is None:
-        parts.append(words["lap"] if step.laps == 1 else words["laps"].format(n=step.laps))
-    if step.target_time_ms is not None:
-        parts.append(format_time(step.target_time_ms))
-    if step.gear is not None:
-        parts.append(f"{step.gear.chainring_teeth}×{step.gear.cog_teeth}")
-    if step.rpe is not None:
-        parts.append(f"RPE {step.rpe}")
-    if step.notes:
-        parts.append(step.notes)
-    return _defuse(" – ".join(parts))
-
-
 def step_line(step: WorkoutStep, locale: str = DEFAULT_LOCALE) -> str:
     tokens = ["-"]
-    if cue := _cue(step, locale):
+    if cue := _defuse(step_cue(step, locale)):
         tokens.append(cue)
     press_lap = False
     if step.duration_s is not None:
@@ -174,8 +144,7 @@ def event_payload(
     items: Sequence[WorkoutStep | RepeatBlock],
     locale: str | None,
 ) -> dict:
-    language = locale[:2] if locale and locale[:2] in _WORDS else DEFAULT_LOCALE
-    text = workout_text(items, language)
+    text = workout_text(items, language(locale))
     if description and description.strip():
         text = f"{_free_text(description)}\n\n{text}"
     return {

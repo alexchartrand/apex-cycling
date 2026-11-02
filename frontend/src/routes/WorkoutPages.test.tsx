@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { ToastProvider, TooltipProvider } from "../components/ui";
 import type { Workout, WorkoutEstimate, WorkoutSummary } from "../features/workouts/types";
 import { WorkoutEditPage } from "./WorkoutEditPage";
@@ -119,6 +119,30 @@ describe("workout pages", () => {
     await userEvent.click(screen.getByRole("button", { name: "Duplicate" }));
     expect(await screen.findByRole("heading", { name: "Edit workout" })).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("Flying 200s");
+  });
+
+  it("downloads a workout file with the active athlete's numbers, and says when an FTP is missing", async () => {
+    // jsdom has no object URLs.
+    const createObjectURL = vi.fn(() => "blob:workout");
+    Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
+    onTestFinished(() => {
+      Reflect.deleteProperty(URL, "createObjectURL");
+      Reflect.deleteProperty(URL, "revokeObjectURL");
+    });
+    renderAt("/workouts/w1");
+    await screen.findByRole("heading", { name: "Flying 200s" });
+    fetchMock.mockImplementationOnce(() =>
+      Promise.resolve(new Response("<workout_file/>", { headers: { "Content-Disposition": 'attachment; filename="flying-200s.zwo"' } })),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Zwift (.zwo)" }));
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalled());
+    expect(calls((url) => url.endsWith("/workouts/w1/export/zwo?athlete_id=a1"))).toHaveLength(1);
+
+    fetchMock.mockImplementationOnce(() => Promise.resolve(json({ detail: "needs an FTP" }, 409)));
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "ERG app, watts (.erg)" }));
+    expect(await screen.findByText(/set your FTP in Settings first/)).toBeInTheDocument();
   });
 
   it("builds a workout: steps and a repeat are sent as the step tree, the chart follows them", async () => {

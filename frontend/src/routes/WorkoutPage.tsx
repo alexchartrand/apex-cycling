@@ -7,6 +7,8 @@ import { Badge, Button, ButtonLink, Card, ConfirmDialog, EmptyState, PageHeader,
 import { localIsoDate } from "../i18n/format";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { PlanDialog } from "../features/plan/PlanDialog";
+import { downloadWorkout } from "../features/workouts/api";
+import { DownloadMenu } from "../features/workouts/DownloadMenu";
 import { IntensityChart } from "../features/workouts/IntensityChart";
 import { WorkoutSteps } from "../features/workouts/WorkoutSteps";
 import { hasWattTargets } from "../features/workouts/types";
@@ -68,6 +70,7 @@ export function WorkoutPage() {
             <Button variant="secondary" icon={<Copy aria-hidden />} loading={duplicate.isPending} onClick={handleDuplicate}>
               {t("duplicate")}
             </Button>
+            <DownloadMenu download={(format) => downloadWorkout(data.id, format, athleteId)} />
             {data.can_edit && (
               <>
                 <ButtonLink variant="secondary" to={`/workouts/${data.id}/edit`} icon={<Pencil aria-hidden />}>
