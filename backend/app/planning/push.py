@@ -2,7 +2,9 @@
 worker (`ingestion/intervals/push_service.py`) decides what to do from the
 plan as it then is: create or update the event, or delete it when the plan
 is gone, skipped, has no workout or the athlete stopped the push. Nothing
-here talks to Intervals.icu, and nothing commits.
+here talks to Intervals.icu, and nothing commits; the routes that change a
+plan then ask for an immediate round for that athlete
+(`connections.intervals_router.push_now`), the worker being the retry.
 """
 
 import uuid
@@ -78,6 +80,22 @@ async def push_switched(db: AsyncSession, athlete_id: uuid.UUID, today: date) ->
         past = await db.scalars(select(PlannedSession.id).where(PlannedSession.id.in_(set(rows) - upcoming)))
         for plan_id in past:
             await db.delete(rows[plan_id])
+
+
+async def has_due_pushes(db: AsyncSession, athlete_id: uuid.UUID) -> bool:
+    now = utcnow()
+    return (
+        await db.scalar(
+            select(IntervalsPlanEvent.id)
+            .where(
+                IntervalsPlanEvent.athlete_id == athlete_id,
+                IntervalsPlanEvent.due_at.is_not(None),
+                IntervalsPlanEvent.due_at <= now,
+            )
+            .limit(1)
+        )
+        is not None
+    )
 
 
 async def forget_athlete(db: AsyncSession, athlete_id: uuid.UUID) -> None:

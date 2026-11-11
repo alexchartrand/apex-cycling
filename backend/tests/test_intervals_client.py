@@ -146,20 +146,19 @@ async def test_save_event_reports_errors():
         await _client(lambda r: httpx.Response(200, json=[])).save_event("k", None, {})
 
 
-async def test_delete_event_only_deletes_our_own_event():
-    deleted = []
+async def test_delete_event_deletes_by_id_and_a_gone_event_is_fine():
+    # Intervals.icu answers a GET with a uid of its own, never the one we sent,
+    # so the delete must not depend on it.
+    calls = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         event_id = request.url.path.rsplit("/", 1)[1]
-        if request.method == "DELETE":
-            deleted.append(event_id)
-            return httpx.Response(200, json={})
-        if event_id == "gone":
-            return httpx.Response(404)
-        return httpx.Response(200, json={"id": event_id, "uid": "ours" if event_id == "1" else "someone-else"})
+        calls.append((request.method, event_id))
+        return httpx.Response(404 if event_id == "gone" else 200, json={})
 
     client = _client(handler)
-    await client.delete_event("k", "1", "ours")
-    await client.delete_event("k", "2", "ours")
-    await client.delete_event("k", "gone", "ours")
-    assert deleted == ["1"]
+    await client.delete_event("k", "1")
+    await client.delete_event("k", "gone")
+    assert calls == [("DELETE", "1"), ("DELETE", "gone")]
+    with pytest.raises(IntervalsAuthError):
+        await _client(lambda r: httpx.Response(401)).delete_event("k", "1")

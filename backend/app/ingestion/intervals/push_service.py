@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import uuid
 from datetime import timedelta
 
 from pydantic import TypeAdapter, ValidationError
@@ -10,7 +11,7 @@ from app.ingestion.common import UnitOfWorkPort
 from app.ingestion.intervals.client import IntervalsAuthError, IntervalsClientError, IntervalsRateLimited
 from app.ingestion.intervals.dtos import PlanPushJob, PushResult
 from app.ingestion.intervals.ports import IntervalsCalendarPort, PlanPushRepositoryPort
-from app.ingestion.intervals.workout_text import event_payload, event_uid
+from app.ingestion.intervals.workout_text import event_payload
 from app.workouts.schemas import WorkoutItem
 
 logger = logging.getLogger("ingestion.intervals.push")
@@ -37,7 +38,7 @@ class PlanPushService:
     who turned it on): for each plan marked due (`planning/push.py`), creates
     or updates its event, or deletes it once the plan is gone, skipped, has
     no workout left or the push was turned off. Only events we created are
-    touched — by the id we got back, checked against our `uid`.
+    touched — by the id our create got back (Intervals.icu never reuses one).
 
     Each plan is committed on its own. A failure is retried with a growing
     delay; a refused key stops that athlete's round, a rate limit the whole
@@ -57,10 +58,12 @@ class PlanPushService:
         self._unit_of_work = unit_of_work
         self._batch_size = batch_size
 
-    async def run(self) -> PushResult:
+    async def run(self, athlete_id: uuid.UUID | None = None) -> PushResult:
+        """One round over the due plans — every athlete's (the worker), or one
+        athlete's right after they changed (the API)."""
         sent = removed = failed = 0
         refused: set = set()
-        for job in await self._repo.due(utcnow(), self._batch_size):
+        for job in await self._repo.due(utcnow(), self._batch_size, athlete_id):
             if job.connection_id in refused:
                 continue
             try:
@@ -100,7 +103,7 @@ class PlanPushService:
         wanted = job.push_enabled and plan is not None and bool(plan.workout) and plan.status != "skipped"
         if not wanted:
             if job.remote_event_id is not None:
-                await self._client.delete_event(job.api_key, job.remote_event_id, event_uid(job.plan_id))
+                await self._client.delete_event(job.api_key, job.remote_event_id)
             await self._repo.forget(job.id)
             return "removed" if job.remote_event_id is not None else None
 

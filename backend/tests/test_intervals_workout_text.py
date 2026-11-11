@@ -95,5 +95,6 @@ def test_the_event_keeps_the_plan_text_out_of_the_steps():
         "start_date_local": "2026-11-03T00:00:00",
         "name": "Openers",
         "description": "Easy day\n• legs fresh\nthen 3x.\n\n- 1m intensity=interval",
-        "uid": f"apex-cycling-plan-{plan_id}",
+        "external_id": f"apex-cycling-plan-{plan_id}",
+        "uid": str(plan_id),
     }

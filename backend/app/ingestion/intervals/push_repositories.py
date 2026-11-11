@@ -17,23 +17,25 @@ class SqlAlchemyPlanPushRepository:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
-    async def due(self, now: datetime, limit: int) -> list[PlanPushJob]:
-        rows = (
-            await self._db.execute(
-                select(IntervalsPlanEvent, DataSourceConnection, User.locale)
-                .join(
-                    DataSourceConnection,
-                    (DataSourceConnection.athlete_id == IntervalsPlanEvent.athlete_id)
-                    & (DataSourceConnection.provider == DataSourceProvider.INTERVALS_ICU)
-                    & (DataSourceConnection.status == DataSourceConnectionStatus.ACTIVE),
-                )
-                .join(Athlete, Athlete.id == IntervalsPlanEvent.athlete_id)
-                .outerjoin(User, User.id == Athlete.user_id)
-                .where(IntervalsPlanEvent.due_at.is_not(None), IntervalsPlanEvent.due_at <= now)
-                .order_by(IntervalsPlanEvent.due_at)
-                .limit(limit)
+    async def due(self, now: datetime, limit: int, athlete_id: uuid.UUID | None = None) -> list[PlanPushJob]:
+        conditions = [IntervalsPlanEvent.due_at.is_not(None), IntervalsPlanEvent.due_at <= now]
+        if athlete_id is not None:
+            conditions.append(IntervalsPlanEvent.athlete_id == athlete_id)
+        query = (
+            select(IntervalsPlanEvent, DataSourceConnection, User.locale)
+            .join(
+                DataSourceConnection,
+                (DataSourceConnection.athlete_id == IntervalsPlanEvent.athlete_id)
+                & (DataSourceConnection.provider == DataSourceProvider.INTERVALS_ICU)
+                & (DataSourceConnection.status == DataSourceConnectionStatus.ACTIVE),
             )
-        ).all()
+            .join(Athlete, Athlete.id == IntervalsPlanEvent.athlete_id)
+            .outerjoin(User, User.id == Athlete.user_id)
+            .where(*conditions)
+            .order_by(IntervalsPlanEvent.due_at)
+            .limit(limit)
+        )
+        rows = (await self._db.execute(query)).all()
         plan_ids = [row.plan_id for row, _, _ in rows]
         plans = {
             p.id: p for p in await self._db.scalars(select(PlannedSession).where(PlannedSession.id.in_(plan_ids)))

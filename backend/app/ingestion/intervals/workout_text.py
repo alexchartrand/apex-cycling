@@ -130,8 +130,9 @@ def _free_text(text: str) -> str:
     return "\n".join(lines).strip()
 
 
-def event_uid(plan_id) -> str:
-    """Our mark on the event: creating with it twice updates instead of duplicating."""
+def event_external_id(plan_id) -> str:
+    """Our mark on the event, which Intervals.icu keeps (it replaced the
+    `uid` we used to send with one of its own)."""
     return f"apex-cycling-plan-{plan_id}"
 
 
@@ -153,5 +154,7 @@ def event_payload(
         "start_date_local": f"{planned_date.isoformat()}T00:00:00",
         "name": title,
         "description": text,
-        "uid": event_uid(plan_id),
+        "external_id": event_external_id(plan_id),
+        # A plain UUID, in case Intervals.icu keeps that one for `upsertOnUid`.
+        "uid": str(plan_id),
     }

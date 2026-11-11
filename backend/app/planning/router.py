@@ -1,12 +1,13 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.athletes.models import Athlete
 from app.auth.deps import get_current_user, require_athlete_access
 from app.auth.models import User
+from app.connections.intervals_router import PlanPusher, get_plan_pusher, push_now
 from app.db.session import get_db
 from app.planning import service
 from app.workouts import export_service
@@ -45,16 +46,20 @@ async def list_planned_sessions(
 async def create_planned_session(
     athlete_id: uuid.UUID,
     payload: PlannedSessionWrite,
+    background: BackgroundTasks,
     athlete: Athlete = Depends(require_athlete_access),
     current_user: User = Depends(get_current_user),
+    pusher: PlanPusher = Depends(get_plan_pusher),
     db: AsyncSession = Depends(get_db),
 ) -> PlannedSessionRead:
     try:
-        return await service.create_plan(db, athlete, current_user, payload)
+        created = await service.create_plan(db, athlete, current_user, payload)
     except service.UnknownGear:
         raise _NO_GEAR from None
     except service.UnknownWorkout:
         raise _NO_WORKOUT from None
+    await push_now(db, background, pusher, athlete.id)
+    return created
 
 
 @router.patch("/{plan_id}", response_model=PlannedSessionRead)
@@ -62,8 +67,10 @@ async def update_planned_session(
     athlete_id: uuid.UUID,
     plan_id: uuid.UUID,
     payload: PlannedSessionUpdate,
+    background: BackgroundTasks,
     athlete: Athlete = Depends(require_athlete_access),
     current_user: User = Depends(get_current_user),
+    pusher: PlanPusher = Depends(get_plan_pusher),
     db: AsyncSession = Depends(get_db),
 ) -> PlannedSessionRead:
     try:
@@ -76,6 +83,7 @@ async def update_planned_session(
         raise _NO_WORKOUT from None
     if updated is None:
         raise _NO_PLAN
+    await push_now(db, background, pusher, athlete.id)
     return updated
 
 
@@ -83,8 +91,10 @@ async def update_planned_session(
 async def delete_planned_session(
     athlete_id: uuid.UUID,
     plan_id: uuid.UUID,
+    background: BackgroundTasks,
     athlete: Athlete = Depends(require_athlete_access),
     current_user: User = Depends(get_current_user),
+    pusher: PlanPusher = Depends(get_plan_pusher),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     try:
@@ -93,6 +103,7 @@ async def delete_planned_session(
         raise _FORBIDDEN from None
     if not deleted:
         raise _NO_PLAN
+    await push_now(db, background, pusher, athlete.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

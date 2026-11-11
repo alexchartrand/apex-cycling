@@ -13,7 +13,13 @@ import {
 import type { PlannedSessionUpdate, PlannedSessionWrite } from "./types";
 
 export function usePlannedSessions(athleteId: string) {
-  return useQuery({ queryKey: ["planned-sessions", athleteId], queryFn: () => listPlannedSessions(athleteId), enabled: athleteId !== "" });
+  return useQuery({
+    queryKey: ["planned-sessions", athleteId],
+    queryFn: () => listPlannedSessions(athleteId),
+    enabled: athleteId !== "",
+    // A changed plan goes to Intervals.icu just after the answer: look again until it has.
+    refetchInterval: (query) => (query.state.data?.some((plan) => plan.intervals === "pending") ? 3000 : false),
+  });
 }
 
 function useInvalidatePlan(athleteId: string) {

@@ -55,14 +55,16 @@ class IntervalsCalendarPort(Protocol):
         """Updates the event, or creates it (idempotent on its `uid`); its id."""
         ...
 
-    async def delete_event(self, api_key: str, event_id: str, uid: str) -> None:
-        """Deletes it unless it is already gone or isn't ours (`uid`)."""
+    async def delete_event(self, api_key: str, event_id: str) -> None:
+        """Deletes the event we created (its id came back from our create);
+        one already gone is fine."""
         ...
 
 
 class PlanPushRepositoryPort(Protocol):
-    async def due(self, now: datetime, limit: int) -> list[PlanPushJob]:
-        """Oldest first, only for athletes whose connection is active."""
+    async def due(self, now: datetime, limit: int, athlete_id: uuid.UUID | None = None) -> list[PlanPushJob]:
+        """Oldest first, only for athletes whose connection is active (only
+        that athlete's when given)."""
         ...
 
     async def mark_sent(self, job_id: uuid.UUID, event_id: str, payload_hash: str) -> None: ...

@@ -3,7 +3,8 @@ status, sync now, put planned workouts on the Intervals.icu calendar,
 disconnect. The key is stored encrypted and never returned."""
 
 import uuid
-from collections.abc import Callable
+import logging
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
@@ -27,10 +28,12 @@ from app.core.rate_limit import limiter
 from app.db.base import utcnow
 from app.db.session import AsyncSessionLocal, get_db
 from app.ingestion.intervals.client import IntervalsAuthError, IntervalsClientError, IntervalsHttpClient
-from app.ingestion.intervals.factory import build_intervals_sync_service
+from app.ingestion.intervals.factory import build_intervals_sync_service, build_plan_push_service
 from app.ingestion.intervals.ports import IntervalsClientPort
 from app.planning.models import IntervalsPlanEvent
-from app.planning.push import forget_athlete, push_switched
+from app.planning.push import forget_athlete, has_due_pushes, push_switched
+
+logger = logging.getLogger("connections.intervals")
 
 router = APIRouter(prefix="/athletes/{athlete_id}/intervals", tags=["connections"])
 
@@ -42,6 +45,33 @@ def get_intervals_client() -> IntervalsClientPort:
 def get_session_factory() -> Callable:
     """Sessions for work that outlives the request (the first sync)."""
     return AsyncSessionLocal
+
+
+PlanPusher = Callable[[uuid.UUID], Awaitable[None]]
+
+
+def get_plan_pusher(
+    session_factory: Callable = Depends(get_session_factory),
+    client: IntervalsClientPort = Depends(get_intervals_client),
+) -> PlanPusher:
+    """Sends one athlete's due plans to Intervals.icu right away (as a
+    background task after the change committed), so the calendar follows an
+    edit without waiting for the worker, which still retries what fails."""
+
+    async def push(athlete_id: uuid.UUID) -> None:
+        try:
+            async with session_factory() as db:
+                await build_plan_push_service(db, client=client).run(athlete_id)
+        except Exception:
+            logger.exception("Pushing plans of athlete %s to Intervals.icu failed", athlete_id)
+
+    return push
+
+
+async def push_now(db: AsyncSession, background: BackgroundTasks, pusher: PlanPusher, athlete_id: uuid.UUID) -> None:
+    """Schedules `pusher` when the athlete has plans waiting to go."""
+    if await has_due_pushes(db, athlete_id):
+        background.add_task(pusher, athlete_id)
 
 
 class IntervalsConnect(BaseModel):
@@ -212,13 +242,15 @@ async def sync_intervals_now(
 @router.put("/push", response_model=IntervalsStatus)
 async def push_plans_to_intervals(
     payload: IntervalsPush,
+    background: BackgroundTasks,
     athlete: Athlete = Depends(require_athlete_access),
+    pusher: PlanPusher = Depends(get_plan_pusher),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> IntervalsStatus:
     """Turns on (or off) putting planned workouts on the athlete's
-    Intervals.icu calendar. The worker sends them; turning it off removes
-    the upcoming ones it sent."""
+    Intervals.icu calendar. They go right away (the worker retries what
+    fails); turning it off removes the upcoming ones it sent."""
     await _require_data_owner(db, current_user, athlete)
     connection = await _connection(db, athlete)
     if connection is None or connection.status != DataSourceConnectionStatus.ACTIVE:
@@ -228,6 +260,7 @@ async def push_plans_to_intervals(
         await db.flush()
         await push_switched(db, athlete.id, local_day(utcnow(), await athlete_timezone(db, athlete)))
         await db.commit()
+        await push_now(db, background, pusher, athlete.id)
     return await _status(db, connection)
 
 

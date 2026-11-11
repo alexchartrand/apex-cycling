@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import select
 
 import app.ingestion.jobs as jobs
-from app.connections.intervals_router import get_intervals_client, get_session_factory
+from app.connections.intervals_router import get_intervals_client, get_plan_pusher, get_session_factory
 from app.db.base import utcnow
 from app.ingestion.intervals.client import IntervalsAuthError, IntervalsClientError, IntervalsRateLimited
 from app.ingestion.intervals.factory import build_plan_push_service
@@ -46,11 +46,10 @@ class FakeCalendar(FakeIntervals):
         self.events[event_id] = dict(event)
         return event_id
 
-    async def delete_event(self, api_key, event_id, uid):
+    async def delete_event(self, api_key, event_id):
         self.calls.append(("delete", event_id))
         self._maybe_fail()
-        if self.events.get(event_id, {}).get("uid") == uid:
-            del self.events[event_id]
+        self.events.pop(event_id, None)
 
 
 @pytest.fixture
@@ -58,7 +57,14 @@ def calendar(db_session):
     fake = FakeCalendar()
     real_app.dependency_overrides[get_intervals_client] = lambda: fake
     real_app.dependency_overrides[get_session_factory] = lambda: db_session
+    # These tests step through the worker's rounds; the push right after a
+    # change has its own test below.
+    real_app.dependency_overrides[get_plan_pusher] = lambda: _no_push
     return fake
+
+
+async def _no_push(athlete_id) -> None:
+    return None
 
 
 async def _push(db_session, fake):
@@ -290,3 +296,40 @@ async def test_the_worker_pushes_and_account_deletion_covers_the_rows(client, ca
     assert (await client.post("/auth/delete-account", json={"password": PASSWORD})).status_code == 204
     async with db_session() as session:
         assert await _rows_referencing(session, user_id, uuid.UUID(athlete_id)) == []
+
+
+async def test_a_change_goes_to_intervals_at_once(client, calendar, db_session):
+    del real_app.dependency_overrides[get_plan_pusher]
+    athlete_id, url = await _setup(client)
+    await client.post(url, json=_plan(title="Before"))
+    await _switch(client, athlete_id, True)
+    # Switching on sent the upcoming plan without waiting for the worker.
+    assert [e["name"] for e in calendar.events.values()] == ["Before"]
+
+    plan = (await client.post(url, json=_plan(title="Created"))).json()
+    assert sorted(e["name"] for e in calendar.events.values()) == ["Before", "Created"]
+    assert (await _states(client, url))["Created"] == "sent"
+
+    await client.patch(f"{url}/{plan['id']}", json={"title": "Edited"})
+    assert sorted(e["name"] for e in calendar.events.values()) == ["Before", "Edited"]
+
+    await client.delete(f"{url}/{plan['id']}")
+    assert [e["name"] for e in calendar.events.values()] == ["Before"]
+    assert (await _push(db_session, calendar)).sent == 0  # nothing left for the worker
+
+    # A failure stays for the worker to retry.
+    calendar.failures = [IntervalsClientError("Intervals.icu answered HTTP 500", 500)]
+    await client.post(url, json=_plan(title="Flaky"))
+    assert (await _states(client, url))["Flaky"] == "failed"
+
+
+async def test_only_the_changed_athletes_plans_go(client, calendar, db_session):
+    athlete_id, url = await _setup(client)
+    await _switch(client, athlete_id, True)
+    await client.post(url, json=_plan())
+    async with db_session() as db:
+        result = await build_plan_push_service(db, client=calendar).run(uuid.uuid4())
+    assert result.sent == 0 and calendar.events == {}
+    async with db_session() as db:
+        result = await build_plan_push_service(db, client=calendar).run(uuid.UUID(athlete_id))
+    assert result.sent == 1

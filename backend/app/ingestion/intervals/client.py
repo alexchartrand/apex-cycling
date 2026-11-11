@@ -173,16 +173,11 @@ class IntervalsHttpClient:
         self._check(response)
         return self._event_id(response)
 
-    async def delete_event(self, api_key: str, event_id: str, uid: str) -> None:
-        """Deletes the event if it is still there and still ours (`uid`)."""
+    async def delete_event(self, api_key: str, event_id: str) -> None:
+        """Deletes the event we created, by the id our create got back. (It
+        used to check the event's `uid` first, but Intervals.icu replaces the
+        uid it is sent with its own, so that check skipped every delete.)"""
         async with self._client(api_key) as client:
-            response = await _send(client, f"/athlete/0/events/{event_id}")
-            if response.status_code == 404:
-                return
-            self._check(response)
-            body = response.json()
-            if not isinstance(body, dict) or body.get("uid") != uid:
-                return
             response = await _send(client, f"/athlete/0/events/{event_id}", "DELETE")
         if response.status_code != 404:
             self._check(response)
