@@ -90,10 +90,13 @@ class SqlAlchemyIngestionRunRepository:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
-    async def create(self, connection_id: uuid.UUID, requested_at: datetime) -> IngestionRunRecord:
+    async def create(
+        self, connection_id: uuid.UUID, requested_at: datetime, *, athlete_id: uuid.UUID | None = None
+    ) -> IngestionRunRecord:
         run = IngestionRun(
             data_source_connection_id=connection_id,
             requested_at=requested_at,
+            requested_for_athlete_id=athlete_id,
             status=IngestionRunStatus.PENDING,
         )
         self._db.add(run)

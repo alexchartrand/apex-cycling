@@ -337,6 +337,58 @@ async def test_ingestion_runs_lists_recent_runs_including_failures(client, db_se
     assert "boom" in by_code["LS-77777"]["error_message"]
 
 
+async def test_ingestion_runs_of_a_handed_on_transponder_stay_with_their_athlete(client, db_session, monkeypatch):
+    """A rode the transponder until yesterday, B has it since today: the
+    worker's polls for B, and B's own syncs, aren't in A's log; A's
+    "Sync now" of their ended period isn't in B's."""
+    from datetime import date, timedelta
+
+    from httpx import ASGITransport, AsyncClient
+
+    from app.ingestion.sqorz.factory import build_sqorz_ingestion_service
+    from app.main import app as real_app
+
+    _patch_fetch(monkeypatch)
+    today = date.today()
+    user_a = await _signup(client, "handed-a@example.com")
+    athlete_a_id = await _self_athlete_id(db_session, user_a["id"])
+    ended = await client.post(
+        f"/athletes/{athlete_a_id}/transponder-assignments",
+        json={
+            "transponder_code": "LS-55555",
+            "start_date": str(today - timedelta(days=60)),
+            "end_date": str(today - timedelta(days=1)),
+            "import_now": False,
+        },
+    )
+    assert ended.status_code == 201
+
+    async with AsyncClient(transport=ASGITransport(app=real_app), base_url="http://test/api") as client_b:
+        user_b = await _signup(client_b, "handed-b@example.com")
+        athlete_b_id = await _self_athlete_id(db_session, user_b["id"])
+        ongoing = await client_b.post(
+            f"/athletes/{athlete_b_id}/transponder-assignments",
+            json={"transponder_code": "LS-55555", "start_date": str(today), "end_date": None},
+        )
+        assert ongoing.status_code == 201
+
+        async with db_session() as session:
+            connection_id = await session.scalar(
+                select(DataSourceConnection.id).where(DataSourceConnection.external_id == "LS-55555")
+            )
+            await build_sqorz_ingestion_service(session).ingest_by_id(connection_id)  # the worker's poll
+
+        sync_a = await client.post(f"/athletes/{athlete_a_id}/transponder-assignments/{ended.json()['id']}/import")
+        assert sync_a.status_code == 200
+
+        runs_a = (await client.get(f"/athletes/{athlete_a_id}/ingestion-runs")).json()
+        runs_b = (await client_b.get(f"/athletes/{athlete_b_id}/ingestion-runs")).json()
+
+    assert [run["id"] for run in runs_a] == [sync_a.json()["id"]]
+    assert len(runs_b) == 2  # the first sync on adding it, then the poll
+    assert sync_a.json()["id"] not in {run["id"] for run in runs_b}
+
+
 async def test_ingestion_runs_empty_for_athlete_with_no_transponders(client, db_session, monkeypatch):
     user = await _signup(client, "athlete8@example.com")
     athlete_id = await _self_athlete_id(db_session, user["id"])

@@ -340,6 +340,10 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     await db.execute(delete(Bike).where(Bike.athlete_id == athlete.id))
     await db.execute(delete(AthleteMetric).where(AthleteMetric.athlete_id == athlete.id))
     await db.execute(delete(TransponderAssignment).where(TransponderAssignment.athlete_id == athlete.id))
+    # Syncs of a shared transponder stay; only the pointer to whoever asked goes.
+    await db.execute(
+        update(IngestionRun).where(IngestionRun.requested_for_athlete_id == athlete.id).values(requested_for_athlete_id=None)
+    )
     await db.execute(delete(CoachAthlete).where(CoachAthlete.athlete_id == athlete.id))
 
     # Personal (non-sqorz) connections belong to the athlete outright.

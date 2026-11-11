@@ -64,7 +64,7 @@ async def report_transponder_usage(
     await db.commit()
 
     if payload.import_now:
-        await build_sqorz_ingestion_service(db).ingest_by_id(assignment.data_source_connection_id)
+        await build_sqorz_ingestion_service(db).ingest_by_id(assignment.data_source_connection_id, athlete_id=athlete.id)
 
     return await _to_read_model(db, assignment)
 
@@ -94,7 +94,9 @@ async def import_transponder_assignment_now(
     if assignment is None or assignment.athlete_id != athlete.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Transponder assignment not found")
 
-    run = await build_sqorz_ingestion_service(db).ingest_by_id(assignment.data_source_connection_id, force=True)
+    run = await build_sqorz_ingestion_service(db).ingest_by_id(
+        assignment.data_source_connection_id, force=True, athlete_id=athlete.id
+    )
     return IngestionRunRead.model_validate(run)
 
 

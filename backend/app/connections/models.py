@@ -127,6 +127,10 @@ class IngestionRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Activities a sync run brought in (personal sources; null for sqorz).
     imported_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The athlete a sqorz sync was asked for ("Sync now", adding a transponder);
+    # null for the worker's polls. A transponder is shared over time, so this is
+    # what keeps one athlete's syncs out of another's log.
+    requested_for_athlete_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("athletes.id"), nullable=True)
 
 
 class RawSnapshot(UUIDPrimaryKeyMixin, TimestampMixin, Base):

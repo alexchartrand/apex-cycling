@@ -67,8 +67,11 @@ class SqorzIngestionService:
         self._unit_of_work = unit_of_work
         self._failure_notifier = failure_notifier
 
-    async def ingest(self, connection: DataSourceConnectionRecord, *, force: bool = False) -> IngestionRunRecord:
-        run = await self._run_repo.create(connection.id, utcnow())
+    async def ingest(
+        self, connection: DataSourceConnectionRecord, *, force: bool = False, athlete_id: uuid.UUID | None = None
+    ) -> IngestionRunRecord:
+        """`athlete_id` is whoever the sync was asked for (null for the worker's polls)."""
+        run = await self._run_repo.create(connection.id, utcnow(), athlete_id=athlete_id)
 
         try:
             payload = await self._client.fetch_transponder_history(connection.external_id)
@@ -121,8 +124,10 @@ class SqorzIngestionService:
             return True
         return await self._connection_repo.assignments_changed_since(connection.id, connection.normalized_at)
 
-    async def ingest_by_id(self, connection_id: uuid.UUID, *, force: bool = False) -> IngestionRunRecord | None:
+    async def ingest_by_id(
+        self, connection_id: uuid.UUID, *, force: bool = False, athlete_id: uuid.UUID | None = None
+    ) -> IngestionRunRecord | None:
         connection = await self._connection_repo.get_by_id(connection_id)
         if connection is None:
             return None
-        return await self.ingest(connection, force=force)
+        return await self.ingest(connection, force=force, athlete_id=athlete_id)

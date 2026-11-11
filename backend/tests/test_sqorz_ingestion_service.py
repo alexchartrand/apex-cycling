@@ -66,8 +66,9 @@ class FakeRunRepo:
         self.failed_calls: list[dict] = []
         self.success_calls: list[dict] = []
 
-    async def create(self, connection_id, requested_at):
+    async def create(self, connection_id, requested_at, *, athlete_id=None):
         self.created += 1
+        self.athlete_id = athlete_id
         return IngestionRunRecord(
             id=uuid.uuid4(),
             status="pending",

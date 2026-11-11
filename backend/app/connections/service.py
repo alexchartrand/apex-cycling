@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connections.models import (
@@ -136,24 +136,38 @@ async def stop_transponder_assignment(
 async def list_ingestion_runs_for_athlete(
     db: AsyncSession, *, athlete_id: uuid.UUID, limit: int = 20
 ) -> list[tuple[IngestionRun, str]]:
-    """Recent ingestion runs across every connection this athlete has ever
-    reported usage of, newest first, paired with the connection's
+    """Recent sqorz syncs of this athlete, newest first, paired with the
     transponder code — so a failed background sync is visible to the
     athlete, not just buried in `ingestion_runs`.
-    """
-    connection_ids = await db.scalars(
-        select(TransponderAssignment.data_source_connection_id)
-        .where(TransponderAssignment.athlete_id == athlete_id)
-        .distinct()
-    )
-    connection_ids = list(connection_ids)
-    if not connection_ids:
-        return []
 
+    A transponder passes from one athlete to another over time and a run
+    belongs to its connection, so a run counts as this athlete's when it was
+    asked for them ("Sync now", adding a transponder), or when it is a
+    worker poll made on a day one of their own assignments covered. Without
+    that, someone whose assignment ended keeps seeing every poll made for
+    the transponder's current user.
+    """
+    run_day = func.date(IngestionRun.requested_at)
+    covered_by_own_assignment = (
+        select(TransponderAssignment.id)
+        .where(
+            TransponderAssignment.athlete_id == athlete_id,
+            TransponderAssignment.data_source_connection_id == IngestionRun.data_source_connection_id,
+            TransponderAssignment.start_date <= run_day,
+            or_(TransponderAssignment.end_date.is_(None), TransponderAssignment.end_date >= run_day),
+        )
+        .exists()
+    )
     rows = await db.execute(
         select(IngestionRun, DataSourceConnection.external_id)
         .join(DataSourceConnection, IngestionRun.data_source_connection_id == DataSourceConnection.id)
-        .where(IngestionRun.data_source_connection_id.in_(connection_ids))
+        .where(
+            DataSourceConnection.provider == DataSourceProvider.SQORZ,
+            or_(
+                IngestionRun.requested_for_athlete_id == athlete_id,
+                and_(IngestionRun.requested_for_athlete_id.is_(None), covered_by_own_assignment),
+            ),
+        )
         .order_by(IngestionRun.requested_at.desc())
         .limit(limit)
     )

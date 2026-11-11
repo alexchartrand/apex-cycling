@@ -34,7 +34,9 @@ class DataSourceConnectionRepositoryPort(Protocol):
 
 
 class IngestionRunRepositoryPort(Protocol):
-    async def create(self, connection_id: uuid.UUID, requested_at: datetime) -> IngestionRunRecord: ...
+    async def create(
+        self, connection_id: uuid.UUID, requested_at: datetime, *, athlete_id: uuid.UUID | None = None
+    ) -> IngestionRunRecord: ...
 
     async def mark_failed(
         self, run_id: uuid.UUID, *, http_status: int | None, error_message: str, completed_at: datetime
