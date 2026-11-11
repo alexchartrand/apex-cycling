@@ -13,6 +13,7 @@ import { IntensityChart } from "../workouts/IntensityChart";
 import { hasTrackEvents, hasWattTargets } from "../workouts/types";
 import { WorkoutSteps } from "../workouts/WorkoutSteps";
 import { useEstimateFtp } from "../workouts/useWorkouts";
+import { useWorkoutCard } from "../workouts/useWorkoutCard";
 import { WorkoutTotals } from "../workouts/WorkoutTotals";
 import { downloadPlanWorkout } from "./api";
 import { PlanDialog } from "./PlanDialog";
@@ -44,6 +45,7 @@ export function PlanDetailDialog({ athleteId, plan, onClose }: { athleteId: stri
   const chosen = candidates.find((choice) => choice.value === picked) ?? candidates[0];
   // The server's estimate used the FTP on the planned day; any FTP at all means watt steps count.
   const ftp = useEstimateFtp();
+  const makeCard = useWorkoutCard(athleteId);
   const scored = plan.workout ? hasTrackEvents(plan.workout) : plan.targets.length > 0;
   const powerScored = plan.workout != null && hasRecordingTargets(plan.workout);
 
@@ -92,7 +94,15 @@ export function PlanDetailDialog({ athleteId, plan, onClose }: { athleteId: stri
               )}
               <WorkoutSteps steps={plan.workout} gearLabels={workoutGearLabels(plan)} />
               <div className="plan-detail__workout-actions">
-                <DownloadMenu download={(format) => downloadPlanWorkout(athleteId, plan.id, format)} />
+                <DownloadMenu
+                  download={(format) => downloadPlanWorkout(athleteId, plan.id, format)}
+                  card={(size) =>
+                    makeCard(
+                      { name: plan.title, date: fmt.date(plan.planned_date, "weekday"), steps: plan.workout!, estimate: plan.workout_estimate, gearLabels: workoutGearLabels(plan) },
+                      size,
+                    )
+                  }
+                />
                 {plan.source_workout_id && (
                   <Link className="plan-detail__source" to={`/workouts/${plan.source_workout_id}`} onClick={onClose}>
                     <Dumbbell aria-hidden /> {t("detail.openSource")}

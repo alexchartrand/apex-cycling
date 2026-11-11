@@ -29,6 +29,21 @@ export default {
     },
     needsFtp: "Ce fichier est en watts ou en % de FTP et certaines cibles sont dans l'autre unité : indiquez d'abord votre FTP dans les Paramètres.",
   },
+  card: {
+    title: "Fiche à emporter (.png)",
+    sizes: { phone: "Écran verrouillé du téléphone", stem: "Bande à imprimer pour la potence" },
+    savedHint: {
+      phone: "Mettez-la en fond d'écran verrouillé pour voir les étapes sans déverrouiller.",
+      stem: "Imprimez-la en 5 × 15 cm (300 ppp) et collez-la sur la potence.",
+    },
+    brand: "ApexCycling",
+    open: "Tour",
+    best: "meilleur {{time}}",
+    ftp: "Watts pour une FTP de {{watts}} W",
+    noFtp: "Puissance en % FTP : indiquez votre FTP dans les Paramètres pour avoir des watts.",
+    more_one: "+ {{count}} autre étape",
+    more_other: "+ {{count}} autres étapes",
+  },
   filters: {
     search: "Chercher un entraînement",
     source: "Entraînements de qui",

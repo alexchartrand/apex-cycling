@@ -3,18 +3,23 @@ import { CARD_HEIGHT, CARD_WIDTH, drawShareCard, type ShareCardModel } from "./s
 const FONTS_TO_LOAD = ['700 100px "Barlow Condensed"', '500 30px "Inter Variable"', '600 30px "Inter Variable"'];
 
 /** The card as a PNG. Waits for the web fonts, or the canvas would draw the fallback. */
-export async function renderShareCard(model: ShareCardModel): Promise<Blob> {
+export function renderShareCard(model: ShareCardModel): Promise<Blob> {
+  return renderPng(CARD_WIDTH, CARD_HEIGHT, (ctx) => drawShareCard(ctx, model));
+}
+
+/** Any canvas drawing as a PNG, once the app's web fonts are in (the workout card uses it too). */
+export async function renderPng(width: number, height: number, draw: (ctx: CanvasRenderingContext2D) => void): Promise<Blob> {
   try {
     await Promise.all(FONTS_TO_LOAD.map((font) => document.fonts.load(font)));
   } catch {
     // A font that fails to load only costs the typeface, not the card.
   }
   const canvas = document.createElement("canvas");
-  canvas.width = CARD_WIDTH;
-  canvas.height = CARD_HEIGHT;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas is not available");
-  drawShareCard(ctx, model);
+  draw(ctx);
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Couldn't encode the card"))), "image/png");
   });

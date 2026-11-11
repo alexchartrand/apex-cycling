@@ -26,6 +26,21 @@ export default {
     },
     needsFtp: "This file is in watts or % of FTP and some targets are in the other unit: set your FTP in Settings first.",
   },
+  card: {
+    title: "Card to ride with (.png)",
+    sizes: { phone: "Phone lock screen", stem: "Stem strip to print" },
+    savedHint: {
+      phone: "Set it as your lock screen to see the steps without unlocking.",
+      stem: "Print it 5 × 15 cm (300 dpi) and tape it to the stem.",
+    },
+    brand: "ApexCycling",
+    open: "Lap",
+    best: "best {{time}}",
+    ftp: "Watts at FTP {{watts}} W",
+    noFtp: "Power in % FTP: set your FTP in Settings to get watts.",
+    more_one: "+ {{count}} more step",
+    more_other: "+ {{count}} more steps",
+  },
   filters: {
     search: "Search workouts",
     source: "Whose workouts",

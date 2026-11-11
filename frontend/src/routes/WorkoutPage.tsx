@@ -13,6 +13,7 @@ import { IntensityChart } from "../features/workouts/IntensityChart";
 import { WorkoutSteps } from "../features/workouts/WorkoutSteps";
 import { hasWattTargets } from "../features/workouts/types";
 import { WorkoutTotals } from "../features/workouts/WorkoutTotals";
+import { useWorkoutCard } from "../features/workouts/useWorkoutCard";
 import { useDeleteWorkout, useDuplicateWorkout, useEstimateFtp, useWorkout, useWorkoutEstimate } from "../features/workouts/useWorkouts";
 import "../features/workouts/Workouts.css";
 
@@ -31,6 +32,7 @@ export function WorkoutPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const athleteId = useActiveAthlete().data?.id;
+  const makeCard = useWorkoutCard(athleteId);
   const back = { to: "/workouts", label: t("title") };
 
   if (!workout.data) {
@@ -70,7 +72,10 @@ export function WorkoutPage() {
             <Button variant="secondary" icon={<Copy aria-hidden />} loading={duplicate.isPending} onClick={handleDuplicate}>
               {t("duplicate")}
             </Button>
-            <DownloadMenu download={(format) => downloadWorkout(data.id, format, athleteId)} />
+            <DownloadMenu
+              download={(format) => downloadWorkout(data.id, format, athleteId)}
+              card={(size) => makeCard({ name: data.name, date: null, steps: data.steps, estimate }, size)}
+            />
             {data.can_edit && (
               <>
                 <ButtonLink variant="secondary" to={`/workouts/${data.id}/edit`} icon={<Pencil aria-hidden />}>
