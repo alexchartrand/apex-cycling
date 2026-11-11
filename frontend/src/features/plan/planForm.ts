@@ -1,78 +1,47 @@
-import { localIsoDate, type Formatters } from "../../i18n/format";
-import type { Gear } from "../equipment/types";
-import { timeToInput } from "../records/timeInput";
-import { STANDARD_EVENT_KEYS, type StandardEventKey } from "../records/types";
+import { localIsoDate } from "../../i18n/format";
+import type { StandardEventKey } from "../records/types";
 import { gearKey, isRepeat, type InnerRepeat, type Workout, type WorkoutItem } from "../workouts/types";
-import { draftErrors, draftNodes, draftSteps, newRepeat, newStep, type DraftNode, type DraftRepeat, type DraftStep, type StepField, type WorkoutDraft } from "../workouts/workoutDraft";
 import type { PlannedEffort, PlannedSession, PlannedSessionWrite, PlanStatus } from "./types";
 
 export type PlanForm = {
   date: string;
   title: string;
   description: string;
-  /** An older plan's free-form efforts, kept as they are until turned into steps. */
+  /** An older plan's free-form efforts, kept as they are until a workout replaces them. */
   legacyTargets: PlannedEffort[];
-  /** The workout being planned; null = none. */
-  steps: DraftNode[] | null;
+  /** The workout's steps as the library (or the plan, when editing) has them; null = none chosen yet. */
+  workout: WorkoutItem[] | null;
   /** The library workout the steps were copied from. */
   sourceWorkoutId: string | null;
 };
 
-export type PlanFormErrors = { title?: true; date?: true; steps?: "empty" | "tooMany"; nodes: Record<string, StepField[]> };
-
-type Fmt = Pick<Formatters, "seconds" | "lapTime" | "language">;
-
-const asDraft = (steps: DraftNode[]): WorkoutDraft => ({ name: "", description: "", tags: "", steps });
+export type PlanFormErrors = { title?: true; date?: true; workout?: true };
 
 export function emptyPlanForm(date: string): PlanForm {
-  return { date, title: "", description: "", legacyTargets: [], steps: null, sourceWorkoutId: null };
+  return { date, title: "", description: "", legacyTargets: [], workout: null, sourceWorkoutId: null };
 }
 
-export function planFormFrom(plan: PlannedSession, fmt: Fmt): PlanForm {
+export function planFormFrom(plan: PlannedSession): PlanForm {
   return {
     date: plan.planned_date,
     title: plan.title,
     description: plan.description ?? "",
     legacyTargets: plan.workout ? [] : plan.targets,
-    steps: plan.workout ? draftNodes(plan.workout, fmt) : null,
+    workout: plan.workout,
     sourceWorkoutId: plan.source_workout_id,
   };
 }
 
 /** The form with a library workout's steps; its name and description fill a blank title and description. */
-export function withLibraryWorkout(form: PlanForm, workout: Pick<Workout, "id" | "name" | "description" | "steps">, fmt: Fmt): PlanForm {
+export function withLibraryWorkout(form: PlanForm, workout: Pick<Workout, "id" | "name" | "description" | "steps">): PlanForm {
   return {
     ...form,
     title: form.title.trim() === "" ? workout.name : form.title,
     description: form.description.trim() === "" ? (workout.description ?? "") : form.description,
     legacyTargets: [],
-    steps: draftNodes(workout.steps, fmt),
+    workout: workout.steps,
     sourceWorkoutId: workout.id,
   };
-}
-
-/**
- * An older plan's efforts as workout steps: each one a work step ending on its
- * event's distance (or the lap button without an event), in a repeat when it
- * has several reps. A saved gear becomes its teeth.
- */
-export function targetsToSteps(targets: PlannedEffort[], gears: Pick<Gear, "id" | "chainring_teeth" | "cog_teeth">[], fmt: Fmt): DraftNode[] {
-  return targets.map((target) => {
-    const gear = gears.find((g) => g.id === target.gear_setup_id);
-    const step: DraftStep = {
-      ...newStep("work", ""),
-      label: target.label,
-      lengthMode: "open",
-      eventKey: (STANDARD_EVENT_KEYS as readonly string[]).includes(target.event_key ?? "") ? (target.event_key as StandardEventKey) : "",
-      startType: target.event_key ? (target.start_type ?? "") : "",
-      targetTime: target.event_key && target.target_time_ms != null ? timeToInput(target.target_time_ms, fmt) : "",
-      chainring: gear ? String(gear.chainring_teeth) : "",
-      cog: gear ? String(gear.cog_teeth) : "",
-    };
-    if (target.reps < 2) return step;
-    const block: DraftRepeat = { ...newRepeat(), count: String(target.reps), steps: [step] };
-    return block;
-  });
 }
 
 /** The plan's matched gears by `gearKey`, for `WorkoutSteps`. */
@@ -80,30 +49,22 @@ export function workoutGearLabels(plan: Pick<PlannedSession, "workout_gears">): 
   return Object.fromEntries(plan.workout_gears.map((gear) => [gearKey(gear.chainring_teeth, gear.cog_teeth), gear.label]));
 }
 
+/** A title, a date and a workout from the library (an older plan's efforts stand in until one is chosen). */
 export function planFormErrors(form: PlanForm): PlanFormErrors {
-  const errors: PlanFormErrors = { nodes: {} };
+  const errors: PlanFormErrors = {};
   if (form.title.trim() === "") errors.title = true;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) errors.date = true;
-  if (form.steps != null) {
-    const workout = draftErrors(asDraft(form.steps));
-    if (workout.steps) errors.steps = workout.steps;
-    errors.nodes = workout.nodes;
-  }
+  if (form.workout == null && form.legacyTargets.length === 0) errors.workout = true;
   return errors;
 }
 
 export function hasPlanErrors(errors: PlanFormErrors): boolean {
-  return errors.title === true || errors.date === true || errors.steps != null || Object.keys(errors.nodes).length > 0;
-}
-
-/** The steps as the estimate takes them; null while there are none or they'd be refused. */
-export function planSteps(form: PlanForm): WorkoutItem[] | null {
-  return form.steps == null ? null : draftSteps(asDraft(form.steps));
+  return errors.title === true || errors.date === true || errors.workout === true;
 }
 
 export function planPayload(form: PlanForm): PlannedSessionWrite | null {
   if (hasPlanErrors(planFormErrors(form))) return null;
-  const workout = planSteps(form);
+  const workout = form.workout;
   return {
     planned_date: form.date,
     title: form.title.trim(),

@@ -161,51 +161,23 @@ li:first-child > .plan-list__row {
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
 }
 
-.plan-form__workout {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  border: 0;
-  min-width: 0;
-}
-
-.plan-form__workout legend {
-  padding: 0;
-  font-weight: 600;
-}
-
 .plan-form__hint {
   margin: 0;
   font-size: var(--text-sm);
   color: var(--color-text-2);
 }
 
-.plan-form__library {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: var(--space-2);
-}
-
-.plan-form__library > :first-child {
-  flex: 1 1 16rem;
-}
-
-.plan-form__legacy,
-.plan-form__editor {
+.plan-form__legacy {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-3);
 }
 
-.plan-form__editor {
-  align-items: stretch;
-}
-
 .plan-form__preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   padding: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);

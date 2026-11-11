@@ -207,11 +207,14 @@ describe("PlannedSessionsCard", () => {
     const dialog = screen.getByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
     expect(within(dialog).getByText("Give it a title")).toBeInTheDocument();
+    expect(within(dialog).getByText("Choose a workout")).toBeInTheDocument();
+    // Workouts are only chosen here, never built or edited.
+    expect(within(dialog).queryByRole("button", { name: /build the steps|add a step/i })).toBeNull();
 
     await within(dialog).findByRole("option", { name: "Sprint openers" });
-    await user.selectOptions(within(dialog).getByLabelText("From the library"), "w1");
+    await user.selectOptions(within(dialog).getByLabelText("Workout"), "w1");
     await waitFor(() => expect(within(dialog).getByLabelText("Title")).toHaveValue("Sprint openers"));
-    expect(within(dialog).getByText("Copied from the library: changes here stay on this plan.")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("textbox", { name: /label/i })).toBeNull();
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(fetchMock.mock.calls.some(([u, init]) => u.includes("planned-sessions") && init?.method === "POST")).toBe(true));
