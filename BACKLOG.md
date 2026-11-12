@@ -34,8 +34,9 @@
 - [ ] 🔴 A2 Alerting when the worker or syncs fail — *added 10/22*
   - Why: failures only reach the logs and `/admin` (and the athlete's bell, B3); no backoff or failure count per connection; `restart: unless-stopped` never restarts an *unhealthy* worker.
   - Notes: consecutive-failure count + backoff, email/ntfy to platform admins, "sync stalled" (no successful run for a day), healthcheck-driven restart, external uptime monitor on `/api/health`.
-- [~] 🟡 A5 Slow read paths — *added 10/22; training-load horizon, goals CdA, dashboard batching and Home session range done 10/23*
-  - Open: Log (month-based fetch for the calendar, load-more for the list) and the session pickers (Compare, Aero, Pursuit, plan link, sqorz sync check) still load the whole session list; per-athlete `training_load` and records board on the coach dashboard; insights load every lap of the athlete on each read.
+- [~] 🟡 A5 Slow read paths — *added 10/22; training-load horizon, goals CdA, dashboard batching and Home session range done 10/23; Log, session pickers and session prev/next done 11/12*
+  - Open: per-athlete `training_load` and records board on the coach dashboard (and the squad ranking); insights load every lap of the athlete on each read.
+  - Still no success criterion: a query-count or payload-size test on a typical history would say when this is done.
 - [ ] 🟡 Validate imports and estimates against real data — *added 10/26 (collected from T7.2–T8.1, C4)*
   - A real Garmin/Wahoo FIT file (parsers only checked against a hand-written encoder); a real Intervals.icu key; a live Strava app (`STRAVA_CLIENT_ID/SECRET`); the aero fit and clock-offset estimate on a real power recording; sprint launch/top speed on a real standing-start session; Web Push against a real push service.
 - [ ] 🟢 Follow-ups from shipped features — *added 10/26 (collected from the done items)*

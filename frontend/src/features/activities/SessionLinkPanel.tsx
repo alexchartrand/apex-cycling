@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { errorMessage } from "../../api/errors";
 import { Badge, Button, Card, Input, useToast } from "../../components/ui";
-import { useSessions } from "../training/useTraining";
+import { useSessionsRange } from "../training/useTraining";
 import type { Activity } from "./types";
 import { useLinkActivitySession, useSessionSuggestion, useUnlinkActivitySession } from "./useActivities";
 
@@ -18,15 +18,14 @@ export function SessionLinkPanel({ athleteId, activity, canEdit }: { athleteId: 
   const { t } = useTranslation(["activities", "common"]);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const sessions = useSessions(athleteId);
+  const linkedId = activity.external_event_id;
+  const sessions = useSessionsRange(athleteId, { eventIds: linkedId ? [linkedId] : [] }, linkedId !== null);
   const suggestion = useSessionSuggestion(athleteId, activity.id, canEdit && activity.external_event_id === null);
   const link = useLinkActivitySession(athleteId, activity.id);
   const unlink = useUnlinkActivitySession(athleteId, activity.id);
   const [offset, setOffset] = useState(String(activity.clock_offset_s));
 
-  const linked = activity.external_event_id
-    ? sessions.data?.find((s) => s.external_event_id === activity.external_event_id)
-    : undefined;
+  const linked = linkedId ? sessions.data?.find((s) => s.external_event_id === linkedId) : undefined;
   const offsetValue = Number(offset);
   const offsetValid = offset.trim() !== "" && Number.isFinite(offsetValue) && Math.abs(offsetValue) <= 3600;
 

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Badge, ButtonLink, Card, EmptyState, SkeletonGroup, StatTile, type DeltaDirection } from "../components/ui";
 import { FitnessCard } from "../features/activities/FitnessCard";
-import { useActivities } from "../features/activities/useActivities";
+import { useActivitiesRange } from "../features/activities/useActivities";
 import "../features/activities/Activities.css";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { FirstRunChecklist } from "../features/onboarding/FirstRunChecklist";
@@ -48,7 +48,7 @@ export function HomePage() {
   }, []);
   const weeks = useSessionsRange(athleteId, { from: localIsoDate(previousWeekStart) });
   const sessions = useSessionsRange(athleteId, { limit: RECENT_SESSIONS });
-  const activities = useActivities(athleteId);
+  const activities = useActivitiesRange(athleteId, { limit: 1 });
   const runs = useIngestionRuns(athleteId);
   const assignments = useTransponderAssignments(athleteId);
   const latest = sessions.data?.[0];

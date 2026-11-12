@@ -4,19 +4,18 @@ import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
 import { errorMessage } from "../api/errors";
 import { Button, ButtonLink, Card, EmptyState, PageHeader, Select, SkeletonGroup, StatTile, useToast } from "../components/ui";
-import { useActivities } from "../features/activities/useActivities";
 import { AeroInputsForm } from "../features/aero/AeroInputsForm";
 import { AeroLapTable } from "../features/aero/AeroLapTable";
 import { AeroScatter } from "../features/aero/AeroScatter";
 import { AeroTestsCard } from "../features/aero/AeroTestsCard";
-import { draftFromInputs, EMPTY_DRAFT, readInputs, sessionsWithPower, toggleLap, type InputDraft } from "../features/aero/aero";
+import { draftFromInputs, EMPTY_DRAFT, readInputs, toggleLap, type InputDraft } from "../features/aero/aero";
 import { SaveTestDialog } from "../features/aero/SaveTestDialog";
 import type { AeroSetup, AeroTest } from "../features/aero/types";
 import { useAeroEstimate, useAeroTests, useCreateAeroTest, useUpdateAeroTest } from "../features/aero/useAero";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { bikeOfWeight, weighedBikes } from "../features/equipment/gear";
 import { useBikes } from "../features/equipment/useEquipment";
-import { useSessions } from "../features/training/useTraining";
+import { useSessionChoices } from "../features/training/useTraining";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useFormat } from "../i18n/useFormat";
 import "./AeroPage.css";
@@ -33,14 +32,14 @@ export function AeroPage() {
   const athleteId = useActiveAthlete().data?.id ?? "";
   const [params, setParams] = useSearchParams();
 
-  const sessions = useSessions(athleteId);
-  const activities = useActivities(athleteId);
+  // Sessions with a linked powered recording, a page at a time; the one in the URL even when it's older.
+  const sessions = useSessionChoices(athleteId, [params.get("session") ?? ""], { powered: true });
   const tests = useAeroTests(athleteId);
   const bikes = useBikes(athleteId);
   const createTest = useCreateAeroTest(athleteId);
   const updateTest = useUpdateAeroTest(athleteId);
 
-  const candidates = sessionsWithPower(sessions.data ?? [], activities.data ?? []);
+  const candidates = sessions.sessions ?? [];
   const eventId = params.get("session") ?? candidates[0]?.external_event_id ?? "";
   const trackId = params.get("track");
   const editing = tests.data?.find((test) => test.id === params.get("test")) ?? null;
@@ -91,7 +90,7 @@ export function AeroPage() {
     }
   };
 
-  const loading = sessions.isLoading || activities.isLoading || tests.isLoading;
+  const loading = sessions.isLoading || tests.isLoading;
   const nothingYet = !loading && candidates.length === 0 && (tests.data ?? []).length === 0 && !params.get("session");
   const fit = result?.fit ?? null;
 
@@ -100,7 +99,7 @@ export function AeroPage() {
       <PageHeader title={t("page.title")} description={t("page.description")} />
 
       {loading && <SkeletonGroup lines={6} />}
-      {(sessions.isError || activities.isError) && <p role="alert">{t("common:loadError")}</p>}
+      {sessions.isError && <p role="alert">{t("common:loadError")}</p>}
       {nothingYet && (
         <EmptyState
           icon={<Wind aria-hidden />}
@@ -124,6 +123,11 @@ export function AeroPage() {
                   </option>
                 ))}
               </Select>
+              {sessions.hasMore && (
+                <Button variant="ghost" size="sm" loading={sessions.loadingMore} onClick={sessions.loadMore}>
+                  {t("common:showOlder")}
+                </Button>
+              )}
               {result && result.tracks.length > 1 && (
                 <Select label={t("pick.track")} value={result.track_id} onChange={(e) => chooseTrack(e.target.value)}>
                   {result.tracks.map((track) => (

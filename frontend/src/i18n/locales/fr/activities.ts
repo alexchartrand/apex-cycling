@@ -213,6 +213,7 @@ export default {
     previousMonth: "Mois précédent",
     nextMonth: "Mois suivant",
     today: "Aujourd'hui",
+    loadOlder: "Charger les mois précédents",
     nothingThisMonth: "Rien ce mois-ci.",
     km: "{{distance}} km",
   },

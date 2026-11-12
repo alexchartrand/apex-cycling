@@ -1,9 +1,9 @@
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import Row, Select, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -21,6 +21,7 @@ from app.training.schemas import (
     ProgressionPoint,
     SegmentDetail,
     SessionDetail,
+    SessionNeighbours,
     SessionSummary,
     TrackLoopSummary,
     TrackSessionDetail,
@@ -372,19 +373,9 @@ def _effort_detail(
     )
 
 
-async def list_athlete_sessions(
-    db: AsyncSession,
-    athlete_id: uuid.UUID,
-    *,
-    from_date: date | None = None,
-    to_date: date | None = None,
-    limit: int | None = None,
-) -> list[SessionSummary]:
-    """Newest first, with per-session aggregates for list views. Two grouped
-    queries (lap stats, track names) rather than loading every lap. `from_date`
-    / `to_date` (inclusive) and `limit` (the newest N) bound the list.
-    """
-    stats_query = (
+def _session_stats_query(athlete_id: uuid.UUID) -> Select:
+    """One row per session of the athlete with its lap aggregates, unordered."""
+    return (
         select(
             TrainingEvent.id,
             TrainingEvent.external_event_id,
@@ -402,15 +393,87 @@ async def list_athlete_sessions(
         .join(TrainingLap, TrainingLap.event_track_id == EventTrack.id)
         .where(TrainingLap.athlete_id == athlete_id)
         .group_by(TrainingEvent.id)
-        .order_by(TrainingEvent.event_date.desc(), func.min(TrainingLap.start_time).desc())
     )
+
+
+def _newest_first(query: Select) -> Select:
+    return query.order_by(TrainingEvent.event_date.desc(), func.min(TrainingLap.start_time).desc(), TrainingEvent.id.desc())
+
+
+async def list_athlete_sessions(
+    db: AsyncSession,
+    athlete_id: uuid.UUID,
+    *,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+    external_event_ids: Sequence[str] | None = None,
+    event_id_filter: Select | None = None,
+) -> list[SessionSummary]:
+    """Newest first, with per-session aggregates for list views. Two grouped
+    queries (lap stats, track names) rather than loading every lap. `from_date`
+    / `to_date` (inclusive), `limit` / `offset` (a page of the newest-first
+    list), `external_event_ids` (just those sessions) and `event_id_filter` (a
+    query of `TrainingEvent.id`s to keep) bound the list.
+    """
+    stats_query = _newest_first(_session_stats_query(athlete_id))
     if from_date is not None:
         stats_query = stats_query.where(TrainingEvent.event_date >= from_date)
     if to_date is not None:
         stats_query = stats_query.where(TrainingEvent.event_date <= to_date)
+    if external_event_ids is not None:
+        stats_query = stats_query.where(TrainingEvent.external_event_id.in_(external_event_ids))
+    if event_id_filter is not None:
+        stats_query = stats_query.where(TrainingEvent.id.in_(event_id_filter))
     if limit is not None:
         stats_query = stats_query.limit(limit)
-    lap_stats = (await db.execute(stats_query)).all()
+    if offset:
+        stats_query = stats_query.offset(offset)
+    return await _summaries(db, athlete_id, (await db.execute(stats_query)).all())
+
+
+async def session_neighbours(db: AsyncSession, athlete_id: uuid.UUID, external_event_id: str) -> SessionNeighbours | None:
+    """The session itself and the ones just before and after it in the
+    newest-first list (None when the athlete has no such session)."""
+    own = (
+        await db.execute(_session_stats_query(athlete_id).where(TrainingEvent.external_event_id == external_event_id))
+    ).first()
+    if own is None:
+        return None
+    # The list's order: event date, first lap, id.
+    day, first_lap, row_id = own[7], own[9], own[0]
+    first = func.min(TrainingLap.start_time)
+    # Sessions without a timed lap sort as the oldest of their day.
+    if first_lap is None:
+        same_day_older = (first.is_(None)) & (TrainingEvent.id < row_id)
+        same_day_newer = first.is_not(None) | (TrainingEvent.id > row_id)
+    else:
+        same_day_older = first.is_(None) | (first < first_lap) | ((first == first_lap) & (TrainingEvent.id < row_id))
+        same_day_newer = (first > first_lap) | ((first == first_lap) & (TrainingEvent.id > row_id))
+    older_query = _newest_first(
+        _session_stats_query(athlete_id).having(
+            or_(TrainingEvent.event_date < day, and_(TrainingEvent.event_date == day, same_day_older))
+        )
+    ).limit(1)
+    newer_query = (
+        _session_stats_query(athlete_id)
+        .having(or_(TrainingEvent.event_date > day, and_(TrainingEvent.event_date == day, same_day_newer)))
+        .order_by(TrainingEvent.event_date.asc(), first.asc().nulls_first(), TrainingEvent.id.asc())
+        .limit(1)
+    )
+    older = (await db.execute(older_query)).first()
+    newer = (await db.execute(newer_query)).first()
+    rows = [row for row in (own, older, newer) if row is not None]
+    summaries = {s.external_event_id: s for s in await _summaries(db, athlete_id, rows)}
+    return SessionNeighbours(
+        session=summaries[external_event_id],
+        older=summaries[older[1]] if older else None,
+        newer=summaries[newer[1]] if newer else None,
+    )
+
+
+async def _summaries(db: AsyncSession, athlete_id: uuid.UUID, lap_stats: Sequence[Row]) -> list[SessionSummary]:
     if not lap_stats:
         return []
 

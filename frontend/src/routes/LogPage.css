@@ -4,6 +4,10 @@
   gap: var(--space-6);
 }
 
+.log__more {
+  align-self: center;
+}
+
 .log__month {
   display: flex;
   flex-direction: column;

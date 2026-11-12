@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
-import { Select } from "../../components/ui";
+import { Button, Select } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
 import type { Effort, SessionSummary } from "../training/types";
 
-/** A session and one of its efforts, chosen from two selects. `efforts` is undefined while loading. */
+/** A session and one of its efforts, chosen from two selects. `efforts` is undefined while loading; `onShowOlder` loads more sessions when there are. */
 export function EffortPicker({
   title,
   sessions,
@@ -12,6 +12,8 @@ export function EffortPicker({
   selected,
   onSession,
   onEffort,
+  onShowOlder,
+  loadingOlder = false,
 }: {
   title: string;
   sessions: SessionSummary[];
@@ -20,8 +22,10 @@ export function EffortPicker({
   selected: Effort | undefined;
   onSession: (eventId: string) => void;
   onEffort: (firstLapId: string) => void;
+  onShowOlder?: () => void;
+  loadingOlder?: boolean;
 }) {
-  const { t } = useTranslation("compare");
+  const { t } = useTranslation(["compare", "common"]);
   const { t: tt } = useTranslation("training");
   const { t: tr } = useTranslation("records");
   const fmt = useFormat();
@@ -37,6 +41,11 @@ export function EffortPicker({
           </option>
         ))}
       </Select>
+      {onShowOlder && (
+        <Button variant="ghost" size="sm" loading={loadingOlder} onClick={onShowOlder}>
+          {t("common:showOlder")}
+        </Button>
+      )}
       <Select
         label={t("effort")}
         value={selected?.lap_ids[0] ?? ""}

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   connectIntervals,
   deleteActivity,
@@ -16,6 +16,7 @@ import {
   getTrainingLoad,
   linkActivitySession,
   listActivities,
+  listActivitiesBetween,
   setIntervalsPush,
   syncIntervals,
   syncStrava,
@@ -25,11 +26,18 @@ import {
 } from "./api";
 import type { ActivityUpdate } from "./types";
 
-export function useActivities(athleteId: string) {
-  return useQuery({
-    queryKey: ["activities", athleteId],
-    queryFn: () => listActivities(athleteId),
-    enabled: athleteId !== "",
+/** The activities started within `start`…`end` (timestamps, end exclusive), every page of them; or the newest `limit` when no bounds are given. */
+export function useActivitiesRange(athleteId: string, range: ActivitiesRange, enabled = true) {
+  return useQuery(activitiesRangeQuery(athleteId, range, enabled));
+}
+
+export type ActivitiesRange = { start?: string; end?: string; limit?: number };
+
+export function activitiesRangeQuery(athleteId: string, range: ActivitiesRange, enabled = true) {
+  return queryOptions({
+    queryKey: ["activities", athleteId, range],
+    queryFn: () => (range.limit != null ? listActivities(athleteId, range) : listActivitiesBetween(athleteId, range)),
+    enabled: enabled && athleteId !== "",
   });
 }
 

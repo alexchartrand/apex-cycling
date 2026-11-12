@@ -303,6 +303,23 @@ async def test_strava_power_never_reaches_a_coachs_lap_table(client, db_session)
         assert all(e["avg_power_w"] is None for e in efforts)
 
 
+async def test_the_powered_session_filter_follows_the_strava_rule(client, db_session):
+    athlete_id = await _athlete_with_session(client, db_session)
+    assert (await client.get(f"/athletes/{athlete_id}/sessions", params={"powered": True})).json() == []
+
+    await _strava_recording_linked_to_session(db_session, athlete_id)
+    async with db_session() as session:
+        activity = await session.scalar(select(Activity))
+        activity.has_power = True
+        await session.commit()
+
+    mine = (await client.get(f"/athletes/{athlete_id}/sessions", params={"powered": True})).json()
+    assert [s["external_event_id"] for s in mine] == ["evt-f"]
+    async with _coach_of(db_session, athlete_id) as coach:
+        assert (await coach.get(f"/athletes/{athlete_id}/sessions", params={"powered": True})).json() == []
+        assert len((await coach.get(f"/athletes/{athlete_id}/sessions")).json()) == 1
+
+
 async def test_coaches_cannot_link_or_unlink(client, db_session):
     athlete_id = await _athlete_with_session(client, db_session)
     activity = await _upload(client, athlete_id, _recording())

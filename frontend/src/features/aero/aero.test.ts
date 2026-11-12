@@ -1,14 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { Activity } from "../activities/types";
 import { G, makeSetup, simulate } from "../tools/physics";
-import type { SessionSummary } from "../training/types";
 import {
   EMPTY_DRAFT,
   draftFromInputs,
   fitLine,
   readInputs,
   scatterPoints,
-  sessionsWithPower,
   toggleLap,
   withinNoise,
   worthSeconds,
@@ -46,18 +43,6 @@ describe("readInputs", () => {
     expect(draft.bike_kg).toBe("8.2");
     expect(draft.rider_kg).toBe("");
     expect(readInputs(draft).inputs).toMatchObject({ bike_kg: 8.2, crr: 0.003, rider_kg: null });
-  });
-});
-
-describe("sessionsWithPower", () => {
-  it("keeps sessions with a linked recording that has power", () => {
-    const sessions = ["s1", "s2", "s3"].map((id) => ({ external_event_id: id }) as SessionSummary);
-    const activities = [
-      { external_event_id: "s1", has_power: true },
-      { external_event_id: "s2", has_power: false },
-      { external_event_id: null, has_power: true },
-    ] as Activity[];
-    expect(sessionsWithPower(sessions, activities).map((s) => s.external_event_id)).toEqual(["s1"]);
   });
 });
 

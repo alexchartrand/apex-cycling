@@ -17,6 +17,7 @@ export default {
   none: "Aucun",
   unknownError: "Une erreur est survenue. Veuillez réessayer.",
   networkError: "Impossible de joindre le serveur. Vérifiez votre connexion.",
+  showOlder: "Afficher les séances plus anciennes",
   loadError: "Impossible de charger ce contenu. Rechargez la page.",
   offlineTitle: "Vous êtes hors ligne",
   crashTitle: "Un problème est survenu",

@@ -538,6 +538,18 @@ async def test_list_sessions_and_tracks_endpoints(client, db_session):
     before = await client.get(f"/athletes/{athlete_id}/sessions", params={"to": "2000-01-01"})
     assert before.json() == []
     assert (await client.get(f"/athletes/{athlete_id}/sessions", params={"limit": 0})).status_code == 422
+    second_page = await client.get(f"/athletes/{athlete_id}/sessions", params={"limit": 1, "offset": 1})
+    assert [s["external_event_id"] for s in second_page.json()] == ["evt1"]
+    by_id = await client.get(f"/athletes/{athlete_id}/sessions", params=[("event_id", "evt1"), ("event_id", "nope")])
+    assert [s["external_event_id"] for s in by_id.json()] == ["evt1"]
+
+    around_newest = (await client.get(f"/athletes/{athlete_id}/sessions/evt2/neighbours")).json()
+    assert around_newest["session"]["external_event_id"] == "evt2"
+    assert around_newest["older"]["external_event_id"] == "evt1" and around_newest["newer"] is None
+    around_oldest = (await client.get(f"/athletes/{athlete_id}/sessions/evt1/neighbours")).json()
+    assert around_oldest["older"] is None and around_oldest["newer"]["external_event_id"] == "evt2"
+    assert around_oldest["newer"]["track_names"] == ["Test Track"]
+    assert (await client.get(f"/athletes/{athlete_id}/sessions/nope/neighbours")).status_code == 404
 
     tracks_resp = await client.get(f"/athletes/{athlete_id}/tracks")
     assert tracks_resp.status_code == 200
@@ -570,3 +582,40 @@ async def test_progression_requires_metric_specific_params(client, db_session):
 
     resp = await client.get(f"/athletes/{athlete_id}/progression", params={"metric": "lap_time"})
     assert resp.status_code == 422
+
+
+async def test_neighbours_step_through_sessions_of_the_same_day_by_first_lap(client, db_session):
+    user = await _signup(client, "trainN@example.com")
+    athlete_id = await _self_athlete_id(db_session, user["id"])
+    async with db_session() as session:
+        await create_transponder_assignment(
+            session,
+            athlete_id=athlete_id,
+            transponder_code="TP-N",
+            start_date=date(2026, 6, 1),
+            end_date=None,
+            created_by_user_id=uuid.UUID(user["id"]),
+            notes=None,
+        )
+        await session.commit()
+    day = "2026-06-10"
+    payload = {
+        "transponderCode": "TP-N",
+        "eventTrainingDetails": [
+            _event_payload(event_id, day, f"{event_id}-lap", datetime(2026, 6, 10, hour, 0, 0, tzinfo=timezone.utc), [5000, 9000, 14500], "TP-N")
+            for event_id, hour in (("noon", 12), ("morning", 8), ("evening", 18))
+        ],
+    }
+    async with db_session() as session:
+        await normalize_snapshot(session, payload)
+        await session.commit()
+
+    listed = [s["external_event_id"] for s in (await client.get(f"/athletes/{athlete_id}/sessions")).json()]
+    assert listed == ["evening", "noon", "morning"]
+    middle = (await client.get(f"/athletes/{athlete_id}/sessions/noon/neighbours")).json()
+    assert (middle["older"]["external_event_id"], middle["newer"]["external_event_id"]) == ("morning", "evening")
+    pages = [
+        (await client.get(f"/athletes/{athlete_id}/sessions", params={"limit": 2, "offset": offset})).json()
+        for offset in (0, 2)
+    ]
+    assert [s["external_event_id"] for page in pages for s in page] == listed

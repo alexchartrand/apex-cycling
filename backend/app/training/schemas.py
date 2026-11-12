@@ -97,6 +97,15 @@ class SessionSummary(BaseModel):
     last_lap_at: datetime | None
 
 
+class SessionNeighbours(BaseModel):
+    """A session's summary and the sessions on either side of it in the
+    newest-first list: `older` is the previous one, `newer` the next."""
+
+    session: SessionSummary
+    older: SessionSummary | None
+    newer: SessionSummary | None
+
+
 class TrackViewSummary(BaseModel):
     id: uuid.UUID
     name: str

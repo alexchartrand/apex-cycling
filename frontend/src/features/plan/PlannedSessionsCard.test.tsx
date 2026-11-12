@@ -81,7 +81,11 @@ describe("PlannedSessionsCard", () => {
     sessions = [{ external_event_id: "evt1", event_name: "Tuesday night", event_date: day(2), track_names: [], lap_count: 10 }];
     activities = [];
     fetchMock.mockImplementation((url: string, init?: RequestInit) => {
-      if (url.endsWith("/sessions")) return Promise.resolve(json(sessions));
+      if (url.includes("/sessions?")) {
+        // Only the days around the plan are asked for.
+        const query = new URL(url, "http://test").searchParams;
+        return Promise.resolve(json(sessions.filter((s) => s.event_date >= query.get("from")! && s.event_date <= query.get("to")!)));
+      }
       if (url.includes("/activities")) return Promise.resolve(json(activities));
       if (url === "/api/workouts/estimate") return Promise.resolve(json({ duration_s: 1200, tss: 20, unrated_s: 0, open_steps: 0, segments: [] }));
       if (url === "/api/workouts/w1") return Promise.resolve(json(LIBRARY_WORKOUT));

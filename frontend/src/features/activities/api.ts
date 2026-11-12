@@ -27,6 +27,18 @@ export function listActivities(
   return apiFetch<Activity[]>(`${base(athleteId)}/activities?${query.toString()}`);
 }
 
+const ACTIVITY_PAGE = 200; // the endpoint's largest page
+
+/** Every activity started within the bounds, newest first, however many pages that takes. */
+export async function listActivitiesBetween(athleteId: string, range: { start?: string; end?: string }): Promise<Activity[]> {
+  const all: Activity[] = [];
+  for (;;) {
+    const page = await listActivities(athleteId, { ...range, limit: ACTIVITY_PAGE, offset: all.length });
+    all.push(...page);
+    if (page.length < ACTIVITY_PAGE) return all;
+  }
+}
+
 export function getActivity(athleteId: string, activityId: string): Promise<Activity> {
   return apiFetch<Activity>(`${base(athleteId)}/activities/${activityId}`);
 }

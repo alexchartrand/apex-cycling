@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { MonitorPlay } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { ButtonLink, Card, DataTable, Input, Select, StatTile, type DataTableColumn } from "../../components/ui";
+import { Button, ButtonLink, Card, DataTable, Input, Select, StatTile, type DataTableColumn } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
 import { useActiveAthlete } from "../athletes/useActiveAthlete";
-import { useSessionEfforts, useSessions } from "../training/useTraining";
+import { useSessionChoices, useSessionEfforts } from "../training/useTraining";
 import { effortElapsedByLap, type ScheduleRow } from "./pursuitSchedule";
 import { ConditionsCard, NumberField, RiderCard } from "./ToolFields";
 import { TIME_PARAM } from "./toolInputs";
@@ -153,10 +153,12 @@ export function PursuitTool({ inputs }: { inputs: ToolInputs }) {
 
 function CompareEffort({ onChange }: { onChange: (elapsedByLap: number[] | null) => void }) {
   const { t } = useTranslation("tools");
+  const { t: tc } = useTranslation("common");
   const fmt = useFormat();
   const athleteId = useActiveAthlete().data?.id ?? "";
-  const sessions = useSessions(athleteId);
   const [sessionId, setSessionId] = useState("");
+  const choices = useSessionChoices(athleteId, [sessionId]);
+  const sessions = { data: choices.sessions };
   const [effortIndex, setEffortIndex] = useState("");
   const efforts = useSessionEfforts(athleteId, sessionId);
   const candidates = (efforts.data ?? []).filter((effort) => effort.completed_lap_count >= MIN_COMPARE_LAPS);
@@ -188,6 +190,11 @@ function CompareEffort({ onChange }: { onChange: (elapsedByLap: number[] | null)
             </option>
           ))}
         </Select>
+        {choices.hasMore && (
+          <Button variant="ghost" size="sm" loading={choices.loadingMore} onClick={choices.loadMore}>
+            {tc("showOlder")}
+          </Button>
+        )}
         {sessionId !== "" && efforts.data && (
           candidates.length === 0 ? (
             <p className="tools-note">{t("pursuit.noEfforts")}</p>

@@ -13,6 +13,13 @@ export interface SessionSummary {
   last_lap_at: string | null;
 }
 
+/** A session and the ones either side of it in the newest-first list. */
+export interface SessionNeighbours {
+  session: SessionSummary;
+  older: SessionSummary | null;
+  newer: SessionSummary | null;
+}
+
 export interface SegmentDetail {
   sequence_index: number;
   loop_id: string;

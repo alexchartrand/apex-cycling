@@ -1,7 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getProgression,
   getSessionDetail,
+  getSessionNeighbours,
   labelEffort,
   listEfforts,
   listSessions,
@@ -11,22 +12,59 @@ import {
   updateSession,
   updateTrack,
 } from "./api";
+import { mergeChoices, missingChoices } from "./sessionChoices";
 import type { LapUpdate, ProgressionParams, SessionUpdate, TrackUpdate } from "./types";
 
-export function useSessions(athleteId: string) {
-  return useQuery({
-    queryKey: ["sessions", athleteId],
-    queryFn: () => listSessions(athleteId),
+/** A bounded slice of the list (see `SessionsRange`). Under the `["sessions", athleteId]` prefix, so anything that invalidates the list refreshes it. */
+export function useSessionsRange(athleteId: string, range: SessionsRange, enabled = true) {
+  return useQuery(sessionsRangeQuery(athleteId, range, enabled));
+}
+
+export function sessionsRangeQuery(athleteId: string, range: SessionsRange, enabled = true) {
+  return queryOptions({
+    queryKey: ["sessions", athleteId, range],
+    queryFn: () => listSessions(athleteId, range),
+    enabled: enabled && athleteId !== "",
+  });
+}
+
+export const SESSION_PAGE_SIZE = 50;
+
+/** The newest-first list, `SESSION_PAGE_SIZE` at a time, for pickers. */
+export function useSessionPages(athleteId: string, filter: { powered?: boolean } = {}) {
+  return useInfiniteQuery({
+    queryKey: ["sessions", athleteId, "pages", filter],
+    queryFn: ({ pageParam }) => listSessions(athleteId, { ...filter, limit: SESSION_PAGE_SIZE, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => (last.length < SESSION_PAGE_SIZE ? undefined : pages.length * SESSION_PAGE_SIZE),
     enabled: athleteId !== "",
   });
 }
 
-/** A bounded slice of the list, for pages that don't need the whole history. Under the same `["sessions", athleteId]` prefix, so anything that invalidates the list refreshes it. */
-export function useSessionsRange(athleteId: string, range: SessionsRange) {
+/**
+ * The sessions a picker offers: the newest pages, plus the `selected` ones
+ * (from the URL, say) even when they're older than what is loaded.
+ */
+export function useSessionChoices(athleteId: string, selected: string[], filter: { powered?: boolean } = {}) {
+  const pages = useSessionPages(athleteId, filter);
+  const loaded = pages.data?.pages.flat() ?? [];
+  const missing = pages.data ? missingChoices(loaded, selected) : [];
+  const extra = useSessionsRange(athleteId, { eventIds: missing }, missing.length > 0);
+  return {
+    sessions: pages.data ? mergeChoices(loaded, missing.length > 0 ? (extra.data ?? []) : []) : undefined,
+    isLoading: pages.isLoading,
+    isError: pages.isError,
+    hasMore: pages.hasNextPage,
+    loadMore: () => void pages.fetchNextPage(),
+    loadingMore: pages.isFetchingNextPage,
+  };
+}
+
+export function useSessionNeighbours(athleteId: string, eventId: string) {
   return useQuery({
-    queryKey: ["sessions", athleteId, range],
-    queryFn: () => listSessions(athleteId, range),
-    enabled: athleteId !== "",
+    queryKey: ["sessions", athleteId, "neighbours", eventId],
+    queryFn: () => getSessionNeighbours(athleteId, eventId),
+    enabled: athleteId !== "" && eventId !== "",
   });
 }
 

@@ -6,7 +6,7 @@ import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { pickEffort } from "../features/compare/compare";
 import { CompareView } from "../features/compare/CompareView";
 import { EffortPicker } from "../features/compare/EffortPicker";
-import { useSessionEfforts, useSessions } from "../features/training/useTraining";
+import { useSessionChoices, useSessionEfforts } from "../features/training/useTraining";
 import "../features/compare/Compare.css";
 
 /** Two efforts (of one session or two) overlaid; both sides live in the URL (`?a=&ae=&b=&be=`) so a link reproduces the screen. */
@@ -15,10 +15,11 @@ export function ComparePage() {
   const { t: tt } = useTranslation("training");
   const [params, setParams] = useSearchParams();
   const athleteId = useActiveAthlete().data?.id ?? "";
-  const sessions = useSessions(athleteId);
-
   const eventA = params.get("a") ?? "";
   const eventB = params.get("b") ?? "";
+  const choices = useSessionChoices(athleteId, [eventA, eventB]);
+  const sessions = { isLoading: choices.isLoading, data: choices.sessions };
+  const older = choices.hasMore ? { onShowOlder: choices.loadMore, loadingOlder: choices.loadingMore } : {};
   const effortsA = useSessionEfforts(athleteId, eventA);
   const effortsB = useSessionEfforts(athleteId, eventB);
   const effortA = effortsA.data ? pickEffort(effortsA.data, params.get("ae")) : undefined;
@@ -52,6 +53,7 @@ export function ComparePage() {
             selected={effortA}
             onSession={(id) => update({ a: id, ae: null })}
             onEffort={(id) => update({ ae: id })}
+            {...older}
           />
           <EffortPicker
             title={nameOf("B")}
@@ -61,6 +63,7 @@ export function ComparePage() {
             selected={effortB}
             onSession={(id) => update({ b: id, be: null })}
             onEffort={(id) => update({ be: id })}
+            {...older}
           />
         </div>
       )}

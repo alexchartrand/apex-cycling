@@ -6,14 +6,13 @@ import { Badge, Button, ButtonLink, Card, EmptyState, IconButton, PageHeader, Se
 import { localDay, mpsToKmh } from "../features/activities/format";
 import { groupItemsByMonth, mergeLog, monthCalendar, type LogItem } from "../features/activities/logItems";
 import type { Activity } from "../features/activities/types";
-import { useActivities } from "../features/activities/useActivities";
+import { useLogList, useLogMonth } from "../features/activities/useLog";
 import { useAthletePath, useCanEdit } from "../features/athletes/athleteScope";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { PlanDetailDialog } from "../features/plan/PlanDetailDialog";
 import { PlanDialog } from "../features/plan/PlanDialog";
 import { usePlannedSessions } from "../features/plan/usePlan";
 import type { PlannedSession } from "../features/plan/types";
-import { useSessions } from "../features/training/useTraining";
 import { localIsoDate, parseLocalDate } from "../i18n/format";
 import { useFormat } from "../i18n/useFormat";
 import "./LogPage.css";
@@ -37,8 +36,6 @@ export function LogPage() {
   const athleteId = athlete.data?.id ?? "";
   const path = useAthletePath();
   const canEdit = useCanEdit();
-  const sessions = useSessions(athleteId);
-  const activities = useActivities(athleteId);
   const plans = usePlannedSessions(athleteId);
   const [planOpen, setPlanOpen] = useState<PlannedSession | null>(null);
   const [planning, setPlanning] = useState(false);
@@ -50,9 +47,13 @@ export function LogPage() {
   const year = requested ? Number(requested[1]) : today.getFullYear();
   const monthIndex = requested ? Number(requested[2]) - 1 : today.getMonth();
 
-  const items = mergeLog(sessions.data ?? [], activities.data ?? []);
-  const loading = athlete.isLoading || sessions.isLoading || activities.isLoading;
-  const failed = athlete.isError || sessions.isError;
+  // The list loads a few months at a time; the calendar only the days of its grid.
+  const list = useLogList(athleteId, view === "list");
+  const month = useLogMonth(athleteId, year, monthIndex, view === "calendar");
+  const shown = view === "list" ? list : month;
+  const items = mergeLog(shown.sessions, shown.activities);
+  const loading = athlete.isLoading || (view === "list" && list.isLoading);
+  const failed = athlete.isError || shown.isError;
   const monthFormat = new Intl.DateTimeFormat(fmt.locale, { month: "long", year: "numeric" });
 
   function update(next: Record<string, string | null>) {
@@ -102,7 +103,7 @@ export function LogPage() {
       {loading && <SkeletonGroup lines={6} />}
       {failed && <p role="alert">{t("log.loadError")}</p>}
 
-      {!loading && items.length === 0 && !failed && (
+      {!loading && view === "list" && items.length === 0 && !failed && (
         <EmptyState
           icon={<CalendarDays aria-hidden />}
           title={t("log.emptyTitle")}
@@ -130,6 +131,11 @@ export function LogPage() {
               </Card>
             </section>
           ))}
+          {list.hasMore && (
+            <Button variant="secondary" className="log__more" loading={list.loadingMore} onClick={list.loadMore}>
+              {t("activities:log.loadOlder")}
+            </Button>
+          )}
         </div>
       )}
 

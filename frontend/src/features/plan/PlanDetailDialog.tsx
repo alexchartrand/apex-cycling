@@ -6,8 +6,9 @@ import { errorMessage } from "../../api/errors";
 import { Badge, Button, ConfirmDialog, Dialog, Select, useToast } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
 import { formatRecordTime } from "../records/timeInput";
-import { useActivities } from "../activities/useActivities";
-import { useSessions } from "../training/useTraining";
+import { addDays, dayBounds } from "../activities/dayRange";
+import { useActivitiesRange } from "../activities/useActivities";
+import { useSessionsRange } from "../training/useTraining";
 import { DownloadMenu } from "../workouts/DownloadMenu";
 import { IntensityChart } from "../workouts/IntensityChart";
 import { hasTrackEvents, hasWattTargets } from "../workouts/types";
@@ -25,6 +26,8 @@ import { useAthletePath } from "../athletes/athleteScope";
 import "../workouts/Workouts.css";
 import "./Plan.css";
 
+const LINK_DAYS = 2;
+
 /** One planned session: what is asked, and what the viewer may do about it. */
 export function PlanDetailDialog({ athleteId, plan, onClose }: { athleteId: string; plan: PlannedSession; onClose: () => void }) {
   const path = useAthletePath();
@@ -33,14 +36,16 @@ export function PlanDetailDialog({ athleteId, plan, onClose }: { athleteId: stri
   const { t: tc } = useTranslation("common");
   const fmt = useFormat();
   const { toast } = useToast();
-  const sessions = useSessions(athleteId);
+  // Only what was ridden within LINK_DAYS of the planned day can be linked.
+  const linkWindow = { from: addDays(plan.planned_date, -LINK_DAYS), to: addDays(plan.planned_date, LINK_DAYS) };
+  const sessions = useSessionsRange(athleteId, linkWindow);
   const answering = plan.can_mark && plan.status === "planned";
-  const activities = useActivities(answering ? athleteId : "");
+  const activities = useActivitiesRange(athleteId, dayBounds(linkWindow.from, linkWindow.to), answering);
   const answer = usePlanAnswer(athleteId);
   const remove = useDeletePlan(athleteId);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const candidates = linkChoices(plan, sessions.data ?? [], activities.data ?? []);
+  const candidates = linkChoices(plan, sessions.data ?? [], activities.data ?? [], LINK_DAYS);
   const [picked, setPicked] = useState("");
   const chosen = candidates.find((choice) => choice.value === picked) ?? candidates[0];
   // The server's estimate used the FTP on the planned day; any FTP at all means watt steps count.

@@ -21,7 +21,7 @@ import { EffortCard } from "../features/training/session/EffortCard";
 import { NotesTab } from "../features/training/session/NotesTab";
 import { TrackLaps } from "../features/training/session/TrackLaps";
 import { TrackOverview } from "../features/training/session/TrackOverview";
-import { useSessionDetail, useSessionEfforts, useSessions, useTracks } from "../features/training/useTraining";
+import { useSessionDetail, useSessionEfforts, useSessionNeighbours, useTracks } from "../features/training/useTraining";
 import { useFormat } from "../i18n/useFormat";
 import "./SessionDetailPage.css";
 
@@ -45,7 +45,7 @@ export function SessionDetailPage() {
   // A coach reads a recording; the athlete (or a club admin for a managed athlete) edits it.
   const canEditRecording = canEdit && (!viewing || viewing.user_id === null);
   const detail = useSessionDetail(athleteId, eventId);
-  const sessions = useSessions(athleteId);
+  const neighbours = useSessionNeighbours(athleteId, eventId);
   const tracks = useTracks(athleteId);
   const efforts = useSessionEfforts(athleteId, eventId);
   const records = useRecords(athleteId);
@@ -55,10 +55,9 @@ export function SessionDetailPage() {
   const sessionGear = useSessionGear(athleteId, eventId);
 
   // Sessions are listed newest first: "previous" is the older one.
-  const index = sessions.data?.findIndex((s) => s.external_event_id === eventId) ?? -1;
-  const older = index >= 0 ? sessions.data?.[index + 1] : undefined;
-  const newer = index > 0 ? sessions.data?.[index - 1] : undefined;
-  const summary = index >= 0 ? sessions.data?.[index] : undefined;
+  const older = neighbours.data?.older ?? undefined;
+  const newer = neighbours.data?.newer ?? undefined;
+  const summary = neighbours.data?.session;
 
   const notFound = detail.error instanceof ApiError && detail.error.status === 404;
   const session = detail.data;

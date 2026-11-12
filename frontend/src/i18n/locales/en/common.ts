@@ -14,6 +14,7 @@ export default {
   none: "None",
   unknownError: "Something went wrong. Please try again.",
   networkError: "Can't reach the server. Check your connection.",
+  showOlder: "Show older sessions",
   loadError: "Couldn't load this. Try reloading the page.",
   offlineTitle: "You're offline",
   crashTitle: "Something broke",

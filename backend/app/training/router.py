@@ -2,8 +2,11 @@ import uuid
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.activities.metrics_service import visible_conditions
+from app.activities.models import Activity
 from app.activities.fusion_service import add_activity_metrics_to_efforts, add_activity_metrics_to_session
 from app.athletes.models import Athlete
 from app.auth.deps import get_current_user, require_athlete_access, require_athlete_editor
@@ -24,6 +27,7 @@ from app.training.schemas import (
     ProgressionPoint,
     SessionDetail,
     SessionMeta,
+    SessionNeighbours,
     SessionSummary,
     SessionUpdate,
     TrackSummary,
@@ -35,6 +39,7 @@ from app.training.service import (
     get_session_efforts,
     list_athlete_sessions,
     list_athlete_tracks,
+    session_neighbours,
 )
 
 router = APIRouter(prefix="/athletes/{athlete_id}", tags=["training"])
@@ -46,11 +51,52 @@ async def sessions(
     from_date: date | None = Query(default=None, alias="from"),
     to_date: date | None = Query(default=None, alias="to"),
     limit: int | None = Query(default=None, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
+    event_ids: list[str] | None = Query(default=None, alias="event_id", max_length=100),
+    powered: bool = False,
     athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[SessionSummary]:
-    """Newest first. All of the athlete's sessions unless bounded by `from` / `to` (inclusive) or `limit` (the newest N)."""
-    return await list_athlete_sessions(db, athlete.id, from_date=from_date, to_date=to_date, limit=limit)
+    """Newest first. All of the athlete's sessions unless bounded by `from` /
+    `to` (inclusive), a page (`limit` the newest N, after skipping `offset`),
+    `event_id` (repeatable: just those sessions) or `powered` (only sessions
+    with a linked recording that has power and that this viewer may see — a
+    coach doesn't get the Strava ones)."""
+    powered_events = (
+        select(Activity.training_event_id).where(
+            *visible_conditions(athlete, current_user),
+            Activity.has_power.is_(True),
+            Activity.training_event_id.is_not(None),
+        )
+        if powered
+        else None
+    )
+    return await list_athlete_sessions(
+        db,
+        athlete.id,
+        from_date=from_date,
+        to_date=to_date,
+        limit=limit,
+        offset=offset,
+        external_event_ids=event_ids,
+        event_id_filter=powered_events,
+    )
+
+
+@router.get("/sessions/{event_id}/neighbours", response_model=SessionNeighbours)
+async def neighbours(
+    athlete_id: uuid.UUID,
+    event_id: str,
+    athlete: Athlete = Depends(require_athlete_access),
+    db: AsyncSession = Depends(get_db),
+) -> SessionNeighbours:
+    """The session's summary with the previous (older) and next (newer) one,
+    so a session page can step through the list without loading it."""
+    found = await session_neighbours(db, athlete.id, event_id)
+    if found is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    return found
 
 
 @router.get("/tracks", response_model=list[TrackSummary])

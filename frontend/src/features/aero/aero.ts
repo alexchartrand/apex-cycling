@@ -3,10 +3,8 @@
   fit line, the hand-picked lap selection, and what a CdA difference is worth
   on the track (through the same physics model as the tools).
 */
-import type { Activity } from "../activities/types";
 import { G, makeSetup, simulate } from "../tools/physics";
 import { parseNumber } from "../tools/toolInputs";
-import type { SessionSummary } from "../training/types";
 import type { AeroConditions, AeroFit, AeroInputs, AeroPoint } from "./types";
 
 export const INPUT_KEYS = ["temp_c", "elevation_m", "pressure_hpa", "humidity_pct", "rider_kg", "bike_kg", "crr"] as const;
@@ -46,11 +44,6 @@ export function draftFromInputs(inputs: AeroInputs): InputDraft {
 }
 
 /** Sessions with a linked recording that has power: the only ones that can give a CdA. */
-export function sessionsWithPower(sessions: SessionSummary[], activities: Activity[]): SessionSummary[] {
-  const powered = new Set(activities.filter((a) => a.has_power && a.external_event_id).map((a) => a.external_event_id));
-  return sessions.filter((s) => powered.has(s.external_event_id));
-}
-
 /** Starts from the laps the estimate used when nothing was picked by hand yet. */
 export function toggleLap(points: AeroPoint[], selection: string[] | null, lapId: string): string[] {
   const current = selection ?? points.filter((p) => p.used).map((p) => p.lap_id);

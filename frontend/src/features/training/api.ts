@@ -6,22 +6,36 @@ import type {
   ProgressionPoint,
   SessionDetail,
   SessionMeta,
+  SessionNeighbours,
   SessionSummary,
   SessionUpdate,
   TrackSummary,
   TrackUpdate,
 } from "./types";
 
-export type SessionsRange = { from?: string; to?: string; limit?: number };
+/**
+ * Bounds on the session list: dates (`YYYY-MM-DD`, inclusive), a page of the
+ * newest-first list (`limit` after skipping `offset`), just some sessions
+ * (`eventIds`), or only those with a linked recording that has power (`powered`).
+ */
+export type SessionsRange = { from?: string; to?: string; limit?: number; offset?: number; eventIds?: string[]; powered?: boolean };
 
-/** Newest first; every session unless bounded by dates (`YYYY-MM-DD`, inclusive) or by `limit` (the newest N). */
+/** Newest first; every session unless bounded (see `SessionsRange`). */
 export function listSessions(athleteId: string, range: SessionsRange = {}): Promise<SessionSummary[]> {
   const query = new URLSearchParams();
   if (range.from) query.set("from", range.from);
   if (range.to) query.set("to", range.to);
   if (range.limit != null) query.set("limit", String(range.limit));
+  if (range.offset) query.set("offset", String(range.offset));
+  for (const id of range.eventIds ?? []) query.append("event_id", id);
+  if (range.powered) query.set("powered", "true");
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
   return apiFetch<SessionSummary[]>(`/athletes/${athleteId}/sessions${suffix}`);
+}
+
+/** A session's summary with the previous (older) and next (newer) one. */
+export function getSessionNeighbours(athleteId: string, eventId: string): Promise<SessionNeighbours> {
+  return apiFetch<SessionNeighbours>(`/athletes/${athleteId}/sessions/${encodeURIComponent(eventId)}/neighbours`);
 }
 
 export function listTracks(athleteId: string): Promise<TrackSummary[]> {
