@@ -308,3 +308,5 @@
     display: none;
   }
 }
+
+.log-calendar__chip-ai { width: 0.9em; height: 0.9em; flex: none; margin-right: 2px; vertical-align: -0.1em; }

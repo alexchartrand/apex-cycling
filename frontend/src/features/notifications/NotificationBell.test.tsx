@@ -135,6 +135,8 @@ describe("NotificationSettings", () => {
       comment: channels,
       coach_request: channels,
       plan_added: channels,
+      ai_report: channels,
+      ai_proposal: { ...channels, email: false },
       sync_failed: channels,
     },
     email_available: false,

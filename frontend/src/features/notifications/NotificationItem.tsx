@@ -1,4 +1,4 @@
-import { Activity, CalendarPlus, MessageSquare, TriangleAlert, Trophy, UserPlus, type LucideIcon } from "lucide-react";
+import { Activity, CalendarPlus, FileText, MessageSquare, Sparkles, TriangleAlert, Trophy, UserPlus, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useFormat } from "../../i18n/useFormat";
 import { formatRecordTime } from "../records/timeInput";
@@ -10,6 +10,8 @@ const ICONS: Record<NotificationKind, LucideIcon> = {
   comment: MessageSquare,
   coach_request: UserPlus,
   plan_added: CalendarPlus,
+  ai_report: FileText,
+  ai_proposal: Sparkles,
 };
 
 const text = (value: unknown): string => (typeof value === "string" ? value : "");
@@ -71,5 +73,10 @@ export function useNotificationText(notification: AppNotification): { title: str
           date: payload.planned_date ? fmt.date(text(payload.planned_date), "dayMonth") : "",
         }),
       };
+    // The AI's own words, already in the athlete's language.
+    case "ai_report":
+      return { Icon, title: t("notifications:aiReport.title"), body: text(payload.headline) };
+    case "ai_proposal":
+      return { Icon, title: t("notifications:aiProposal.title"), body: text(payload.summary) };
   }
 }

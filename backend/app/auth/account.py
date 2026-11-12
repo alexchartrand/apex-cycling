@@ -25,6 +25,15 @@ from app.aero.models import AeroTest
 from app.athletes.models import Athlete, AthleteClub, AthleteMetric, CoachAthlete
 from app.auth.models import PasswordResetToken, User
 from app.clubs.models import ClubInvite, ClubMembership
+from app.coach_ai.models import (
+    AiCoachAccess,
+    AiCoachProfile,
+    AiConversation,
+    AiMessage,
+    AiProposal,
+    AiReport,
+    AiUsage,
+)
 from app.clubs.service import delete_empty_clubs_of
 from app.connections.models import DataSourceConnection, IngestionRun, RawSnapshot, TransponderAssignment
 from app.db.base import Base
@@ -246,6 +255,7 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
         for filename, model, rows in tables:
             files[filename] = _csv(model, rows)
         await _add_activities(db, athlete, files)
+        await _add_ai_coach(db, athlete, files)
 
     files["workouts.csv"] = _csv(
         Workout,
@@ -298,11 +308,53 @@ async def _add_activities(db: AsyncSession, athlete: Athlete, files: dict[str, s
         files[f"activity_data/{stream.activity_id}.csv"] = buffer.getvalue()
 
 
+async def _add_ai_coach(db: AsyncSession, athlete: Athlete, files: dict[str, str]) -> None:
+    """The AI coach's records: access/consent, intake, every conversation
+    message (the tool traffic included: it is what was sent to the model),
+    proposals, reports and token usage."""
+    conversations = list(
+        await db.scalars(
+            select(AiConversation).where(AiConversation.athlete_id == athlete.id).order_by(AiConversation.created_at)
+        )
+    )
+    messages = list(
+        await db.scalars(
+            select(AiMessage)
+            .where(AiMessage.conversation_id.in_([c.id for c in conversations]))
+            .order_by(AiMessage.conversation_id, AiMessage.seq)
+        )
+    )
+    by_athlete = (
+        ("ai_coach_access.csv", AiCoachAccess),
+        ("ai_coach_profile.csv", AiCoachProfile),
+        ("ai_proposals.csv", AiProposal),
+        ("ai_reports.csv", AiReport),
+        ("ai_usage.csv", AiUsage),
+    )
+    for filename, model in by_athlete:
+        rows = list(await db.scalars(select(model).where(model.athlete_id == athlete.id).order_by(model.created_at)))
+        files[filename] = _csv(model, rows)
+    files["ai_conversations.csv"] = _csv(AiConversation, conversations)
+    files["ai_messages.csv"] = _csv(AiMessage, messages)
+
+
+async def _delete_ai_coach(db: AsyncSession, athlete_id: uuid.UUID) -> None:
+    conversation_ids = select(AiConversation.id).where(AiConversation.athlete_id == athlete_id)
+    await db.execute(delete(AiReport).where(AiReport.athlete_id == athlete_id))
+    await db.execute(delete(AiProposal).where(AiProposal.athlete_id == athlete_id))
+    await db.execute(delete(AiMessage).where(AiMessage.conversation_id.in_(conversation_ids)))
+    await db.execute(delete(AiConversation).where(AiConversation.athlete_id == athlete_id))
+    await db.execute(delete(AiCoachProfile).where(AiCoachProfile.athlete_id == athlete_id))
+    await db.execute(delete(AiUsage).where(AiUsage.athlete_id == athlete_id))
+    await db.execute(delete(AiCoachAccess).where(AiCoachAccess.athlete_id == athlete_id))
+
+
 async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     """Deletes an athlete profile and everything hanging off it: training
     data, imported activities, records, metrics, transponder assignments,
     personal connections and coach links. Shared rows stay (sqorz connections and their snapshots,
     tracks). Doesn't commit."""
+    await _delete_ai_coach(db, athlete.id)
     # Plans first (they point at sessions and activities), then imported
     # activities (they point at sessions): rows now, original files once the deletion commits.
     await db.execute(delete(IntervalsPlanEvent).where(IntervalsPlanEvent.athlete_id == athlete.id))
@@ -401,6 +453,9 @@ async def delete_account(db: AsyncSession, user: User) -> None:
         update(PasswordResetToken)
         .where(PasswordResetToken.created_by_user_id == user.id)
         .values(created_by_user_id=None)
+    )
+    await db.execute(
+        update(AiCoachAccess).where(AiCoachAccess.approved_by_user_id == user.id).values(approved_by_user_id=None)
     )
     if athlete is not None:
         await delete_athlete(db, athlete)

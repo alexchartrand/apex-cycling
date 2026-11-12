@@ -9,6 +9,7 @@ import {
   Home,
   ListChecks,
   Settings,
+  Sparkles,
   Trophy,
   Users,
   Wrench,
@@ -24,6 +25,7 @@ export type NavKey =
   | "power"
   | "season"
   | "workouts"
+  | "aiCoach"
   | "tools"
   | "aero"
   | "equipment"
@@ -50,6 +52,7 @@ export const NAV_ITEMS: Record<NavKey, NavItem> = {
   power: { key: "power", to: "/power", icon: Gauge },
   season: { key: "season", to: "/season", icon: Flag },
   workouts: { key: "workouts", to: "/workouts", icon: ListChecks },
+  aiCoach: { key: "aiCoach", to: "/ai-coach", icon: Sparkles },
   tools: { key: "tools", to: "/tools", icon: Wrench },
   aero: { key: "aero", to: "/aero", icon: Zap },
   equipment: { key: "equipment", to: "/equipment", icon: Bike },
@@ -59,9 +62,12 @@ export const NAV_ITEMS: Record<NavKey, NavItem> = {
   settings: { key: "settings", to: "/settings", icon: Settings },
 };
 
+/** Sections shown only to some users (the AI coach: athletes an admin enabled it for). */
+export const OPTIONAL_NAV: NavKey[] = ["aiCoach"];
+
 /** Desktop sidebar, top to bottom. */
 export const SIDEBAR_GROUPS: NavGroup[] = [
-  { key: null, items: [NAV_ITEMS.home, NAV_ITEMS.log, NAV_ITEMS.records, NAV_ITEMS.progress, NAV_ITEMS.power, NAV_ITEMS.season, NAV_ITEMS.workouts] },
+  { key: null, items: [NAV_ITEMS.home, NAV_ITEMS.log, NAV_ITEMS.records, NAV_ITEMS.progress, NAV_ITEMS.power, NAV_ITEMS.season, NAV_ITEMS.workouts, NAV_ITEMS.aiCoach] },
   { key: "analysis", items: [NAV_ITEMS.tools, NAV_ITEMS.aero, NAV_ITEMS.equipment] },
   { key: "team", items: [NAV_ITEMS.club, NAV_ITEMS.coach] },
 ];
@@ -76,6 +82,7 @@ export const MORE_SHEET_ITEMS: NavItem[] = [
   NAV_ITEMS.power,
   NAV_ITEMS.season,
   NAV_ITEMS.workouts,
+  NAV_ITEMS.aiCoach,
   NAV_ITEMS.aero,
   NAV_ITEMS.equipment,
   NAV_ITEMS.import,

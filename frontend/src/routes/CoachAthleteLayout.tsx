@@ -6,9 +6,10 @@ import { ApiError } from "../api/client";
 import { Avatar, ButtonLink, EmptyState, TabPanel, Tabs, type TabItem } from "../components/ui";
 import { AthleteScopeContext, coachAthletePath } from "../features/athletes/athleteScope";
 import { useCoachAthleteSummary } from "../features/coaching/useCoaching";
+import { useAiAccess } from "../features/aicoach/useAiCoach";
 import "../features/coaching/Coaching.css";
 
-const SECTIONS = ["summary", "log", "records", "progress", "power", "season"] as const;
+const SECTIONS = ["summary", "log", "records", "progress", "power", "season", "ai"] as const;
 type Section = (typeof SECTIONS)[number];
 
 /** Which tab a page under the athlete belongs to: a session or a recording is part of the log. */
@@ -32,6 +33,7 @@ export function CoachAthleteLayout() {
   const basePath = coachAthletePath(athleteId);
   const scope = useMemo(() => ({ athleteId, basePath }), [athleteId, basePath]);
   const summary = useCoachAthleteSummary(athleteId);
+  const aiCoach = useAiAccess(athleteId || undefined).data?.enabled ?? false;
 
   if (summary.error instanceof ApiError && summary.error.status === 404) {
     return (
@@ -45,7 +47,11 @@ export function CoachAthleteLayout() {
   }
 
   const section = sectionOf(pathname.slice(basePath.length));
-  const items: TabItem<Section>[] = SECTIONS.map((value) => ({ value, label: t(`athlete.nav.${value}`) }));
+  // The AI coach tab only for an athlete who has one.
+  const items: TabItem<Section>[] = SECTIONS.filter((value) => value !== "ai" || aiCoach).map((value) => ({
+    value,
+    label: t(`athlete.nav.${value}`),
+  }));
   const name = summary.data?.athlete_name ?? "";
 
   return (

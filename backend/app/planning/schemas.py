@@ -172,6 +172,8 @@ class PlannedSessionRead(BaseModel):
     # content; only the athlete's side marks it done, skipped or linked.
     can_edit: bool
     can_mark: bool
+    # Written by the AI coach (accepted by the athlete from one of its proposals).
+    created_by_ai: bool = False
     # Its copy on the athlete's Intervals.icu calendar, when they push plans
     # there: on its way, there, or the last attempt failed (retried).
     intervals: Literal["pending", "sent", "failed"] | None = None

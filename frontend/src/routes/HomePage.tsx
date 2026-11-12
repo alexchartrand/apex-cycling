@@ -10,6 +10,7 @@ import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { FirstRunChecklist } from "../features/onboarding/FirstRunChecklist";
 import { useFirstRunChecklist } from "../features/onboarding/useFirstRunChecklist";
 import { WhatsNewCard } from "../features/insights/WhatsNewCard";
+import { AiCoachCard } from "../features/aicoach/AiCoachCard";
 import { PlannedSessionsCard } from "../features/plan/PlannedSessionsCard";
 import { GoalsCard } from "../features/goals/GoalsCard";
 import { NextRaceCard } from "../features/season/NextRaceCard";
@@ -99,6 +100,8 @@ export function HomePage() {
           action={<ButtonLink to="/import">{t("onboarding.action")}</ButtonLink>}
         />
       )}
+
+      {athleteId !== "" && <AiCoachCard athleteId={athleteId} />}
 
       {athleteId !== "" && <WhatsNewCard athleteId={athleteId} />}
 

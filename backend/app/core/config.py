@@ -88,6 +88,18 @@ class Settings(BaseSettings):
     strava_webhook_verify_token: str | None = None
     strava_webhook_subscription_id: int | None = None
 
+    # AI coach (app/coach_ai): off unless MISTRAL_API_KEY is set. A platform
+    # admin enables it per athlete; each athlete spends at most
+    # `ai_coach_default_monthly_tokens` a calendar month unless the admin sets
+    # another cap. Prices (USD per million tokens) only feed the admin's
+    # cost estimate.
+    mistral_api_key: str | None = None
+    mistral_model: str = "mistral-large-latest"
+    mistral_base_url: str = "https://api.mistral.ai/v1"
+    mistral_price_input_per_mtok: float = 0.5
+    mistral_price_output_per_mtok: float = 1.5
+    ai_coach_default_monthly_tokens: int = 2_000_000
+
     sqorz_base_url: str = "https://my.sqorz.com/json/training/transponder"
     sqorz_poll_interval_minutes: int = 20
 

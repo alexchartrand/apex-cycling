@@ -68,7 +68,7 @@ export function PlanDetailDialog({ athleteId, plan, onClose }: { athleteId: stri
 
   return (
     <>
-      <Dialog open size={plan.workout ? "lg" : "md"} onOpenChange={(open) => !open && onClose()} title={plan.title} description={`${fmt.date(plan.planned_date, "long")}${plan.created_by_name ? ` · ${t("by", { name: plan.created_by_name })}` : ""}`}>
+      <Dialog open size={plan.workout ? "lg" : "md"} onOpenChange={(open) => !open && onClose()} title={plan.title} description={`${fmt.date(plan.planned_date, "long")}${plan.created_by_ai ? ` · ${t("byAi")}` : plan.created_by_name ? ` · ${t("by", { name: plan.created_by_name })}` : ""}`}>
         <div className="plan-detail">
           <p>
             <Badge tone={STATUS_TONE[plan.status]}>{t(`status.${plan.status}`)}</Badge>{" "}

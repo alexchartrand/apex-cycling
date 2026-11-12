@@ -9,6 +9,7 @@ export default {
   blocks_one: "{{count}} effort prévu",
   blocks_other: "{{count}} efforts prévus",
   by: "par {{name}}",
+  byAi: "par votre coach IA",
   answered: "Mis à jour",
   saved: "Séance planifiée enregistrée",
   status: { planned: "Planifiée", done: "Faite", skipped: "Sautée" },

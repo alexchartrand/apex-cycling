@@ -9,6 +9,7 @@ export default {
     progress: "Progression",
     season: "Saison",
     workouts: "Entraînements",
+    aiCoach: "Coach IA",
     power: "Puissance",
     tools: "Outils",
     aero: "Labo aéro",

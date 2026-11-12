@@ -23,5 +23,9 @@ export function notificationTarget(notification: AppNotification): NotificationT
       return { to: "/coach", athleteId: null };
     case "plan_added":
       return { to: "/", athleteId: null };
+    case "ai_report":
+      return { to: `/ai-coach?report=${encodeURIComponent(text(payload.report_id))}`, athleteId: null };
+    case "ai_proposal":
+      return { to: `/ai-coach?proposal=${encodeURIComponent(text(payload.proposal_id))}`, athleteId: null };
   }
 }

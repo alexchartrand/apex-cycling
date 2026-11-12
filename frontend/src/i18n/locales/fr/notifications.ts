@@ -23,12 +23,16 @@ export default {
     fromCoach: "{{name}} aimerait vous entraîner.",
   },
   planAdded: { title: "Nouvelle séance planifiée", body: "{{author}} a planifié « {{title}} » le {{date}}." },
+  aiReport: { title: "Votre bilan d'entraînement de la semaine" },
+  aiProposal: { title: "Votre coach IA propose des changements" },
   channels: { in_app: "Dans l'app", push: "Push", email: "Courriel" },
   kinds: {
     new_pr: { label: "Nouveaux records", hint: "Quand une synchronisation apporte un meilleur temps." },
     comment: { label: "Commentaires", hint: "Quelqu'un écrit dans un fil de vos séances." },
     coach_request: { label: "Demandes d'entraînement", hint: "Un entraîneur ou un athlète demande à se lier à vous." },
     plan_added: { label: "Séances planifiées", hint: "Quelqu'un ajoute une séance à votre calendrier." },
+    ai_report: { label: "Bilans du coach IA", hint: "Votre coach IA a rédigé votre bilan d'entraînement." },
+    ai_proposal: { label: "Propositions du coach IA", hint: "Votre coach IA propose des changements à votre plan." },
     sync_failed: { label: "Problèmes de synchronisation", hint: "Un transpondeur ne se synchronise pas. Envoyé une fois par série d'échecs." },
   },
   settings: {

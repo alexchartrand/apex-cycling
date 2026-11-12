@@ -10,6 +10,8 @@ import { ProtectedRoute } from "./routes/ProtectedRoute";
 
 // Every page after sign-in is its own chunk, so charts and the physics code
 // only load where they are used.
+const AiCoachPage = lazy(() => import("./routes/AiCoachPage").then((m) => ({ default: m.AiCoachPage })));
+const CoachAiPanel = lazy(() => import("./features/aicoach/CoachAiPanel").then((m) => ({ default: m.CoachAiPanel })));
 const AdminPage = lazy(() => import("./routes/AdminPage").then((m) => ({ default: m.AdminPage })));
 const ClubPage = lazy(() => import("./routes/ClubPage").then((m) => ({ default: m.ClubPage })));
 const ClubsPage = lazy(() => import("./routes/ClubsPage").then((m) => ({ default: m.ClubsPage })));
@@ -85,6 +87,7 @@ export function App() {
           <Route path="/tools/*" element={<ToolsPage />} />
           <Route path="/aero" element={<AeroPage />} />
           <Route path="/equipment" element={<EquipmentPage />} />
+          <Route path="/ai-coach" element={<AiCoachPage />} />
           <Route path="/coach" element={<CoachPage />} />
           {/* A coach reads one athlete here, read-only; the athlete pages follow the scope. */}
           <Route path="/coach/athletes/:athleteId" element={<CoachAthleteLayout />}>
@@ -97,6 +100,7 @@ export function App() {
             <Route path="progress" element={<ProgressPage />} />
             <Route path="power" element={<PowerCurvePage />} />
             <Route path="season" element={<SeasonPage />} />
+            <Route path="ai" element={<CoachAiPanel />} />
           </Route>
           <Route path="/club" element={<ClubsPage />} />
           <Route path="/club/:clubId/*" element={<ClubPage />} />

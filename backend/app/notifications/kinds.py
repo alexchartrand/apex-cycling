@@ -9,14 +9,17 @@ class NotificationKind(str, Enum):
     COMMENT = "comment"
     COACH_REQUEST = "coach_request"
     PLAN_ADDED = "plan_added"
+    AI_REPORT = "ai_report"
+    AI_PROPOSAL = "ai_proposal"
 
 
 CHANNELS = ("in_app", "push", "email")
 
 # Everything is on, except email for records: after each session it would be
 # the noisiest message the app sends, and the bell and push already say it.
+# Same for the AI coach's proposals (its weekly report does go by email).
 DEFAULT_PREFERENCES: dict[str, dict[str, bool]] = {
-    kind.value: {"in_app": True, "push": True, "email": kind is not NotificationKind.NEW_PR}
+    kind.value: {"in_app": True, "push": True, "email": kind not in (NotificationKind.NEW_PR, NotificationKind.AI_PROPOSAL)}
     for kind in NotificationKind
 }
 

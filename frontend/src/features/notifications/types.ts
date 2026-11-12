@@ -1,6 +1,14 @@
-export type NotificationKind = "new_pr" | "sync_failed" | "comment" | "coach_request" | "plan_added";
+export type NotificationKind = "new_pr" | "sync_failed" | "comment" | "coach_request" | "plan_added" | "ai_report" | "ai_proposal";
 
-export const NOTIFICATION_KINDS: NotificationKind[] = ["new_pr", "comment", "coach_request", "plan_added", "sync_failed"];
+export const NOTIFICATION_KINDS: NotificationKind[] = [
+  "new_pr",
+  "comment",
+  "coach_request",
+  "plan_added",
+  "ai_report",
+  "ai_proposal",
+  "sync_failed",
+];
 export const NOTIFICATION_CHANNELS = ["in_app", "push", "email"] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 

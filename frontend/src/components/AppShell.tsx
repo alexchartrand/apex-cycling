@@ -5,6 +5,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import { BrandMark } from "../brand/BrandMark";
 import { Wordmark } from "../brand/Wordmark";
 import { useMyAthlete } from "../features/athletes/useAthlete";
+import { useAiAccess } from "../features/aicoach/useAiCoach";
 import { NotificationBell } from "../features/notifications/NotificationBell";
 import { useCoachingBadgeCount } from "../features/coaching/useCoaching";
 import { useCurrentUser, useLogout } from "../features/auth/useAuth";
@@ -24,6 +25,7 @@ import {
   activeNavItem,
   MOBILE_TABS,
   MORE_SHEET_ITEMS,
+  OPTIONAL_NAV,
   SIDEBAR_FOOTER,
   SIDEBAR_GROUPS,
   type NavItem,
@@ -51,6 +53,7 @@ export function AppShell() {
   const active = activeNavItem(location.pathname);
   // Requests and comments waiting for the user, shown on their nav item.
   const badges: Partial<Record<NavKey, number>> = { coach: useCoachingBadgeCount() };
+  const shown = useShownNav();
   const sectionTitle = active ? t(`nav.${active.key}`) : t("nav.home");
 
   useEffect(() => {
@@ -90,7 +93,7 @@ export function AppShell() {
           {SIDEBAR_GROUPS.map((group, index) => (
             <div key={group.key ?? index} className="shell__nav-group">
               {group.key && !sidebarCollapsed && <div className="shell__nav-heading eyebrow">{t(`groups.${group.key}`)}</div>}
-              {group.items.map((item) => (
+              {group.items.filter(shown).map((item) => (
                 <SidebarLink
                   key={item.key}
                   item={item}
@@ -173,9 +176,16 @@ export function AppShell() {
         </nav>
       </div>
 
-      <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} activeKey={active?.key} badges={badges} />
+      <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} activeKey={active?.key} badges={badges} shown={shown} />
     </div>
   );
+}
+
+/** Which optional sections this user has: the AI coach once an admin enabled it for their own athlete. */
+function useShownNav(): (item: NavItem) => boolean {
+  const me = useMyAthlete();
+  const aiCoach = useAiAccess(me.data?.id).data?.enabled ?? false;
+  return (item) => !OPTIONAL_NAV.includes(item.key) || (item.key === "aiCoach" && aiCoach);
 }
 
 function NavBadge({ count }: { count: number | undefined }) {
@@ -228,18 +238,20 @@ function MoreSheet({
   onOpenChange,
   activeKey,
   badges,
+  shown,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   activeKey: string | undefined;
   badges: Partial<Record<NavKey, number>>;
+  shown: (item: NavItem) => boolean;
 }) {
   const { t } = useTranslation("shell");
   const { install } = useInstallPrompt();
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title={t("moreTitle")}>
       <div className="shell__more-grid">
-        {MORE_SHEET_ITEMS.map((item) => {
+        {MORE_SHEET_ITEMS.filter(shown).map((item) => {
           const Icon = item.icon;
           return (
             <Link

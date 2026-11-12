@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.activities.metrics_service import _ftp_on, _metric_rows, visible_conditions
 from app.activities.models import Activity
 from app.athletes.coaching import speaks_for_athlete
-from app.athletes.models import Athlete
+from app.athletes.models import Athlete, CoachAthlete, CoachAthleteStatus
 from app.auth.models import User
 from app.equipment.models import Bike, GearSetup
 from app.notifications.producers import notify_plan_added
@@ -105,12 +105,34 @@ def _target_read(stored: dict, gear_labels: dict[uuid.UUID, str]) -> PlannedEffo
     return target.model_copy(update={"gear_setup_id": target.gear_setup_id if label else None, "gear_label": label})
 
 
+async def _is_active_coach(db: AsyncSession, viewer: User, athlete: Athlete) -> bool:
+    return (
+        await db.scalar(
+            select(CoachAthlete.id).where(
+                CoachAthlete.coach_user_id == viewer.id,
+                CoachAthlete.athlete_id == athlete.id,
+                CoachAthlete.status == CoachAthleteStatus.ACTIVE,
+            )
+        )
+        is not None
+    )
+
+
+async def _may_edit(db: AsyncSession, viewer: User, athlete: Athlete, plan: PlannedSession, athlete_side: bool) -> bool:
+    """The author, the athlete's side, and — for a plan the AI coach wrote —
+    the athlete's active coach, who keeps the last word over it."""
+    if athlete_side or plan.created_by_user_id == viewer.id:
+        return True
+    return plan.created_by_ai and await _is_active_coach(db, viewer, athlete)
+
+
 async def _reads(
     db: AsyncSession, athlete: Athlete, viewer: User, plans: list[PlannedSession]
 ) -> list[PlannedSessionRead]:
     if not plans:
         return []
     athlete_side = await speaks_for_athlete(db, viewer, athlete)
+    coach = not athlete_side and any(p.created_by_ai for p in plans) and await _is_active_coach(db, viewer, athlete)
     author_ids = {p.created_by_user_id for p in plans if p.created_by_user_id}
     names = dict(
         (await db.execute(select(Athlete.user_id, Athlete.display_name).where(Athlete.user_id.in_(author_ids)))).all()
@@ -160,7 +182,8 @@ async def _reads(
                 activity=LinkedRecording(id=activity.id, name=activity.name, start_time=activity.start_time)
                 if activity
                 else None,
-                can_edit=athlete_side or plan.created_by_user_id == viewer.id,
+                can_edit=athlete_side or plan.created_by_user_id == viewer.id or (plan.created_by_ai and coach),
+                created_by_ai=plan.created_by_ai,
                 can_mark=athlete_side,
                 intervals=pushed.get(plan.id),
             )
@@ -231,7 +254,7 @@ async def update_plan(
     athlete_side = await speaks_for_athlete(db, viewer, athlete)
     changes = payload.model_dump(exclude_unset=True)
     new_status = changes.pop("status", None)
-    if changes and not (athlete_side or plan.created_by_user_id == viewer.id):
+    if changes and not await _may_edit(db, viewer, athlete, plan, athlete_side):
         raise NotAllowed
     if new_status is not None and not athlete_side:
         raise NotAllowed
@@ -259,7 +282,7 @@ async def delete_plan(db: AsyncSession, athlete: Athlete, viewer: User, plan_id:
     plan = await _own(db, athlete, plan_id)
     if plan is None:
         return False
-    if not (plan.created_by_user_id == viewer.id or await speaks_for_athlete(db, viewer, athlete)):
+    if not await _may_edit(db, viewer, athlete, plan, await speaks_for_athlete(db, viewer, athlete)):
         raise NotAllowed
     await plan_changed(db, plan)  # its event goes too
     await db.delete(plan)

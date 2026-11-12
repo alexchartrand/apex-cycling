@@ -1,4 +1,4 @@
-import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, CloudDownload, Flag, HeartPulse, Zap } from "lucide-react";
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, CloudDownload, Flag, HeartPulse, Sparkles, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -297,6 +297,7 @@ function Calendar({ year, monthIndex, items, plans, onOpenPlan }: { year: number
                     title={t("plan:chip", { title: plan.title })}
                     onClick={() => onOpenPlan(plan)}
                   >
+                    {plan.created_by_ai && <Sparkles className="log-calendar__chip-ai" aria-label={t("plan:byAi")} />}
                     <span className="log-calendar__chip-text">{plan.title}</span>
                   </button>
                 </li>

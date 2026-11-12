@@ -1,4 +1,5 @@
 import enActivities from "./en/activities";
+import enAicoach from "./en/aicoach";
 import enAero from "./en/aero";
 import enAdmin from "./en/admin";
 import enAuth from "./en/auth";
@@ -22,6 +23,7 @@ import enTools from "./en/tools";
 import enTraining from "./en/training";
 import enWorkouts from "./en/workouts";
 import frActivities from "./fr/activities";
+import frAicoach from "./fr/aicoach";
 import frAero from "./fr/aero";
 import frAdmin from "./fr/admin";
 import frAuth from "./fr/auth";
@@ -70,6 +72,7 @@ export const resources = {
     notifications: enNotifications,
     season: enSeason,
     workouts: enWorkouts,
+    aicoach: enAicoach,
   },
   fr: {
     common: frCommon,
@@ -95,6 +98,7 @@ export const resources = {
     notifications: frNotifications,
     season: frSeason,
     workouts: frWorkouts,
+    aicoach: frAicoach,
   },
 } as const;
 

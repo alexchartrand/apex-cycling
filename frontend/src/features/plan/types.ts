@@ -60,6 +60,8 @@ export interface PlannedSession {
   can_edit: boolean;
   /** Only the athlete's side marks it done, skipped or linked. */
   can_mark: boolean;
+  /** Written by the AI coach (accepted by the athlete from one of its proposals). */
+  created_by_ai: boolean;
   /** Its copy on the athlete's Intervals.icu calendar, when they push plans there. */
   intervals: "pending" | "sent" | "failed" | null;
 }

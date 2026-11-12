@@ -48,6 +48,10 @@ _TEXT = {
         "coach_request_athlete": "{name} would like to coach you.",
         "plan_added": "New planned session",
         "plan_added_body": "{author} planned “{title}” for {date}.",
+        "ai_report": "Your weekly training report",
+        "ai_report_body": "{headline}",
+        "ai_proposal": "Your AI coach suggests changes",
+        "ai_proposal_body": "{summary}",
     },
     "fr": {
         "pr_one": "Nouveau record : {event}",
@@ -63,6 +67,10 @@ _TEXT = {
         "coach_request_athlete": "{name} aimerait vous entraîner.",
         "plan_added": "Nouvelle séance planifiée",
         "plan_added_body": "{author} a planifié « {title} » le {date}.",
+        "ai_report": "Votre bilan d'entraînement de la semaine",
+        "ai_report_body": "{headline}",
+        "ai_proposal": "Votre coach IA propose des changements",
+        "ai_proposal_body": "{summary}",
     },
 }
 
@@ -119,4 +127,10 @@ def render(kind: str, payload: dict, locale: str | None) -> Message:
             author=payload.get("author_name", ""), title=payload.get("title", ""), date=payload.get("planned_date", "")
         )
         return Message(text["plan_added"], body, "/")
+    if kind == NotificationKind.AI_REPORT.value:
+        body = text["ai_report_body"].format(headline=payload.get("headline", ""))
+        return Message(text["ai_report"], body, f"/ai-coach?report={payload.get('report_id', '')}")
+    if kind == NotificationKind.AI_PROPOSAL.value:
+        body = text["ai_proposal_body"].format(summary=payload.get("summary", ""))
+        return Message(text["ai_proposal"], body, f"/ai-coach?proposal={payload.get('proposal_id', '')}")
     return Message(kind, "", "/")

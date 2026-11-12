@@ -84,6 +84,7 @@ export default {
       progress: "Progress",
       power: "Power",
       season: "Season",
+      ai: "AI coach",
     },
   },
   squad: {

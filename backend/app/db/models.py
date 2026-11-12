@@ -6,6 +6,15 @@ from app.activities.models import Activity, ActivityPowerCurve, ActivityStream  
 from app.aero.models import AeroTest  # noqa: F401
 from app.athletes.models import Athlete, AthleteClub, AthleteMetric, CoachAthlete  # noqa: F401
 from app.auth.models import PasswordResetToken, User  # noqa: F401
+from app.coach_ai.models import (  # noqa: F401
+    AiCoachAccess,
+    AiCoachProfile,
+    AiConversation,
+    AiMessage,
+    AiProposal,
+    AiReport,
+    AiUsage,
+)
 from app.clubs.models import Club, ClubInvite, ClubMembership, ClubSqorzAccount  # noqa: F401
 from app.connections.models import (  # noqa: F401
     DataSourceConnection,

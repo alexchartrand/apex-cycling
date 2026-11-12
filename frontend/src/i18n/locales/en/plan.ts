@@ -6,6 +6,7 @@ export default {
   blocks_one: "{{count}} planned effort",
   blocks_other: "{{count}} planned efforts",
   by: "by {{name}}",
+  byAi: "by your AI coach",
   answered: "Updated",
   saved: "Planned session saved",
   status: { planned: "Planned", done: "Done", skipped: "Skipped" },

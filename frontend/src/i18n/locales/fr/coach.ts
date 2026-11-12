@@ -87,6 +87,7 @@ export default {
       progress: "Progression",
       power: "Puissance",
       season: "Saison",
+      ai: "Coach IA",
     },
   },
   squad: {

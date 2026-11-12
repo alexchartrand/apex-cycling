@@ -20,12 +20,16 @@ export default {
     fromCoach: "{{name}} would like to coach you.",
   },
   planAdded: { title: "New planned session", body: "{{author}} planned “{{title}}” for {{date}}." },
+  aiReport: { title: "Your weekly training report" },
+  aiProposal: { title: "Your AI coach suggests changes" },
   channels: { in_app: "In the app", push: "Push", email: "Email" },
   kinds: {
     new_pr: { label: "New records", hint: "After a sync brings in a personal best." },
     comment: { label: "Comments", hint: "Someone writes on one of your session threads." },
     coach_request: { label: "Coaching requests", hint: "A coach or athlete asks to link up with you." },
     plan_added: { label: "Planned sessions", hint: "Someone adds a session to your calendar." },
+    ai_report: { label: "AI coach reports", hint: "Your AI coach wrote your training report." },
+    ai_proposal: { label: "AI coach proposals", hint: "Your AI coach suggests changes to your plan." },
     sync_failed: { label: "Sync problems", hint: "A transponder can't be synced. Sent once per streak of failures." },
   },
   settings: {

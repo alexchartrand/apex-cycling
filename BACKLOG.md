@@ -16,6 +16,12 @@
 
 ## ✨ Features
 
+- [ ] 🟡 AI coach: checks against the live Mistral API — *added 11/12 (Sprint AI shipped the same day, scripted model only)*
+  - Confirm the model id for "Mistral Large 4" with `GET /v1/models` and set `MISTRAL_MODEL`; check function calling with our tool schemas (loose `ops` objects), French answers in « vous », and token cost per turn (the brief is a few thousand tokens every turn).
+  - Run an intake interview end to end on the test account: questions asked, `save_profile` filled, a 2–4-week plan proposed with valid step trees, Accept → calendar + Intervals.icu push.
+  - Weekly report and replan from the worker on a real week; tune `MAX_TOOL_ROUNDS`, history length and prompts after reading real transcripts.
+  - Follow-ups: streaming replies (SSE) instead of one request per turn; a daily readiness check-in and post-session debriefs were proposed but not chosen for v1.
+
 - [ ] 🟡 Sprint W checks on real devices and accounts — *added 11/11 (left open when Sprint W closed)*
   - W2: the user's review of the 16 presets in `app/workouts/presets.json` (efforts, recoveries, French wording).
   - W5: a `.fit` imported on a real Garmin/Wahoo (manufacturer = development, no serial registry; notes shown?), `.zwo` in Zwift, `.erg`/`.mrc` in an ERG app.
@@ -75,6 +81,7 @@
   - Notes: only if plain-Postgres progression queries get slow.
 
 ## ✅ Done
+- [x] Sprint AI — AI coach on Mistral: admin-approved access + consent + monthly token cap, intake interview → program proposal, chat that reads and proposes plan changes (athlete accepts every change; coach plans locked, coach may edit AI plans), weekly reports at the athlete's chosen time, missed-session replan, coach-view tab (migration 0025) — *added 11/12, done 11/12*
 - [x] Sprint W — Workout builder & library: W1 model/CRUD (0020), W2 presets, W3 library + editor, W4 scheduling (0021; plan dialog requires a library workout, shown read-only, since 11/11), W5 .fit/.zwo/.erg/.mrc, W6 Intervals.icu push (0022; pushed at once since 11/11, deletes by event id), W7 workout card PNG, W8 power-step compliance (0023) — *added 10/30, done 11/11*
 - [x] Sync log showed a handed-on transponder's polls to its previous athlete (migration 0024) — *added 11/11, fixed 11/11*
 - [x] Coaching rework: per-athlete summary + read-only coach view (`/coach/athletes/:id`), coaches limited to comments and plans (`require_athlete_editor`), no more "view as" for coaches — *added 10/30, done 10/30*

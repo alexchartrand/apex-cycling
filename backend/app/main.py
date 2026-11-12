@@ -18,6 +18,8 @@ from app.seasons.router import public_router as seasons_public_router
 from app.seasons.router import router as seasons_router
 from app.athletes.coach_router import router as coach_links_router
 from app.athletes.router import router as athletes_router
+from app.coach_ai.router import admin_router as ai_coach_admin_router
+from app.coach_ai.router import router as ai_coach_router
 from app.auth.router import router as auth_router
 from app.clubs.router import invites_router
 from app.clubs.router import router as clubs_router
@@ -83,6 +85,8 @@ api_router.include_router(comments_router)
 api_router.include_router(comments_inbox_router)
 api_router.include_router(tracks_router)
 api_router.include_router(admin_router)
+api_router.include_router(ai_coach_router)
+api_router.include_router(ai_coach_admin_router)
 api_router.include_router(aero_router)
 api_router.include_router(equipment_router)
 api_router.include_router(goals_router)

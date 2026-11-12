@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import JSON, Date, DateTime, ForeignKey, Integer, String, Text, Uuid, text
+from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, String, Text, Uuid, false, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -40,6 +40,11 @@ class PlannedSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(16), default=PlanStatus.PLANNED.value)
     training_event_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("training_events.id"), nullable=True)
     activity_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("activities.id"), nullable=True, index=True)
+    # Written by the AI coach (`coach_ai`), accepted by the athlete from
+    # proposal `ai_proposal_id` (no FK: the proposal may be gone). An active
+    # coach may edit these too; the AI never touches a coach's plans.
+    created_by_ai: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    ai_proposal_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
 
 
 class IntervalsPlanEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):

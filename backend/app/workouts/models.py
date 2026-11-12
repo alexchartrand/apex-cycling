@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import JSON, ForeignKey, String, Text, text
+from sqlalchemy import JSON, Boolean, ForeignKey, String, Text, false, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -21,3 +21,5 @@ class Workout(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     tags: Mapped[list[str]] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     steps: Mapped[list[dict]] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    # Written by the AI coach for one of its plans and kept in the library.
+    created_by_ai: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
