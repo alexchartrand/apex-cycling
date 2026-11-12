@@ -2,7 +2,7 @@ import type { LocaleNamespace } from "../types";
 import type en from "../en/coach";
 
 export default {
-  title: "Entraînement",
+  title: "Coaching",
   description: "Les athlètes que vous entraînez en un coup d'œil, et les entraîneurs qui suivent votre entraînement.",
   tabs: { label: "Sections de l'entraînement", athletes: "Mes athlètes", squad: "Groupe", coaches: "Mes entraîneurs" },
   waiting: {

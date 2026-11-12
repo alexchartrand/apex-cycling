@@ -13,7 +13,7 @@ export default {
     tools: "Outils",
     aero: "Labo aéro",
     equipment: "Équipement",
-    coach: "Entraînement",
+    coach: "Coaching",
     club: "Club",
     import: "Importer",
     settings: "Paramètres",
