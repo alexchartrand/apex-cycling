@@ -7,6 +7,7 @@ import { compareCurves } from "./powerCurve";
 import type { SessionOverlay } from "./sessionOverlay";
 import { SessionLinkPanel } from "./SessionLinkPanel";
 import { StreamChart } from "./StreamChart";
+import { TypeBadge } from "./TypeBadge";
 import type { Activity } from "./types";
 import { useActivityAnalysis, useActivityStreams } from "./useActivities";
 import { ZoneBars } from "./ZoneBars";
@@ -37,7 +38,11 @@ export function RecordingView({
 
   return (
     <div className="recording-view">
-      {activity.source === "strava" && <Badge tone="accent">{t("sourceOnly.strava")}</Badge>}
+      <div className="recording-view__badges">
+        <TypeBadge type={activity.activity_type} />
+        {activity.activity_type_manual && <span className="ui-card__hint">{t("types.manual")}</span>}
+        {activity.source === "strava" && <Badge tone="accent">{t("sourceOnly.strava")}</Badge>}
+      </div>
       <ActivityStats activity={activity} analysis={power} />
       {activity.has_power && power && power.ftp_w == null && <p className="ui-card__hint">{t("activity.hints.noFtp")}</p>}
 
@@ -75,7 +80,7 @@ export function RecordingView({
 
       <div className="recording-view__side">
         <SessionLinkPanel athleteId={athleteId} activity={activity} canEdit={canEdit} />
-        {canEdit && <ActivityNotes key={`${activity.id}-${activity.rpe}-${activity.name}-${activity.notes}`} athleteId={athleteId} activity={activity} />}
+        {canEdit && <ActivityNotes key={`${activity.id}-${activity.rpe}-${activity.notes}`} athleteId={athleteId} activity={activity} />}
       </div>
     </div>
   );

@@ -11,14 +11,14 @@ const session = (id: string, date: string) => ({
   external_event_id: id, event_name: `Session ${id}`, event_date: date, track_names: [], lap_count: 3,
   rpe: null, tags: [], is_race: false, first_lap_at: `${date}T18:00:00Z`, last_lap_at: null,
 });  // prettier-ignore
-const activity = (id: string, start: string) => ({
+const activity = (id: string, start: string, activity_type = "cycling") => ({
   id, name: `Ride ${id}`, start_time: start, source: "upload", elapsed_s: 3600, distance_m: null, avg_speed_mps: null,
-  has_power: false, has_heart_rate: false, external_event_id: null,
+  has_power: false, has_heart_rate: false, external_event_id: null, activity_type, activity_type_manual: false,
 });  // prettier-ignore
 
 // Newest first, with a gap between June 2025 and March 2026.
 const SESSIONS = [session("s3", "2026-05-20"), session("s2", "2026-03-02"), session("s1", "2025-06-10")];
-const ACTIVITIES = [activity("r2", "2026-04-10T12:00:00Z"), activity("r1", "2025-05-05T12:00:00Z")];
+const ACTIVITIES = [activity("gym", "2026-05-01T12:00:00Z", "strength"), activity("r2", "2026-04-10T12:00:00Z"), activity("r1", "2025-05-05T12:00:00Z")];
 
 /** A tiny backend honouring the bounds, as the real one does. */
 function respond(url: string): unknown {
@@ -83,5 +83,18 @@ describe("LogPage", () => {
     expect(screen.queryByText("Session s3")).not.toBeInTheDocument();
     // March 2026 starts on a Sunday: the grid runs from Monday 23 February to Sunday 5 April.
     expect(sessionCalls()).toContain("/api/athletes/a1/sessions?from=2026-02-23&to=2026-04-05");
+  });
+
+  it("filters by type from the legend, in the URL", async () => {
+    renderPage("/log?types=strength");
+    expect(await screen.findByText("Ride gym")).toBeInTheDocument();
+    expect(screen.queryByText("Ride r2")).not.toBeInTheDocument();
+    expect(screen.queryByText("Session s3")).not.toBeInTheDocument();
+
+    const track = screen.getByRole("button", { name: "Track cycling" });
+    expect(track).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(track);
+    expect(await screen.findByText("Session s3")).toBeInTheDocument();
+    expect(screen.queryByText("Ride r2")).not.toBeInTheDocument();
   });
 });

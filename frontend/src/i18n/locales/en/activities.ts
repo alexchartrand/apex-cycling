@@ -1,5 +1,27 @@
 export default {
   untitled: "Ride of {{date}}",
+  types: {
+    label: "Type",
+    cycling: { name: "Cycling", short: "Ride", untitled: "Ride of {{date}}" },
+    track_cycling: { name: "Track cycling", short: "Track", untitled: "Track session of {{date}}" },
+    indoor_cycling: { name: "Indoor cycling", short: "Indoor ride", untitled: "Indoor ride of {{date}}" },
+    strength: { name: "Strength / gym", short: "Gym", untitled: "Gym session of {{date}}" },
+    other: { name: "Other", short: "Activity", untitled: "Activity of {{date}}" },
+    manual: "Set by you",
+    detected: "Detected from the source",
+    auto: "Automatic ({{type}})",
+    autoHint: "Automatic follows the source, and becomes track cycling while the ride is linked to a sqorz session.",
+  },
+  weekly: {
+    title: "Weekly training by type",
+    description: "Time or load of each kind of training, week by week.",
+    hours: "Hours",
+    tss: "Load",
+    metric: "Show",
+    weekOf: "Week of {{date}}",
+    empty: "Nothing in the last 12 weeks yet.",
+    hoursValue: "{{value}} h",
+  },
   sources: {
     upload: "Uploaded file",
     intervals_icu: "Intervals.icu",
@@ -167,6 +189,11 @@ export default {
       title: "Power curve of this ride",
       description: "Your best average power over each duration, in this ride.",
     },
+    rename: {
+      action: "Edit",
+      title: "Name and type",
+      saved: "Saved",
+    },
     edit: {
       title: "Your notes",
       name: "Name",
@@ -213,6 +240,8 @@ export default {
     loadOlder: "Load earlier months",
     nothingThisMonth: "Nothing this month.",
     km: "{{distance}} km",
+    filter: "Show types",
+    showAll: "All",
   },
   power: {
     title: "Power curve",

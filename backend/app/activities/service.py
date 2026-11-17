@@ -12,6 +12,7 @@ from sqlalchemy.sql import Select
 
 from app.activities import storage, streams
 from app.activities.fusion_service import auto_link_activity
+from app.activities.kinds import classify, source_sport
 from app.activities.metrics_service import apply_power_metrics, visible_conditions
 from app.activities.models import Activity, ActivityPowerCurve, ActivitySource, ActivityStream
 from app.activities.parsers import ActivityParseError, ParsedActivity, parse_activity_file
@@ -92,6 +93,7 @@ async def _insert(db: AsyncSession, activity: Activity, stream: ActivityStream |
 def _build_rows(athlete_id: uuid.UUID, parsed: ParsedActivity, **fields) -> tuple[Activity, ActivityStream]:
     summary = summarize(parsed)
     channels = parsed.channels
+    fields = {"activity_type": classify(parsed.sport).value, **fields}
     activity = Activity(
         athlete_id=athlete_id,
         name=parsed.name,
@@ -129,6 +131,7 @@ async def import_activity_file(
     external_id: str | None = None,
     data_source_connection_id: uuid.UUID | None = None,
     name: str | None = None,
+    sport: str | None = None,
 ) -> ImportOutcome:
     """Parses a FIT/TCX/GPX file and stores the activity, its samples and the
     original file. A file already imported, or another recording of the same
@@ -153,6 +156,8 @@ async def import_activity_file(
         # Strava is the copy of last resort (owner-only, no original file): the
         # athlete's own file replaces it, keeping what they wrote on it.
         carried = {"rpe": same_ride.rpe, "notes": same_ride.notes}
+        if same_ride.activity_type_manual:
+            carried |= {"activity_type": same_ride.activity_type, "activity_type_manual": True}
         name = same_ride.name or name
         answered_plans = list(
             await db.scalars(select(PlannedSession.id).where(PlannedSession.activity_id == same_ride.id))
@@ -160,6 +165,8 @@ async def import_activity_file(
         await delete_activities(db, [same_ride])
 
     parsed.name = parsed.name or name
+    # The platform's own type (Intervals.icu's "VirtualRide") may say more than the file.
+    parsed.sport = source_sport(parsed.sport, sport)
     file_format = parsed.extra["format"]
     activity, stream = _build_rows(
         athlete_id,
@@ -256,6 +263,7 @@ async def import_summary_activity(
         data_source_connection_id=data_source_connection_id,
         name=name,
         sport=sport,
+        activity_type=classify(sport).value,
         start_time=start_time,
         elapsed_s=elapsed_s,
         moving_s=moving_s,

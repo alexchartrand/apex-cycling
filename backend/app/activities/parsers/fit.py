@@ -3,6 +3,8 @@ from datetime import datetime
 
 import fitdecode
 
+from app.activities.kinds import source_sport
+
 from app.activities.parsers.base import ActivityParseError, Sample, build_activity, ParsedActivity
 
 
@@ -18,6 +20,7 @@ def _number(message: fitdecode.FitDataMessage, *names: str) -> float | None:
 def parse(content: bytes) -> ParsedActivity:
     samples: list[Sample] = []
     sport: str | None = None
+    sub_sport: str | None = None
     timer_s: float | None = None
     try:
         with fitdecode.FitReader(
@@ -43,9 +46,12 @@ def parse(content: bytes) -> ParsedActivity:
                     )
                 elif frame.name == "session":
                     sport = sport or frame.get_value("sport", fallback=None)
+                    sub_sport = sub_sport or frame.get_value("sub_sport", fallback=None)
                     timer = _number(frame, "total_timer_time")
                     if timer is not None:
                         timer_s = (timer_s or 0.0) + timer
     except fitdecode.FitError as exc:
         raise ActivityParseError(f"corrupt FIT file: {exc}") from exc
-    return build_activity(samples, sport=str(sport) if sport else None, timer_s=timer_s)
+    return build_activity(
+        samples, sport=source_sport(str(sport) if sport else None, str(sub_sport) if sub_sport else None), timer_s=timer_s
+    )

@@ -38,6 +38,7 @@ _MESSAGES = {
             "total_elapsed_time": (7, _UINT32, 1000, 0),
             "total_timer_time": (8, _UINT32, 1000, 0),
             "sport": (5, _ENUM, 1, 0),
+            "sub_sport": (6, _ENUM, 1, 0),
         },
     ),
 }
@@ -75,6 +76,7 @@ def build_fit(
     *,
     timer_s: float | None = None,
     sport: int = 2,
+    sub_sport: int | None = None,
     corrupt_crc: bool = False,
 ) -> bytes:
     """`records`: one dict per sample with `t` (seconds after `start`) and any
@@ -94,6 +96,7 @@ def build_fit(
             "total_elapsed_time": elapsed,
             "total_timer_time": timer_s if timer_s is not None else elapsed,
             "sport": sport,
+            **({"sub_sport": sub_sport} if sub_sport is not None else {}),
         },
     )
     header = struct.pack("<BBHI4s", 14, 0x20, 2100, len(body), b".FIT")

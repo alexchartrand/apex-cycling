@@ -42,7 +42,7 @@ export function ActivityPage() {
   }
 
   const start = data ? new Date(data.start_time) : null;
-  const title = data ? (data.name ?? t("untitled", { date: fmt.date(start, "medium") })) : "";
+  const title = data ? (data.name ?? t(`types.${data.activity_type}.untitled`, { date: fmt.date(start, "medium") })) : "";
 
   return (
     <div className="activity-page">

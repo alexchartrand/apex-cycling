@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.activities.kinds import ActivityType
 from app.activities.models import ActivitySource
 
 
@@ -15,6 +16,10 @@ class ActivityRead(BaseModel):
     source: ActivitySource
     name: str | None
     sport: str | None
+    activity_type: ActivityType
+    # True when the athlete chose the type; otherwise it follows the source
+    # (and becomes track cycling while linked to a sqorz session).
+    activity_type_manual: bool
     start_time: datetime
     elapsed_s: float
     moving_s: float | None
@@ -50,6 +55,8 @@ class ActivityUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=5000)
     rpe: int | None = Field(default=None, ge=1, le=10)
+    # A type is the athlete's choice from then on; null goes back to the detected one.
+    activity_type: ActivityType | None = None
 
 
 class PowerCurvePoint(BaseModel):
@@ -99,6 +106,20 @@ class TrainingLoadRead(BaseModel):
     # Activities in the window with neither power-based TSS nor an RPE: they
     # add no load, and rating their effort would.
     unrated_activities: int
+
+
+class WeeklyTypeLoad(BaseModel):
+    activity_type: ActivityType
+    seconds: int
+    tss: float
+
+
+class WeeklyLoad(BaseModel):
+    """One Monday-start week, split by kind of training (kinds with nothing
+    that week are left out)."""
+
+    week_start: date
+    types: list[WeeklyTypeLoad]
 
 
 class UploadResult(BaseModel):

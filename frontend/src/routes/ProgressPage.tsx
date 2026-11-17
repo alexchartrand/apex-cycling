@@ -5,6 +5,7 @@ import { Brush, CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from "re
 import { axisProps, ChartFrame, ChartTooltip, cursorProps, gridProps, secondsDomain } from "../components/charts";
 import { Card, EmptyState, Input, PageHeader, Select, SkeletonGroup } from "../components/ui";
 import { FitnessCard } from "../features/activities/FitnessCard";
+import { WeeklyLoadByTypeCard } from "../features/activities/WeeklyLoadByTypeCard";
 import "../features/activities/Activities.css";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import {
@@ -67,6 +68,7 @@ export function ProgressPage() {
       <PageHeader title={t("progress.title")} description={t("progress.description")} />
 
       {athleteId !== "" && <FitnessCard athleteId={athleteId} />}
+      {athleteId !== "" && <WeeklyLoadByTypeCard athleteId={athleteId} />}
 
       {tracks.isLoading && <SkeletonGroup lines={4} />}
       {tracks.isError && <p role="alert">{t("common:loadError")}</p>}

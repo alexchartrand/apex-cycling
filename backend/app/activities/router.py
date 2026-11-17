@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.activities import downsample, fusion_service, metrics_service, service, streams
+from app.activities.kinds import ActivityType, refresh_type
 from app.activities.models import Activity, ActivitySource, ActivityStream
 from app.activities.parsers import ActivityParseError
 from app.activities.schemas import (
@@ -19,6 +20,7 @@ from app.activities.schemas import (
     SessionSuggestion,
     TrainingLoadRead,
     UploadResult,
+    WeeklyLoad,
 )
 from app.athletes.coaching import speaks_for_athlete
 from app.athletes.models import Athlete
@@ -108,12 +110,16 @@ async def list_activities(
     end: datetime | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    activity_type: list[ActivityType] | None = Query(default=None, alias="type"),
     athlete: Athlete = Depends(require_athlete_access),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ActivityRead]:
-    """Newest first. `start`/`end` bound the activity's start time."""
+    """Newest first. `start`/`end` bound the activity's start time; `type`
+    (repeatable) keeps only those kinds."""
     query = service.visible_activities(athlete, current_user)
+    if activity_type:
+        query = query.where(Activity.activity_type.in_([t.value for t in activity_type]))
     if start is not None:
         query = query.where(Activity.start_time >= start)
     if end is not None:
@@ -140,12 +146,17 @@ async def update_activity(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ActivityRead:
-    """Rename an activity, add notes, rate the effort (the rating is what
-    counts toward training load when there is no power)."""
+    """Rename an activity, set its type, add notes, rate the effort (the
+    rating is what counts toward training load when there is no power)."""
     await _require_data_owner(db, current_user, athlete)
     activity = await _find(db, athlete, current_user, activity_id)
-    for field in payload.model_fields_set:
+    for field in payload.model_fields_set - {"activity_type"}:
         setattr(activity, field, getattr(payload, field))
+    if "activity_type" in payload.model_fields_set:
+        activity.activity_type_manual = payload.activity_type is not None
+        if payload.activity_type is not None:
+            activity.activity_type = payload.activity_type.value
+        refresh_type(activity)
     await db.commit()
     return (await _reads(db, [activity]))[0]
 
@@ -264,6 +275,21 @@ async def get_training_load(
     zone = await metrics_service.athlete_timezone(db, athlete)
     through = through or datetime.now(zone).date()
     return await metrics_service.training_load(db, athlete, current_user, through=through, days=days)
+
+
+@analysis_router.get("/training-load/weekly", response_model=list[WeeklyLoad])
+async def get_weekly_load(
+    through: date | None = Query(default=None, description="A day of the last week shown; defaults to today"),
+    weeks: int = Query(default=12, ge=1, le=104),
+    athlete: Athlete = Depends(require_athlete_access),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[WeeklyLoad]:
+    """Time and load per Monday-start week and kind of training (sqorz
+    sessions are track cycling), oldest week first."""
+    zone = await metrics_service.athlete_timezone(db, athlete)
+    through = through or datetime.now(zone).date()
+    return await metrics_service.weekly_load_by_type(db, athlete, current_user, through=through, weeks=weeks)
 
 
 @analysis_router.get("/power-curve", response_model=list[PowerCurvePoint])

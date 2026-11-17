@@ -83,7 +83,9 @@ def _session_payload(event_id: str = "evt-f", start: datetime = SESSION_START) -
     }
 
 
-def _recording(device_behind_s: float = DEVICE_BEHIND_S, with_speed: bool = True, lead_s: int = 120) -> bytes:
+def _recording(
+    device_behind_s: float = DEVICE_BEHIND_S, with_speed: bool = True, lead_s: int = 120, **fit_options
+) -> bytes:
     """What a head unit would record riding that session: speed and power
     follow the lap times. Its clock runs `device_behind_s` behind sqorz's."""
     device_start = SESSION_START - timedelta(seconds=lead_s)
@@ -99,7 +101,7 @@ def _recording(device_behind_s: float = DEVICE_BEHIND_S, with_speed: bool = True
         if with_speed:
             record["speed"] = speed
         records.append(record)
-    return build_fit(device_start, records)
+    return build_fit(device_start, records, **fit_options)
 
 
 async def _athlete_with_session(client, db_session, *, email="rider@example.com", with_session=True) -> str:
@@ -202,6 +204,32 @@ async def test_unlinking_sticks_and_relinking_is_manual(client, db_session):
     # Without an offset it is estimated again.
     again = (await client.put(url, json={"external_event_id": "evt-f"})).json()
     assert again["clock_offset_s"] == pytest.approx(DEVICE_BEHIND_S, abs=1.0)
+
+
+async def test_a_linked_recording_is_track_cycling_until_unlinked(client, db_session):
+    athlete_id = await _athlete_with_session(client, db_session)
+    activity = await _upload(client, athlete_id, _recording())
+    assert (activity["activity_type"], activity["activity_type_manual"]) == ("track_cycling", False)
+
+    url = f"/athletes/{athlete_id}/activities/{activity['id']}"
+    assert (await client.delete(f"{url}/session")).json()["activity_type"] == "cycling"  # back to the file's sport
+    # A type the athlete chose survives linking.
+    await client.patch(url, json={"activity_type": "indoor_cycling"})
+    relinked = (await client.put(f"{url}/session", json={"external_event_id": "evt-f"})).json()
+    assert (relinked["activity_type"], relinked["activity_type_manual"]) == ("indoor_cycling", True)
+    # Null goes back to the detected type: track, since it is linked.
+    reset = (await client.patch(url, json={"activity_type": None})).json()
+    assert (reset["activity_type"], reset["activity_type_manual"]) == ("track_cycling", False)
+
+
+async def test_a_gym_session_is_never_linked_to_a_track_session(client, db_session):
+    athlete_id = await _athlete_with_session(client, db_session)
+    # FIT sport 10 = training, sub-sport 20 = strength_training.
+    activity = await _upload(client, athlete_id, _recording(sport=10, sub_sport=20))
+    assert activity["activity_type"] == "strength" and activity["external_event_id"] is None
+    await _ingest(db_session)  # nor after the next sync
+    again = (await client.get(f"/athletes/{athlete_id}/activities/{activity['id']}")).json()
+    assert again["external_event_id"] is None
 
 
 async def test_linking_to_an_unknown_session_or_with_an_absurd_offset_is_refused(client, db_session):

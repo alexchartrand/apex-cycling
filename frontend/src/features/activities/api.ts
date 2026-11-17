@@ -11,6 +11,7 @@ import type {
   StravaStatus,
   TrainingLoad,
   UploadResult,
+  WeeklyLoad,
 } from "./types";
 
 const base = (athleteId: string) => `/athletes/${athleteId}`;
@@ -85,6 +86,10 @@ export function unlinkActivitySession(athleteId: string, activityId: string): Pr
 
 export function getTrainingLoad(athleteId: string, days: number): Promise<TrainingLoad> {
   return apiFetch<TrainingLoad>(`${base(athleteId)}/training-load?days=${days}`);
+}
+
+export function getWeeklyLoad(athleteId: string, weeks: number): Promise<WeeklyLoad[]> {
+  return apiFetch<WeeklyLoad[]>(`${base(athleteId)}/training-load/weekly?weeks=${weeks}`);
 }
 
 export function getPowerCurve(athleteId: string, range: { start?: string; end?: string } = {}): Promise<PowerCurvePoint[]> {

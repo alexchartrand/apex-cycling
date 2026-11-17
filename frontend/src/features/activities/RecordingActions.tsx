@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { ExternalLink, Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { errorMessage } from "../../api/errors";
 import { Button, ConfirmDialog, useToast } from "../../components/ui";
+import { ActivityEditDialog } from "./ActivityEditDialog";
 import type { Activity } from "./types";
 import { useDeleteActivity } from "./useActivities";
 
-/** Header actions for a recording: back to where it came from, and delete (the data owner only). */
+/** Header actions for a recording: back to where it came from, and rename / retype / delete (the data owner only). */
 export function RecordingActions({
   athleteId,
   activity,
@@ -22,6 +23,7 @@ export function RecordingActions({
   const { toast } = useToast();
   const remove = useDeleteActivity(athleteId);
   const [confirming, setConfirming] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   async function handleDelete() {
     try {
@@ -42,6 +44,12 @@ export function RecordingActions({
           <span className="btn__label">{activity.source === "strava" ? t("activity.viewOnStrava") : t("activity.viewOnIntervals")}</span>
         </a>
       )}
+      {canEdit && (
+        <Button variant="secondary" icon={<Pencil aria-hidden />} onClick={() => setEditing(true)}>
+          {t("activity.rename.action")}
+        </Button>
+      )}
+      {editing && <ActivityEditDialog key={activity.id} athleteId={athleteId} activity={activity} onClose={() => setEditing(false)} />}
       {canEdit && (
         <Button variant="ghost" icon={<Trash2 aria-hidden />} onClick={() => setConfirming(true)}>
           {t("activity.delete.action")}

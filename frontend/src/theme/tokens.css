@@ -103,6 +103,13 @@
   --chart-grid: rgba(11, 18, 32, 0.08);
   --chart-axis: rgba(11, 18, 32, 0.55);
 
+  /* Activity types (log calendar, list, weekly chart); track = the session accent */
+  --color-type-track_cycling: var(--chart-1);
+  --color-type-cycling: var(--chart-4);
+  --color-type-indoor_cycling: var(--chart-5);
+  --color-type-strength: var(--chart-3);
+  --color-type-other: var(--chart-6);
+
   /* Velodrome diagram */
   --track-infield: #D9E2C8;
   --track-surface: #D8B98A; /* wood */
@@ -165,6 +172,13 @@
   --chart-6: #A6AFC4;
   --chart-grid: rgba(238, 232, 215, 0.08);
   --chart-axis: rgba(238, 232, 215, 0.55);
+
+  /* Activity types (log calendar, list, weekly chart); track = the session accent */
+  --color-type-track_cycling: var(--chart-1);
+  --color-type-cycling: var(--chart-4);
+  --color-type-indoor_cycling: var(--chart-5);
+  --color-type-strength: var(--chart-3);
+  --color-type-other: var(--chart-6);
 
   --track-infield: #14213A;
   --track-surface: #5A4632;

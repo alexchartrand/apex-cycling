@@ -39,6 +39,10 @@
   transition: background-color var(--duration-fast) var(--ease-out);
 }
 
+.log__row[class*="type-"] {
+  border-left: 3px solid var(--type-color);
+}
+
 .log__row:hover {
   background: var(--color-surface-2);
   text-decoration: none;
@@ -219,14 +223,10 @@
   filter: brightness(0.95);
 }
 
-.log-calendar__chip--session {
-  background: var(--color-accent-soft);
-  border-left: 3px solid var(--color-accent);
-}
-
-.log-calendar__chip--activity {
-  background: var(--color-surface-2);
-  border-left: 3px solid var(--chart-2);
+/* Sessions and activities take their type's colour (ActivityTypes.css sets --type-color). */
+.log-calendar__chip--typed {
+  background: color-mix(in srgb, var(--type-color) 14%, var(--color-surface));
+  border-left: 3px solid var(--type-color);
 }
 
 /* A planned session: an outline, filled in once done. It's a button (it opens the plan), so it resets the button look. */
@@ -262,7 +262,7 @@
   height: 10px;
   margin-right: 2px;
   vertical-align: -1px;
-  color: var(--color-accent);
+  color: var(--type-color, var(--color-accent));
 }
 
 .log-calendar__empty {
@@ -284,12 +284,8 @@
     border-left-width: 0;
   }
 
-  .log-calendar__chip--session {
-    background: var(--color-accent);
-  }
-
-  .log-calendar__chip--activity {
-    background: var(--chart-2);
+  .log-calendar__chip--typed {
+    background: var(--type-color);
   }
 
   .log-calendar__chip--plan {

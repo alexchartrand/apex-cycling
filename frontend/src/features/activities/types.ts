@@ -1,11 +1,17 @@
 export type ActivitySource = "upload" | "intervals_icu" | "strava";
 
+/** What kind of training an activity is (backend `app/activities/kinds.py`). */
+export type ActivityType = "cycling" | "track_cycling" | "indoor_cycling" | "strength" | "other";
+
 export interface Activity {
   id: string;
   athlete_id: string;
   source: ActivitySource;
   name: string | null;
   sport: string | null;
+  activity_type: ActivityType;
+  /** The athlete chose the type; otherwise it follows the source (track cycling while linked to a session). */
+  activity_type_manual: boolean;
   start_time: string;
   elapsed_s: number;
   moving_s: number | null;
@@ -48,6 +54,8 @@ export interface ActivityUpdate {
   name?: string | null;
   notes?: string | null;
   rpe?: number | null;
+  /** null goes back to the detected type. */
+  activity_type?: ActivityType | null;
 }
 
 export interface ActivityStreams {
@@ -132,6 +140,18 @@ export interface TrainingLoadDay {
 export interface TrainingLoad {
   days: TrainingLoadDay[];
   unrated_activities: number;
+}
+
+export interface WeeklyTypeLoad {
+  activity_type: ActivityType;
+  seconds: number;
+  tss: number;
+}
+
+/** One Monday-start week; kinds with nothing that week are left out. */
+export interface WeeklyLoad {
+  week_start: string;
+  types: WeeklyTypeLoad[];
 }
 
 export type RunStatus = "pending" | "success" | "failed";

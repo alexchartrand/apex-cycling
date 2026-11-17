@@ -7,6 +7,7 @@ that knows about activities, FTP history, sqorz sessions and time zones.
 import asyncio
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -14,6 +15,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.activities import streams
+from app.activities.kinds import CYCLING_TYPE_VALUES, ActivityType
 from app.activities.models import Activity, ActivityPowerCurve, ActivitySource, ActivityStream
 from app.activities.schemas import (
     ActivityAnalysis,
@@ -24,6 +26,8 @@ from app.activities.schemas import (
     PowerCurvePoint,
     TrainingLoadDay,
     TrainingLoadRead,
+    WeeklyLoad,
+    WeeklyTypeLoad,
     ZoneDistribution,
 )
 from app.analysis import critical_power, metrics
@@ -159,60 +163,121 @@ def _session_seconds(event: TrainingEvent) -> float | None:
     return None
 
 
-async def training_load(
-    db: AsyncSession, athlete: Athlete, viewer: User, *, through: date, days: int
-) -> TrainingLoadRead:
-    """Daily load, fitness, fatigue and form for the last `days` days.
+@dataclass(frozen=True)
+class _LoadEntry:
+    """One piece of training on a local day: its kind, the time it took, and
+    its load (None when there is nothing to score it by)."""
 
-    A day's load is, per activity, its power-based TSS, else duration x RPE,
-    else nothing; plus duration x RPE for each sqorz session the athlete rated
-    — unless a recording of that session already counted.
-    The curves are computed from the first day with load inside the horizon
-    (`_LOAD_HORIZON_DAYS` before the window), so the window shows the state
-    those days really had, and a long history isn't read for a short window."""
-    zone = await athlete_timezone(db, athlete)
-    first_shown = through - timedelta(days=days - 1)
-    horizon = first_shown - timedelta(days=_LOAD_HORIZON_DAYS)
-    daily: dict[date, float] = {}
-    unrated_by_day: list[date] = []
+    day: date
+    activity_type: str
+    seconds: float
+    load: float | None
+    # An activity could be given an RPE; a sqorz session is rated on its page.
+    is_activity: bool = False
+
+
+async def _load_entries(
+    db: AsyncSession, athlete: Athlete, viewer: User, zone: ZoneInfo, *, since_day: date
+) -> list[_LoadEntry]:
+    """Every activity and sqorz session from `since_day` on.
+
+    An activity counts its power-based TSS, else duration x RPE, else nothing;
+    a sqorz session (track cycling) counts duration x RPE when rated — unless a
+    recording of it already carries load — and its time unless a recording of
+    it already counts that time."""
+    entries: list[_LoadEntry] = []
     sessions_with_load: set[uuid.UUID] = set()
+    sessions_recorded: set[uuid.UUID] = set()
 
     # A day of slack on the instant: the cut is on the local day, checked below.
-    since = datetime.combine(horizon - timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
+    since = datetime.combine(since_day - timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
     for activity in await db.scalars(
         select(Activity).where(*visible_conditions(athlete, viewer), Activity.start_time >= since)
     ):
         day = local_day(activity.start_time, zone)
-        if day < horizon:
+        if day < since_day:
             continue
+        seconds = activity.moving_s or activity.elapsed_s
         if activity.tss is not None:
             load = activity.tss
         elif activity.rpe is not None:
-            load = metrics.srpe_training_stress(activity.rpe, activity.moving_s or activity.elapsed_s)
+            load = metrics.srpe_training_stress(activity.rpe, seconds)
         else:
-            unrated_by_day.append(day)
-            continue
-        daily[day] = daily.get(day, 0.0) + load
+            load = None
+        entries.append(_LoadEntry(day, activity.activity_type, seconds, load, is_activity=True))
         if activity.training_event_id is not None:
-            sessions_with_load.add(activity.training_event_id)
+            sessions_recorded.add(activity.training_event_id)
+            if load is not None:
+                sessions_with_load.add(activity.training_event_id)
 
-    rated_sessions = await db.scalars(
-        select(TrainingEvent).where(
-            TrainingEvent.athlete_id == athlete.id, TrainingEvent.rpe.is_not(None), TrainingEvent.event_date >= horizon
-        )
+    sessions = await db.scalars(
+        select(TrainingEvent).where(TrainingEvent.athlete_id == athlete.id, TrainingEvent.event_date >= since_day)
     )
-    for event in rated_sessions:
-        if event.id in sessions_with_load:
-            continue  # the recording of this session already carries its load
+    for event in sessions:
         seconds = _session_seconds(event)
-        if seconds is not None:
-            daily[event.event_date] = daily.get(event.event_date, 0.0) + metrics.srpe_training_stress(event.rpe, seconds)
+        if seconds is None:
+            continue
+        load = None
+        if event.rpe is not None and event.id not in sessions_with_load:
+            load = metrics.srpe_training_stress(event.rpe, seconds)
+        counted_s = 0.0 if event.id in sessions_recorded else seconds
+        if load is not None or counted_s:
+            entries.append(_LoadEntry(event.event_date, ActivityType.TRACK_CYCLING.value, counted_s, load))
+    return entries
 
+
+async def training_load(
+    db: AsyncSession, athlete: Athlete, viewer: User, *, through: date, days: int
+) -> TrainingLoadRead:
+    """Daily load, fitness, fatigue and form for the last `days` days (load per
+    `_load_entries`). The curves are computed from the first day with load
+    inside the horizon (`_LOAD_HORIZON_DAYS` before the window), so the window
+    shows the state those days really had, and a long history isn't read for a
+    short window."""
+    zone = await athlete_timezone(db, athlete)
+    first_shown = through - timedelta(days=days - 1)
+    horizon = first_shown - timedelta(days=_LOAD_HORIZON_DAYS)
+    entries = await _load_entries(db, athlete, viewer, zone, since_day=horizon)
+    daily: dict[date, float] = {}
+    for entry in entries:
+        if entry.load is not None:
+            daily[entry.day] = daily.get(entry.day, 0.0) + entry.load
+
+    unrated = sum(
+        1 for entry in entries if entry.is_activity and entry.load is None and first_shown <= entry.day <= through
+    )
     series = [d for d in metrics.training_load(daily, through) if d.day >= first_shown]
     return TrainingLoadRead(
         days=[TrainingLoadDay(day=d.day, tss=d.tss, ctl=d.ctl, atl=d.atl, tsb=d.tsb) for d in series],
-        unrated_activities=sum(1 for day in unrated_by_day if first_shown <= day <= through),
+        unrated_activities=unrated,
     )
+
+
+async def weekly_load_by_type(
+    db: AsyncSession, athlete: Athlete, viewer: User, *, through: date, weeks: int
+) -> list[WeeklyLoad]:
+    """Per Monday-start week (oldest first, the last one holding `through`),
+    the time and load of each kind of training."""
+    zone = await athlete_timezone(db, athlete)
+    last_monday = through - timedelta(days=through.weekday())
+    first_monday = last_monday - timedelta(weeks=weeks - 1)
+    totals: dict[date, dict[str, list[float]]] = {first_monday + timedelta(weeks=i): {} for i in range(weeks)}
+    for entry in await _load_entries(db, athlete, viewer, zone, since_day=first_monday):
+        if entry.day > through:
+            continue
+        week = totals[entry.day - timedelta(days=entry.day.weekday())]
+        seconds, load = week.setdefault(entry.activity_type, [0.0, 0.0])
+        week[entry.activity_type] = [seconds + entry.seconds, load + (entry.load or 0.0)]
+    return [
+        WeeklyLoad(
+            week_start=monday,
+            types=[
+                WeeklyTypeLoad(activity_type=kind, seconds=round(seconds), tss=round(load, 1))
+                for kind, (seconds, load) in sorted(by_type.items())
+            ],
+        )
+        for monday, by_type in totals.items()
+    ]
 
 
 async def best_power_curve(
@@ -223,7 +288,8 @@ async def best_power_curve(
     query = (
         select(ActivityPowerCurve.duration_s, ActivityPowerCurve.power_w, Activity.id, Activity.start_time)
         .join(Activity, Activity.id == ActivityPowerCurve.activity_id)
-        .where(*visible_conditions(athlete, viewer))
+        # Only rides: a gym session's (or, later, a run's) power isn't cycling power.
+        .where(*visible_conditions(athlete, viewer), Activity.activity_type.in_(CYCLING_TYPE_VALUES))
     )
     if start is not None:
         query = query.where(Activity.start_time >= start)

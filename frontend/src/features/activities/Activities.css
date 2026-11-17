@@ -292,6 +292,7 @@
 }
 
 .activity-notes,
+.activity-identity,
 .session-link,
 .session-link__offset {
   display: flex;
@@ -323,8 +324,11 @@
   gap: var(--space-5);
 }
 
-.recording-view > .badge {
-  align-self: flex-start;
+.recording-view__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .recording-view__zones,

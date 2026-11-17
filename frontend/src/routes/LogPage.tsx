@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Badge, Button, ButtonLink, Card, EmptyState, IconButton, PageHeader, SegmentedControl, SkeletonGroup } from "../components/ui";
+import { filterLogItems, parseTypeFilter, toggleType, typeFilterParam, typeIcon, typeOfLogItem } from "../features/activities/activityTypes";
 import { localDay, mpsToKmh } from "../features/activities/format";
 import { groupItemsByMonth, mergeLog, monthCalendar, type LogItem } from "../features/activities/logItems";
+import { TypeBadge, TypeLegend } from "../features/activities/TypeBadge";
 import type { Activity } from "../features/activities/types";
 import { useLogList, useLogMonth } from "../features/activities/useLog";
 import { useAthletePath, useCanEdit } from "../features/athletes/athleteScope";
@@ -51,7 +53,8 @@ export function LogPage() {
   const list = useLogList(athleteId, view === "list");
   const month = useLogMonth(athleteId, year, monthIndex, view === "calendar");
   const shown = view === "list" ? list : month;
-  const items = mergeLog(shown.sessions, shown.activities);
+  const shownTypes = parseTypeFilter(params.get("types"));
+  const items = filterLogItems(mergeLog(shown.sessions, shown.activities), shownTypes);
   const loading = athlete.isLoading || (view === "list" && list.isLoading);
   const failed = athlete.isError || shown.isError;
   const monthFormat = new Intl.DateTimeFormat(fmt.locale, { month: "long", year: "numeric" });
@@ -100,6 +103,8 @@ export function LogPage() {
       {planning && <PlanDialog key="new" athleteId={athleteId} date={localIsoDate()} plan={null} onClose={() => setPlanning(false)} />}
       {planOpen && <PlanDetailDialog key={planOpen.id} athleteId={athleteId} plan={plans.data?.find((p) => p.id === planOpen.id) ?? planOpen} onClose={() => setPlanOpen(null)} />}
 
+      <TypeLegend shown={shownTypes} onToggle={(type) => update({ types: typeFilterParam(toggleType(shownTypes, type)) })} />
+
       {loading && <SkeletonGroup lines={6} />}
       {failed && <p role="alert">{t("log.loadError")}</p>}
 
@@ -121,7 +126,7 @@ export function LogPage() {
                 <ul className="log__list">
                   {group.items.map((item) => (
                     <li key={itemKey(item)}>
-                      <Link to={path(itemHref(item))} className="log__row">
+                      <Link to={path(itemHref(item))} className={`log__row type-${typeOfLogItem(item)}`}>
                         <LogRow item={item} />
                         <ChevronRight className="log__chevron" aria-hidden />
                       </Link>
@@ -205,9 +210,9 @@ function LogRow({ item }: { item: LogItem }) {
     <>
       <DateBlock date={date} />
       <span className="log__main">
-        <span className="log__name">{activity.name ?? t("activities:untitled", { date: fmt.date(date, "medium") })}</span>
+        <span className="log__name">{activity.name ?? t(`activities:types.${activity.activity_type}.untitled`, { date: fmt.date(date, "medium") })}</span>
         <span className="log__tracks">
-          <Badge>{t("activities:log.ride")}</Badge>
+          <TypeBadge type={activity.activity_type} short />
           <Badge>{t(`activities:sources.${activity.source}`)}</Badge>
           {activity.has_power && (
             <Badge tone="accent" icon={<Zap aria-hidden />}>
@@ -272,16 +277,19 @@ function Calendar({ year, monthIndex, items, plans, onOpenPlan }: { year: number
             <span className="log-calendar__number">{Number(day.day.slice(8))}</span>
             <ul className="log-calendar__items">
               {day.items.map((item) => {
-                const name = item.kind === "session" ? item.session.event_name : (item.activity.name ?? t("activities:log.ride"));
+                const name = item.kind === "session" ? item.session.event_name : (item.activity.name ?? t(`activities:types.${item.activity.activity_type}.short`));
+                const type = typeOfLogItem(item);
+                const TypeIcon = typeIcon(type);
                 // A session carrying a recording says so, since the recording has no chip of its own.
                 const recorded = item.kind === "session" ? recordedWith(item.activities) : null;
                 return (
                   <li key={itemKey(item)}>
                     <Link
                       to={path(itemHref(item))}
-                      className={`log-calendar__chip log-calendar__chip--${item.kind}`}
-                      title={recorded ? `${name} · ${t(recorded === "power" ? "activities:log.withPower" : "activities:log.withHeartRate")}` : name}
+                      className={`log-calendar__chip log-calendar__chip--typed type-${type}`}
+                      title={[name, t(`activities:types.${type}.name`), recorded && t(recorded === "power" ? "activities:log.withPower" : "activities:log.withHeartRate")].filter(Boolean).join(" · ")}
                     >
+                      {item.kind === "activity" && <TypeIcon className="log-calendar__chip-icon" aria-hidden />}
                       {recorded === "power" && <Zap className="log-calendar__chip-icon" aria-hidden />}
                       {recorded === "heartRate" && <HeartPulse className="log-calendar__chip-icon" aria-hidden />}
                       <span className="log-calendar__chip-text">{name}</span>

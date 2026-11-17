@@ -77,6 +77,7 @@ class SqlAlchemyActivityImporter:
                 external_id=remote.id,
                 data_source_connection_id=connection.id,
                 name=remote.name,
+                sport=remote.type,
             )
         except ActivityParseError as exc:
             raise ActivityRejected(str(exc)) from exc

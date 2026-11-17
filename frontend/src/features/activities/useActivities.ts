@@ -21,6 +21,7 @@ import {
   syncIntervals,
   syncStrava,
   unlinkActivitySession,
+  getWeeklyLoad,
   updateActivity,
   uploadActivityFile,
 } from "./api";
@@ -78,6 +79,15 @@ export function useTrainingLoad(athleteId: string, days: number) {
   return useQuery({
     queryKey: ["training-load", athleteId, days],
     queryFn: () => getTrainingLoad(athleteId, days),
+    enabled: athleteId !== "",
+  });
+}
+
+/** Time and load per week and kind of training, under the training-load key so the same invalidations refresh it. */
+export function useWeeklyLoad(athleteId: string, weeks: number) {
+  return useQuery({
+    queryKey: ["training-load", athleteId, "weekly", weeks],
+    queryFn: () => getWeeklyLoad(athleteId, weeks),
     enabled: athleteId !== "",
   });
 }

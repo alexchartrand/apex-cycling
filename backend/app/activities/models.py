@@ -67,7 +67,12 @@ class Activity(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     session_link_manual: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # The source's own name for the sport (raw); `activity_type` is ours
+    # (app/activities/kinds.py), guessed from it on import unless the athlete
+    # chose it (`activity_type_manual`, which re-syncs and linking never touch).
     sport: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    activity_type: Mapped[str] = mapped_column(String(32), default="cycling", server_default="cycling")
+    activity_type_manual: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     elapsed_s: Mapped[float] = mapped_column(Float)
     # Time actually moving; equals elapsed_s when the file carries no pauses.

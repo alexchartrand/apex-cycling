@@ -3,6 +3,28 @@ import type en from "../en/activities";
 
 export default {
   untitled: "Sortie du {{date}}",
+  types: {
+    label: "Type",
+    cycling: { name: "Vélo", short: "Sortie", untitled: "Sortie du {{date}}" },
+    track_cycling: { name: "Cyclisme sur piste", short: "Piste", untitled: "Séance sur piste du {{date}}" },
+    indoor_cycling: { name: "Vélo d'intérieur", short: "Home-trainer", untitled: "Home-trainer du {{date}}" },
+    strength: { name: "Musculation / gym", short: "Gym", untitled: "Séance de gym du {{date}}" },
+    other: { name: "Autre", short: "Activité", untitled: "Activité du {{date}}" },
+    manual: "Choisi par vous",
+    detected: "Détecté depuis la source",
+    auto: "Automatique ({{type}})",
+    autoHint: "Automatique suit la source, et devient cyclisme sur piste tant que la sortie est liée à une séance sqorz.",
+  },
+  weekly: {
+    title: "Entraînement hebdomadaire par type",
+    description: "Temps ou charge de chaque type d'entraînement, semaine par semaine.",
+    hours: "Heures",
+    tss: "Charge",
+    metric: "Afficher",
+    weekOf: "Semaine du {{date}}",
+    empty: "Rien dans les 12 dernières semaines pour l'instant.",
+    hoursValue: "{{value}} h",
+  },
   sources: {
     upload: "Fichier téléversé",
     intervals_icu: "Intervals.icu",
@@ -170,6 +192,11 @@ export default {
       title: "Courbe de puissance de cette sortie",
       description: "Votre meilleure puissance moyenne pour chaque durée, dans cette sortie.",
     },
+    rename: {
+      action: "Modifier",
+      title: "Nom et type",
+      saved: "Enregistré",
+    },
     edit: {
       title: "Vos notes",
       name: "Nom",
@@ -216,6 +243,8 @@ export default {
     loadOlder: "Charger les mois précédents",
     nothingThisMonth: "Rien ce mois-ci.",
     km: "{{distance}} km",
+    filter: "Types affichés",
+    showAll: "Tous",
   },
   power: {
     title: "Courbe de puissance",

@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.activities import streams
+from app.activities.kinds import CYCLING_TYPE_VALUES, refresh_type
 from app.activities.metrics_service import visible_conditions
 from app.activities.models import Activity, ActivityStream
 from app.activities.schemas import SessionSuggestion
@@ -101,6 +102,7 @@ async def estimate_offset(
 
 async def _auto_link(db: AsyncSession, activity: Activity, event_id: uuid.UUID) -> None:
     activity.training_event_id = event_id
+    refresh_type(activity)
     estimate = await estimate_offset(db, activity, event_id)
     activity.clock_offset_s = estimate.offset_s if estimate and estimate.confident else 0.0
 
@@ -109,6 +111,8 @@ async def auto_link_activity(db: AsyncSession, activity: Activity) -> bool:
     """Links a freshly imported activity to the session it overlaps, if any.
     Doesn't commit."""
     if activity.session_link_manual or activity.training_event_id is not None:
+        return False
+    if activity.activity_type not in CYCLING_TYPE_VALUES:  # a gym session isn't on the track
         return False
     event_id = _match(activity, await session_windows(db, activity.athlete_id))
     if event_id is None:
@@ -131,6 +135,7 @@ async def sync_session_links(db: AsyncSession, athlete_ids: Collection[uuid.UUID
             select(Activity).where(
                 Activity.athlete_id == athlete_id,
                 Activity.session_link_manual.is_(False),
+                Activity.activity_type.in_(CYCLING_TYPE_VALUES),
                 (Activity.training_event_id.is_(None)) | (Activity.start_time >= recent),
             )
         )
@@ -151,6 +156,7 @@ async def set_manual_link(
     """The athlete's own choice: sticks until they change it. Doesn't commit."""
     activity.training_event_id = event.id
     activity.session_link_manual = True
+    refresh_type(activity)
     if clock_offset_s is not None:
         activity.clock_offset_s = clock_offset_s
     else:
@@ -163,6 +169,7 @@ def unlink(activity: Activity) -> None:
     activity.training_event_id = None
     activity.clock_offset_s = 0.0
     activity.session_link_manual = True
+    refresh_type(activity)
 
 
 async def suggest(db: AsyncSession, activity: Activity) -> SessionSuggestion:

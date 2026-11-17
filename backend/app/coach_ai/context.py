@@ -139,7 +139,7 @@ async def recent_training(db: AsyncSession, athlete: Athlete, start: date, end: 
             linked_events.add(activity.training_event_id)
         entry = {
             "date": day.isoformat(),
-            "type": "gym" if (activity.sport or "").lower() in ("weighttraining", "strength", "training") else "ride",
+            "type": activity.activity_type,
             "name": activity.name,
             "minutes": _round((activity.moving_s or activity.elapsed_s) / 60),
             "km": _round(activity.distance_m / 1000, 1) if activity.distance_m else None,

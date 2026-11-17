@@ -26,7 +26,7 @@ function detail(activities: LinkedActivity[]): SessionDetail {
 
 function activity(id: string, name: string): Activity {
   return {
-    id, athlete_id: "a1", source: "upload", name, sport: "cycling", start_time: "2026-04-04T17:55:00Z", elapsed_s: 3600, moving_s: 3500,
+    id, athlete_id: "a1", source: "upload", name, sport: "cycling", activity_type: "track_cycling", activity_type_manual: false, start_time: "2026-04-04T17:55:00Z", elapsed_s: 3600, moving_s: 3500,
     distance_m: 30_000, elevation_gain_m: 0, has_power: true, has_heart_rate: true, has_cadence: false, avg_power_w: 210, max_power_w: 900,
     normalized_power_w: 240, tss: 60, avg_heart_rate: 150, max_heart_rate: 185, avg_cadence: null, avg_speed_mps: 9, notes: null, rpe: null,
     file_format: "fit", created_at: "2026-04-04T20:00:00Z", external_event_id: "e1", external_url: null, clock_offset_s: 0, session_link_manual: false,

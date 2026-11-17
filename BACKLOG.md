@@ -65,6 +65,10 @@
   - Why: Backend business logic is tightly coupled to the database layer, which makes maintenance and testing difficult.
   - Notes: manual dependency injection, repository pattern and DTOs. Sqorz client+service (step 1) and the Intervals/Strava sync are done in that shape; next is `ingestion/sqorz/normalizer.py` (step 2).
 
+- [ ] 🟡 Running and trail running — *added 11/17*
+  - Why: athletes cross-train; the activity-type groundwork (0026) is in place.
+  - Notes: add `running`/`trail_running` to `activities/kinds.py` (+ `classify` for Run/TrailRun), the `--color-type-*` tokens, icons and i18n; let Intervals.icu/Strava `is_wanted` accept runs. Power analysis already reads only `CYCLING_TYPES`. Open questions: pace instead of speed in stats/streams, running TSS (rTSS/HR-based), no session linking.
+
 - [ ] 🟢 Same-named tracks on the records board — *added 10/19*
   - Why: sqorz re-creates a track under new ids (the LS-03407 export has two "Tour complet"), so pickers and the board can list the same place twice, and records don't carry over between the copies.
   - Notes: needs a way to merge tracks (track settings is the natural home); distinct ids are kept apart on purpose until then.
@@ -81,6 +85,7 @@
   - Notes: only if plain-Postgres progression queries get slow.
 
 ## ✅ Done
+- [x] Activity types: cycling / track / indoor / strength / other, guessed from the source (FIT sub-sport, Intervals.icu/Strava type; track while linked to a sqorz session), set by the athlete with the name from the recording header; type colours in the Log list/calendar with a type filter, weekly time/load by type on Progress, power curve/CP/FTP read rides only, gym never auto-links (migration 0026; `python -m app.activities.cli reclassify` refines older FIT uploads) — *added 11/17, done 11/17*
 - [x] Sprint AI — AI coach on Mistral: admin-approved access + consent + monthly token cap, intake interview → program proposal, chat that reads and proposes plan changes (athlete accepts every change; coach plans locked, coach may edit AI plans), weekly reports at the athlete's chosen time, missed-session replan, coach-view tab (migration 0025) — *added 11/12, done 11/12*
 - [x] Sprint W — Workout builder & library: W1 model/CRUD (0020), W2 presets, W3 library + editor, W4 scheduling (0021; plan dialog requires a library workout, shown read-only, since 11/11), W5 .fit/.zwo/.erg/.mrc, W6 Intervals.icu push (0022; pushed at once since 11/11, deletes by event id), W7 workout card PNG, W8 power-step compliance (0023) — *added 10/30, done 11/11*
 - [x] Sync log showed a handed-on transponder's polls to its previous athlete (migration 0024) — *added 11/11, fixed 11/11*

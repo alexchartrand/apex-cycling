@@ -181,6 +181,9 @@ async def test_only_rides_and_gym_sessions_with_data_are_imported(client, interv
         "2026-06-07",
     ]
     assert set(intervals.downloads) == {"ride", "virtual", "gym", "nofile"}  # no point asking for runs or Strava
+    # Intervals.icu's type says more than the files (all plain "cycling" here).
+    types = {a["start_time"][:10]: a["activity_type"] for a in await _activities(client, athlete_id)}
+    assert types == {"2026-06-01": "cycling", "2026-06-02": "indoor_cycling", "2026-06-07": "strength"}
 
 
 def _gym(id: str, day: int, **fields):
@@ -210,6 +213,7 @@ async def test_a_gym_session_without_a_file_is_kept_from_its_summary(client, int
 
     (gym,) = await _activities(client, athlete_id)
     assert (gym["name"], gym["sport"], gym["source"]) == ("Legs", "WeightTraining", "intervals_icu")
+    assert gym["activity_type"] == "strength"
     assert (gym["elapsed_s"], gym["moving_s"], gym["rpe"], gym["notes"]) == (3600, 3000, 7, "Squats")
     assert (gym["avg_heart_rate"], gym["has_power"]) == (110, False)
     assert gym["start_time"].startswith("2026-06-03T05:00")

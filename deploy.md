@@ -91,6 +91,19 @@ commit), `git describe --tags` shows `v1.1.0-2-g…` — you deployed more than 
 tag. Either deploy the tag exactly (`git checkout v1.1.0 && scripts/deploy.sh --no-pull`,
 then `git switch master` so the next `deploy.sh` can pull again), or tag the new head.
 
+#### One-time steps after the next deploy
+
+Run these once on the server after the release that brings them, then tick them
+off (or delete them) here.
+
+- [ ] **Activity types (migration 0026)**: the migration classifies existing
+  activities from their stored sport, which lacks the FIT sub-sport, so trainer
+  rides uploaded as FIT stay "Cycling". Re-read the originals once (keeps types
+  athletes already chose; safe to re-run):
+  ```bash
+  scripts/compose.sh exec backend python -m app.activities.cli reclassify
+  ```
+
 ### 4. Verify
 
 ```bash
