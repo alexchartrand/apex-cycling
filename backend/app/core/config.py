@@ -94,10 +94,10 @@ class Settings(BaseSettings):
     # another cap. Prices (USD per million tokens) only feed the admin's
     # cost estimate.
     mistral_api_key: str | None = None
-    mistral_model: str = "mistral-large-latest"
+    mistral_model: str = "mistral-large-4"
     mistral_base_url: str = "https://api.mistral.ai/v1"
-    mistral_price_input_per_mtok: float = 0.5
-    mistral_price_output_per_mtok: float = 1.5
+    mistral_price_input_per_mtok: float = 0.7
+    mistral_price_output_per_mtok: float = 2.1
     ai_coach_default_monthly_tokens: int = 2_000_000
 
     sqorz_base_url: str = "https://my.sqorz.com/json/training/transponder"
