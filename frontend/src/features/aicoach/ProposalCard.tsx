@@ -8,6 +8,8 @@ import { formatRecordTime } from "../records/timeInput";
 import type { StandardEventKey } from "../records/types";
 import { IntensityChart } from "../workouts/IntensityChart";
 import { clockText } from "../workouts/profile";
+import { WorkoutSteps } from "../workouts/WorkoutSteps";
+import "../workouts/Workouts.css";
 import { Markdown } from "./Markdown";
 import { warningKey } from "./proposalText";
 import type { Proposal, ProposalItem, ProposalStatus } from "./types";
@@ -69,6 +71,7 @@ function ItemRow({ item, expanded }: { item: ProposalItem; expanded: boolean }) 
         ))}
         {expanded && item.description && <Markdown text={item.description} className="ai-proposal__description" />}
         {expanded && item.estimate && item.estimate.segments.length > 0 && <IntensityChart segments={item.estimate.segments} />}
+        {expanded && item.workout && item.workout.length > 0 && <WorkoutSteps steps={item.workout} />}
       </div>
     </li>
   );
@@ -146,7 +149,7 @@ export function ProposalCard({ athleteId, proposal, compact = false }: { athlete
             {t("proposal.showAll", { count: proposal.items.length })}
           </Button>
         )}
-        {proposal.items.some((i) => i.estimate) && (
+        {proposal.items.some((i) => i.estimate || i.workout?.length) && (
           <Button variant="ghost" size="sm" onClick={() => setExpanded((v) => !v)}>
             {expanded ? t("proposal.hideWorkouts") : t("proposal.showWorkouts")}
           </Button>
