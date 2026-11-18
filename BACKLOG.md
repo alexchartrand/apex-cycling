@@ -25,7 +25,8 @@
     - [x] The intake's goal and race date stay text: offer to create the `Goal`/`Competition` (so the season page and taper follow) on Accept.
   - [x] Weekly report from the worker — *checked 11/18* (test athlete's approval moved back to 11/01 so the 11/09–11/15 report was due): written at the next 15-min round, 7 calls, 1½ min, ~$0.04, `ai_report` notification delivered (bell only in dev, no SMTP/VAPID). Honest about an empty week, focus tied to the accepted program and the race. It said "7 days" without training when it had been 63: the brief now carries `last_training` and the prompt asks for a gradual return after a break.
   - [ ] Replan from the worker on missed sessions — after 11/23–24 pass on the test account (18 AI plans from 11/23 are on its calendar), check the worker's replan proposal; then tune `MAX_TOOL_ROUNDS`, history length and prompts from the transcripts.
-  - Follow-ups: streaming replies (SSE) instead of one request per turn; a daily readiness check-in and post-session debriefs were proposed but not chosen for v1.
+  - [x] Streaming replies (SSE) instead of one request per turn — *done 11/18*, checked live through the Vite proxy (thinking at 1.6 s, tool status, text from 4.3 s, usage recorded); a turn survives closing the page. Not yet checked through prod Caddy (`encode zstd gzip` should flush SSE).
+  - Follow-ups: a daily readiness check-in and post-session debriefs were proposed but not chosen for v1.
 
 - [ ] 🟡 Sprint W checks on real devices and accounts — *added 11/11; all but W8 done 11/18*
   - ~~W2: the user's review of the 16 presets~~ — done 11/18 (blue line / ligne bleue, pursuit lap repeats 2 × 4, threshold renamed 2 × 15, 30/30 on at 125–135 %, French wording).

@@ -27,6 +27,7 @@ from app.coach_ai.models import (
 )
 from app.coach_ai.ports import LlmError, LlmReply, ToolCall
 from app.coach_ai.router import get_llm_client
+from app.connections.intervals_router import get_session_factory
 from app.core.config import get_settings
 from app.main import app
 from app.notifications.models import Notification
@@ -46,14 +47,19 @@ class FakeLlm:
         self.script = list(script)
         self.calls: list[dict] = []
 
-    async def chat(self, messages, *, tools=None, json_mode=False, temperature=0.4, max_tokens=None):
-        self.calls.append({"messages": messages, "tools": tools})
+    async def chat(self, messages, *, tools=None, json_mode=False, temperature=0.4, max_tokens=None, on_delta=None):
+        self.calls.append({"messages": messages, "tools": tools, "streamed": on_delta is not None})
         if not self.script:
             raise AssertionError("the model was called more often than scripted")
         step = self.script.pop(0)
         reply = step(messages, tools) if callable(step) else step
         if isinstance(reply, Exception):
             raise reply
+        if on_delta is not None:  # reasons, then writes its answer word by word
+            await on_delta("thinking", "")
+            await on_delta("thinking", "")
+            for i, word in enumerate((reply.content or "").split(" ") if reply.content else []):
+                await on_delta("text", word if i == 0 else " " + word)
         return reply
 
 
@@ -270,6 +276,86 @@ async def test_over_the_cap_the_model_isnt_called(client, db_session, mistral_on
         session.add(AiUsage(athlete_id=uuid.UUID(athlete_id), model="m", purpose="chat", prompt_tokens=90, completion_tokens=20))
         await session.commit()
     refused = await client.post(f"/athletes/{athlete_id}/ai-coach/conversations", json={"content": "hello"})
+    assert refused.status_code == 429 and refused.json()["detail"] == "ai_coach_cap_reached"
+    assert llm.calls == []
+
+
+@pytest.fixture
+def turn_sessions(db_session):
+    """Streamed turns run in a task with a session of their own."""
+    app.dependency_overrides[get_session_factory] = lambda: db_session
+    yield
+    app.dependency_overrides.pop(get_session_factory, None)
+
+
+def _events(response) -> list[dict]:
+    return [json.loads(line[5:]) for line in response.text.splitlines() if line.startswith("data:")]
+
+
+async def _stream(client, url: str, body: dict):
+    return await client.post(url, json=body, headers={"Accept": "text/event-stream"})
+
+
+async def test_a_streamed_turn_sends_the_reply_as_it_is_written(client, db_session, mistral_on, llm, turn_sessions):
+    athlete_id = await _ready(client, db_session)
+    base = f"/athletes/{athlete_id}/ai-coach"
+    llm.script = [
+        LlmReply(
+            content="Je regarde.",
+            tool_calls=[ToolCall(id="c1", name="get_plans", arguments=json.dumps({"start": _future(0), "end": _future(7)}))],
+            prompt_tokens=50,
+        ),
+        say("Rien de prévu cette semaine."),
+    ]
+    response = await _stream(client, f"{base}/conversations", {"content": "Et cette semaine ?"})
+    assert response.status_code == 200, response.text
+    assert response.headers["content-type"].startswith("text/event-stream")
+    events = _events(response)
+    kinds = [e["type"] for e in events]
+    # Reasoning, the tool round's text (dropped by the client at `tool`), the answer, then the stored turn.
+    assert kinds[0] == "thinking" and kinds.count("thinking") == 2 and kinds[-1] == "done"
+    tool_at = kinds.index("tool")
+    assert events[tool_at]["name"] == "get_plans"
+    after_tool = "".join(e["text"] for e in events[tool_at:] if e["type"] == "text")
+    assert after_tool == "Rien de prévu cette semaine."
+    turn = events[-1]["turn"]
+    assert [(m["role"], m["content"]) for m in turn["messages"]] == [
+        ("user", "Et cette semaine ?"),
+        ("assistant", "Rien de prévu cette semaine."),
+    ]
+    assert all(c["streamed"] for c in llm.calls)
+
+    conversation_id = turn["conversation_id"]
+    shown = (await client.get(f"{base}/conversations/{conversation_id}")).json()
+    assert [m["role"] for m in shown["messages"]] == ["user", "assistant"]
+
+    llm.script = [say("Bonne idée.")]
+    follow = await _stream(client, f"{base}/conversations/{conversation_id}/messages", {"content": "Je roule demain"})
+    done = _events(follow)[-1]
+    assert done["type"] == "done" and [m["content"] for m in done["turn"]["messages"]] == ["Je roule demain", "Bonne idée."]
+
+
+async def test_a_streamed_turn_that_fails_ends_with_an_error_event(client, db_session, mistral_on, llm, turn_sessions):
+    athlete_id = await _ready(client, db_session)
+    base = f"/athletes/{athlete_id}/ai-coach"
+    llm.script = [LlmError("down")]
+    response = await _stream(client, f"{base}/conversations", {"content": "hello"})
+    assert response.status_code == 200
+    assert _events(response)[-1] == {"type": "error", "detail": "ai_coach_failed"}
+    async with db_session() as session:
+        assert (await session.scalars(select(AiConversation))).all() == []
+
+    missing = await _stream(client, f"{base}/conversations/{uuid.uuid4()}/messages", {"content": "hi"})
+    assert missing.status_code == 404
+
+
+async def test_a_streamed_turn_over_the_cap_is_a_plain_429(client, db_session, mistral_on, llm, turn_sessions):
+    athlete_id = await _athlete(client)
+    await _enable(db_session, athlete_id, cap=100)
+    async with db_session() as session:
+        session.add(AiUsage(athlete_id=uuid.UUID(athlete_id), model="m", purpose="chat", prompt_tokens=90, completion_tokens=20))
+        await session.commit()
+    refused = await _stream(client, f"/athletes/{athlete_id}/ai-coach/conversations", {"content": "hello"})
     assert refused.status_code == 429 and refused.json()["detail"] == "ai_coach_cap_reached"
     assert llm.calls == []
 

@@ -114,3 +114,62 @@ async def test_sends_the_reasoning_effort_and_flags_a_cut_off_reply(monkeypatch)
 
 async def _no_sleep(_seconds):
     return None
+
+
+def _sse(*chunks) -> bytes:
+    return "".join(f"data: {json.dumps(c)}\n\n" for c in chunks).encode() + b"data: [DONE]\n\n"
+
+
+async def test_a_streamed_reply_is_passed_on_and_put_back_together():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(
+            200,
+            headers={"Content-Type": "text/event-stream"},
+            content=_sse(
+                {"model": "mistral-large-2512", "choices": [{"delta": {"role": "assistant", "content": [{"type": "thinking", "thinking": [{"type": "text", "text": "Hmm"}]}]}}]},
+                {"choices": [{"delta": {"content": "Je "}}]},
+                {"choices": [{"delta": {"content": [{"type": "text", "text": "regarde."}]}}]},
+                {"choices": [{"delta": {"tool_calls": [{"index": 0, "id": "t1", "function": {"name": "get_plans", "arguments": '{"start": '}}]}}]},
+                {"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"arguments": '"2026-11-12"}'}}]}}]},
+                {"choices": [{"delta": {"tool_calls": [{"index": 1, "id": "t2", "function": {"name": "get_training_load", "arguments": {"weeks": 4}}}]}}]},
+                {"choices": [{"delta": {}, "finish_reason": "length"}], "usage": {"prompt_tokens": 900, "completion_tokens": 40}},
+            ),
+        )
+
+    deltas = []
+
+    async def on_delta(kind, text):
+        deltas.append((kind, text))
+
+    reply = await _client(handler).chat([{"role": "user", "content": "hi"}], on_delta=on_delta)
+    assert seen["body"]["stream"] is True
+    assert deltas == [("thinking", ""), ("text", "Je "), ("text", "regarde.")]
+    assert reply.content == "Je regarde." and reply.model == "mistral-large-2512"
+    assert [(c.id, c.name, json.loads(c.arguments)) for c in reply.tool_calls] == [
+        ("t1", "get_plans", {"start": "2026-11-12"}),
+        ("t2", "get_training_load", {"weeks": 4}),
+    ]
+    assert (reply.prompt_tokens, reply.completion_tokens, reply.truncated) == (900, 40, True)
+
+
+async def test_a_stream_is_retried_only_before_it_starts(monkeypatch):
+    monkeypatch.setattr("app.coach_ai.client.asyncio.sleep", _no_sleep)
+    answers = iter(
+        [
+            httpx.Response(503),
+            httpx.Response(200, content=_sse({"choices": [{"delta": {"content": "Ok"}, "finish_reason": "stop"}]})),
+        ]
+    )
+
+    async def on_delta(kind, text):
+        pass
+
+    reply = await _client(lambda request: next(answers)).chat([{"role": "user", "content": "hi"}], on_delta=on_delta)
+    assert reply.content == "Ok" and not reply.truncated
+
+    broken = _client(lambda request: httpx.Response(200, content=b"data: {not json\n\n"))
+    with pytest.raises(LlmError):
+        await broken.chat([{"role": "user", "content": "hi"}], on_delta=on_delta)

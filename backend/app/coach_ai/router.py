@@ -2,10 +2,15 @@
 read-only, their coach: reports and proposals), `/admin/ai-coach` for the
 platform admin who turns it on."""
 
+import asyncio
+import json
+import logging
 import uuid
+from collections.abc import AsyncIterator, Callable
 from datetime import timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +22,7 @@ from app.coach_ai import service
 from app.coach_ai.access import (
     CapReached,
     access_row,
+    check_cap,
     cap_of,
     cost_usd,
     is_usable,
@@ -59,11 +65,13 @@ from app.coach_ai.schemas import (
     TurnRead,
     UsageRead,
 )
-from app.connections.intervals_router import PlanPusher, get_plan_pusher, push_now
+from app.connections.intervals_router import PlanPusher, get_plan_pusher, get_session_factory, push_now
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
 from app.db.base import utcnow
 from app.db.session import get_db
+
+logger = logging.getLogger("coach_ai.router")
 
 router = APIRouter(prefix="/athletes/{athlete_id}/ai-coach", tags=["ai-coach"])
 admin_router = APIRouter(prefix="/admin/ai-coach", tags=["admin"], dependencies=[Depends(require_platform_admin)])
@@ -225,6 +233,96 @@ async def _turn_read(db, athlete, user, conversation_id, messages) -> TurnRead:
     return TurnRead(conversation_id=conversation_id, messages=await service.message_reads(db, athlete, user, messages))
 
 
+# --- streamed turns ----------------------------------------------------------------------
+#
+# A request sent with `Accept: text/event-stream` gets the turn as server-sent
+# events: `thinking` / `text` / `tool` while the model works (service.TurnEvents),
+# then `done` with the TurnRead, or `error` with the detail the JSON answer
+# would have had. The turn runs in a task of its own, with its own session, so
+# it still finishes and is stored when the athlete closes the page mid-reply.
+
+_HEARTBEAT_S = 15.0
+_running_turns: set[asyncio.Task] = set()  # strong references until each finishes
+
+
+def _wants_stream(request: Request) -> bool:
+    return "text/event-stream" in request.headers.get("accept", "")
+
+
+def _stream_turn(
+    session_factory: Callable,
+    client: LlmClientPort,
+    *,
+    athlete_id: uuid.UUID,
+    viewer_id: uuid.UUID,
+    conversation_id: uuid.UUID | None,
+    new_conversation: tuple[ConversationKind, str | None] | None,
+    user_text: str,
+    hidden_user_text: bool = False,
+) -> StreamingResponse:
+    queue: asyncio.Queue[dict | None] = asyncio.Queue()
+
+    async def work() -> None:
+        try:
+            async with session_factory() as db:
+                athlete = await db.get(Athlete, athlete_id)
+                viewer = await db.get(User, viewer_id)
+                if new_conversation is not None:
+                    conversation = await service.start_conversation(db, athlete, *new_conversation)
+                else:
+                    conversation = await db.get(AiConversation, conversation_id)
+                found_id = conversation.id
+                messages, _ = await service.run_turn(
+                    db,
+                    client,
+                    athlete,
+                    conversation,
+                    user_text=user_text,
+                    hidden_user_text=hidden_user_text,
+                    on_event=queue.put,
+                )
+                turn = await _turn_read(db, athlete, viewer, found_id, messages)
+            await queue.put({"type": "done", "turn": turn.model_dump(mode="json")})
+        except (CapReached, LlmError) as exc:
+            await queue.put({"type": "error", "detail": _model_error(exc).detail})
+        except Exception:
+            logger.exception("AI coach turn failed")
+            await queue.put({"type": "error", "detail": "ai_coach_failed"})
+        finally:
+            await queue.put(None)
+
+    task = asyncio.create_task(work())
+    _running_turns.add(task)
+    task.add_done_callback(_running_turns.discard)
+
+    async def events() -> AsyncIterator[str]:
+        while True:
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=_HEARTBEAT_S)
+            except TimeoutError:
+                yield ": keep-alive\n\n"  # a long reasoning stretch sends nothing
+                continue
+            if event is None:
+                return
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+async def _checked_for_stream(db: AsyncSession, athlete: Athlete) -> None:
+    """The cap is refused as a plain 429 before the stream starts; the request's
+    own session is then let go, the turn has its own for minutes."""
+    try:
+        await check_cap(db, athlete.id)
+    except CapReached as exc:
+        raise _model_error(exc) from exc
+    await db.close()
+
+
 @router.post("/conversations", response_model=TurnRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit("20/minute")
 async def create_conversation(
@@ -233,14 +331,28 @@ async def create_conversation(
     athlete: Athlete = Depends(require_ai_coach),
     current_user: User = Depends(get_current_user),
     client: LlmClientPort = Depends(get_llm_client),
+    session_factory: Callable = Depends(get_session_factory),
     db: AsyncSession = Depends(get_db),
-) -> TurnRead:
+):
     locale = service.locale_of(current_user)
     content = payload.content.strip() if payload.content else None
     if payload.kind == "chat" and not content:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "A chat starts with a message")
     kind = ConversationKind(payload.kind)
     title = service.title_from(content) if kind is ConversationKind.CHAT else _INTAKE_TITLE[locale]
+    if _wants_stream(request):
+        athlete_id, viewer_id = athlete.id, current_user.id
+        await _checked_for_stream(db, athlete)
+        return _stream_turn(
+            session_factory,
+            client,
+            athlete_id=athlete_id,
+            viewer_id=viewer_id,
+            conversation_id=None,
+            new_conversation=(kind, title),
+            user_text=content or _INTAKE_KICKOFF[locale],
+            hidden_user_text=content is None,
+        )
     conversation = await service.start_conversation(db, athlete, kind, title)
     conversation_id = conversation.id
     try:
@@ -266,11 +378,24 @@ async def post_message(
     athlete: Athlete = Depends(require_ai_coach),
     current_user: User = Depends(get_current_user),
     client: LlmClientPort = Depends(get_llm_client),
+    session_factory: Callable = Depends(get_session_factory),
     db: AsyncSession = Depends(get_db),
-) -> TurnRead:
+):
     found = await service.get_conversation(db, athlete.id, conversation_id)
     if found is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
+    if _wants_stream(request):
+        athlete_id, viewer_id = athlete.id, current_user.id
+        await _checked_for_stream(db, athlete)
+        return _stream_turn(
+            session_factory,
+            client,
+            athlete_id=athlete_id,
+            viewer_id=viewer_id,
+            conversation_id=conversation_id,
+            new_conversation=None,
+            user_text=payload.content,
+        )
     try:
         messages, _ = await service.run_turn(db, client, athlete, found, user_text=payload.content)
     except (CapReached, LlmError) as exc:

@@ -1,8 +1,9 @@
 """What the AI coach needs from a language model, so the service never
 depends on one provider's HTTP API (and tests script the replies)."""
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Literal, Protocol
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,11 @@ class LlmReply:
     truncated: bool = False
 
 
+# Called while a reply is being generated: ("text", the next piece of the
+# answer) or ("thinking", "") when the model is reasoning before it answers.
+DeltaHandler = Callable[[Literal["text", "thinking"], str], Awaitable[None]]
+
+
 class LlmError(Exception):
     """The model provider failed (outage, refused key, rate limit)."""
 
@@ -40,8 +46,10 @@ class LlmClientPort(Protocol):
         json_mode: bool = False,
         temperature: float = 0.4,
         max_tokens: int | None = None,
+        on_delta: DeltaHandler | None = None,
     ) -> LlmReply:
         """`messages` are chat-completion messages ({role, content,
         tool_calls?, tool_call_id?, name?}); `tools` JSON-schema function
-        definitions."""
+        definitions. With `on_delta` the reply is streamed through it as it
+        is written; the returned reply is the same either way."""
         ...

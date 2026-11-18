@@ -6,6 +6,7 @@ import { Button, ConfirmDialog, EmptyState, IconButton, SkeletonGroup, Textarea 
 import { useFormat } from "../../i18n/useFormat";
 import { Markdown } from "./Markdown";
 import { ProposalCard } from "./ProposalCard";
+import { LIVE_START, type LiveReply } from "./turnStream";
 import type { AiMessage, ConversationKind } from "./types";
 import { useConversation, useConversations, useDeleteConversation, useSendMessage, useStartConversation } from "./useAiCoach";
 
@@ -29,17 +30,43 @@ function Message({ athleteId, message }: { athleteId: string; message: AiMessage
   );
 }
 
-function Thinking() {
+type Status = "calendar" | "training" | "fitness" | "library" | "profile" | "proposal" | "data";
+
+const TOOL_STATUS: Record<string, Status> = {
+  get_plans: "calendar",
+  get_training: "training",
+  get_session_efforts: "training",
+  get_training_load: "fitness",
+  get_power_profile: "fitness",
+  list_workouts: "library",
+  get_workout: "library",
+  save_profile: "profile",
+  propose_changes: "proposal",
+};
+
+/** The reply being written: its text so far, else what the coach is doing. */
+function LiveMessage({ live }: { live: LiveReply }) {
   const { t } = useTranslation("aicoach");
+  if (live.text) {
+    return (
+      <li className="ai-message ai-message--assistant">
+        <div className="ai-message__bubble ai-message__bubble--live">
+          <Markdown text={live.text} />
+        </div>
+      </li>
+    );
+  }
+  const label =
+    live.phase === "tool" && live.tool ? t(`chat.status.${TOOL_STATUS[live.tool] ?? "data"}`) : t("chat.thinking");
   return (
-    <li className="ai-message ai-message--assistant" aria-live="polite">
-      <div className="ai-message__bubble ai-message__bubble--thinking">
+    <li className="ai-message ai-message--assistant">
+      <div className="ai-message__bubble ai-message__bubble--thinking" role="status">
         <span className="ai-dots" aria-hidden>
           <span />
           <span />
           <span />
         </span>
-        {t("chat.thinking")}
+        {label}
       </div>
     </li>
   );
@@ -68,11 +95,14 @@ export function ChatPanel({
   const endRef = useRef<HTMLDivElement>(null);
   const busy = start.isPending || send.isPending;
   const error = start.error ?? send.error;
+  const live = start.live ?? send.live;
+  // Follows the reply as it grows, a few lines at a time rather than on every piece.
+  const liveStep = live ? Math.floor(live.text.length / 160) : -1;
 
   const messages = conversation.data?.messages ?? [];
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
-  }, [messages.length, busy]);
+  }, [messages.length, busy, liveStep]);
 
   function submit(text: string) {
     const content = text.trim();
@@ -165,7 +195,7 @@ export function ChatPanel({
               </div>
             </li>
           )}
-          {busy && <Thinking />}
+          {busy && <LiveMessage live={live ?? LIVE_START} />}
         </ol>
         <div ref={endRef} />
         {error && <p className="ai-error" role="alert">{aiErrorText(error, t)}</p>}

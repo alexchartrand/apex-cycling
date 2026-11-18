@@ -5,6 +5,8 @@ can go on; the brief is rebuilt each turn, so it is always current.
 """
 
 import uuid
+from collections.abc import Awaitable, Callable
+from typing import Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,6 +28,12 @@ HISTORY_MESSAGES = 40
 OLD_TOOL_RESULT_CHARS = 1500
 # Includes the model's hidden reasoning; a plan proposal with step trees is long.
 MAX_REPLY_TOKENS = 16000
+
+# What a streamed turn tells the client as it goes: {"type": "thinking"} (the
+# model reasons), {"type": "text", "text": piece} (the answer being written),
+# {"type": "tool", "name": tool} (that round was a tool call: drop the text
+# streamed in it, it is never shown).
+TurnEvents = Callable[[dict], Awaitable[None]]
 
 _PROPOSAL_KIND = {
     ConversationKind.CHAT: ProposalKind.ADJUSTMENT,
@@ -95,9 +103,11 @@ async def run_turn(
     user_text: str | None,
     hidden_user_text: bool = False,
     extra: dict | None = None,
+    on_event: TurnEvents | None = None,
 ) -> tuple[list[AiMessage], list[AiProposal]]:
     """Runs one turn and commits. Returns the new visible messages and the
-    proposals made. Raises `CapReached`, `LlmError` (nothing is kept then)."""
+    proposals made. Raises `CapReached`, `LlmError` (nothing is kept then).
+    With `on_event` the model's replies are streamed (see `TurnEvents`)."""
     await check_cap(db, athlete.id)
     kind = ConversationKind(conversation.kind)
     user = await db.get(User, athlete.user_id) if athlete.user_id else None
@@ -133,12 +143,30 @@ async def run_turn(
     spent: list[LlmReply] = []
     athlete_id = athlete.id  # still readable after a rollback expired the instance
 
+    on_delta = None
+    if on_event is not None:
+        thinking = False  # one "thinking" event per stretch of reasoning, not per chunk
+
+        async def on_delta(kind: Literal["text", "thinking"], text: str) -> None:
+            nonlocal thinking
+            if kind == "thinking":
+                if not thinking:
+                    thinking = True
+                    await on_event({"type": "thinking"})
+                return
+            thinking = False
+            await on_event({"type": "text", "text": text})
+
     try:
         final: str | None = None
         for round_no in range(MAX_TOOL_ROUNDS + 1):
             messages = [{"role": "system", "content": system}, *_trim(history, turn_start)]
             last_round = round_no == MAX_TOOL_ROUNDS
-            reply = await client.chat(messages, tools=None if last_round else tools, max_tokens=MAX_REPLY_TOKENS)
+            if on_delta is not None:
+                thinking = False
+            reply = await client.chat(
+                messages, tools=None if last_round else tools, max_tokens=MAX_REPLY_TOKENS, on_delta=on_delta
+            )
             spent.append(reply)
             db.add(_usage(athlete_id, reply, kind.value))
             if reply.tool_calls and not last_round:
@@ -152,6 +180,8 @@ async def run_turn(
                     ],
                 )
                 for call in reply.tool_calls:
+                    if on_event is not None:
+                        await on_event({"type": "tool", "name": call.name})
                     if reply.truncated:  # the arguments are cut-off JSON
                         result = context.to_json(CUT_OFF)
                     else:

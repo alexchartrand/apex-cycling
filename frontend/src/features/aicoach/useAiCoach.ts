@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   decideProposal,
@@ -18,6 +19,7 @@ import {
   updateAdminAi,
   withdrawConsent,
 } from "./api";
+import { LIVE_START, liveReply, type LiveReply, type TurnEvent } from "./turnStream";
 import type { CoachProfile, CoachSettings, Conversation, ProposalStatus, Turn } from "./types";
 
 const key = (athleteId: string, ...rest: unknown[]) => ["ai-coach", athleteId, ...rest];
@@ -82,21 +84,36 @@ function useAfterTurn(athleteId: string) {
   };
 }
 
+/** The reply being streamed by a turn in flight (null when none is). */
+function useLiveReply() {
+  const [live, setLive] = useState<LiveReply | null>(null);
+  const onEvent = (event: TurnEvent) => setLive((state) => liveReply(state ?? LIVE_START, event));
+  return { live, onEvent, begin: () => setLive(LIVE_START), end: () => setLive(null) };
+}
+
 export function useStartConversation(athleteId: string) {
   const afterTurn = useAfterTurn(athleteId);
-  return useMutation({
-    mutationFn: (payload: { kind: "chat" | "intake"; content?: string }) => startConversation(athleteId, payload),
+  const { live, onEvent, begin, end } = useLiveReply();
+  const mutation = useMutation({
+    mutationFn: (payload: { kind: "chat" | "intake"; content?: string }) => startConversation(athleteId, payload, onEvent),
+    onMutate: begin,
     onSuccess: afterTurn,
+    onSettled: end,
   });
+  return { ...mutation, live };
 }
 
 export function useSendMessage(athleteId: string) {
   const afterTurn = useAfterTurn(athleteId);
-  return useMutation({
+  const { live, onEvent, begin, end } = useLiveReply();
+  const mutation = useMutation({
     mutationFn: ({ conversationId, content }: { conversationId: string; content: string }) =>
-      sendMessage(athleteId, conversationId, content),
+      sendMessage(athleteId, conversationId, content, onEvent),
+    onMutate: begin,
     onSuccess: afterTurn,
+    onSettled: end,
   });
+  return { ...mutation, live };
 }
 
 export function useDeleteConversation(athleteId: string) {

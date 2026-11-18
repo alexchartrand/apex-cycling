@@ -1,4 +1,5 @@
-import { apiFetch } from "../../api/client";
+import { ApiError, apiFetch, apiRequest } from "../../api/client";
+import { sseParser, type TurnEvent } from "./turnStream";
 import type {
   AdminAiOverview,
   AdminAiRow,
@@ -36,14 +37,46 @@ export const listConversations = (athleteId: string) => apiFetch<ConversationSum
 export const fetchConversation = (athleteId: string, id: string) =>
   apiFetch<Conversation>(`${base(athleteId)}/conversations/${id}`);
 
-export const startConversation = (athleteId: string, payload: { kind: "chat" | "intake"; content?: string }) =>
-  apiFetch<Turn>(`${base(athleteId)}/conversations`, { method: "POST", body: JSON.stringify(payload) });
+const ERROR_STATUS: Record<string, number> = { ai_coach_cap_reached: 429, ai_coach_failed: 502 };
 
-export const sendMessage = (athleteId: string, conversationId: string, content: string) =>
-  apiFetch<Turn>(`${base(athleteId)}/conversations/${conversationId}/messages`, {
+/** Posts a turn asking for server-sent events: `onEvent` gets the reply as it is
+ *  written, the promise the stored turn. A failure mid-stream rejects with the
+ *  same `ApiError` the plain JSON answer would have given. */
+async function streamTurn(path: string, body: unknown, onEvent: (event: TurnEvent) => void): Promise<Turn> {
+  const response = await apiRequest(path, {
     method: "POST",
-    body: JSON.stringify({ content }),
+    body: JSON.stringify(body),
+    headers: { Accept: "text/event-stream" },
   });
+  if (!response.body || !response.headers.get("Content-Type")?.includes("text/event-stream")) {
+    return (await response.json()) as Turn;
+  }
+  let outcome: TurnEvent | null = null;
+  const feed = sseParser((event) => {
+    if (event.type === "done" || event.type === "error") outcome = event;
+    else onEvent(event);
+  });
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    feed(value);
+  }
+  feed("", true);
+  const last = outcome as TurnEvent | null;
+  if (last?.type === "done") return last.turn;
+  const detail = last?.type === "error" ? last.detail : "ai_coach_failed";
+  throw new ApiError(ERROR_STATUS[detail] ?? 502, detail);
+}
+
+export const startConversation = (
+  athleteId: string,
+  payload: { kind: "chat" | "intake"; content?: string },
+  onEvent: (event: TurnEvent) => void,
+) => streamTurn(`${base(athleteId)}/conversations`, payload, onEvent);
+
+export const sendMessage = (athleteId: string, conversationId: string, content: string, onEvent: (event: TurnEvent) => void) =>
+  streamTurn(`${base(athleteId)}/conversations/${conversationId}/messages`, { content }, onEvent);
 
 export const deleteConversation = (athleteId: string, id: string) =>
   apiFetch<void>(`${base(athleteId)}/conversations/${id}`, { method: "DELETE" });
