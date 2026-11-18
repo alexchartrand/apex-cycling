@@ -26,7 +26,7 @@
   - ~~W2: the user's review of the 16 presets~~ — done 11/18 (blue line / ligne bleue, pursuit lap repeats 2 × 4, threshold renamed 2 × 15, 30/30 on at 125–135 %, French wording).
   - ~~W5: `.fit` on a real Garmin/Wahoo, `.zwo` in Zwift, `.erg`/`.mrc` in an ERG app~~ — done 11/18 (all load; Zwift on Windows reads `%LOCALAPPDATA%\Zwift\Workouts\<id>`, no longer Documents; track steps come out as timed free rides, as designed).
   - ~~W6: push against a real Intervals.icu account~~ — done 11/18 (user: one event per plan, edits/skip/delete follow, cue text and "press lap" on the Garmin all fine).
-  - W7: the stem strip printed at 5 × 15 cm; the lock-screen card under the iOS/Android clock.
+  - ~~W7: the stem strip printed at 5 × 15 cm; the lock-screen card under the phone clock~~ — done 11/18 (cards now download as files instead of opening the share sheet, `bc88fe6`; print size and lock screen fine).
   - W8: step placement on a real ERG trainer ride and a real road ride (pauses inside a block, loosely followed recoveries).
   - W3/W4: library, editor and plan dialog on a real phone.
 
