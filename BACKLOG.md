@@ -22,13 +22,13 @@
   - Weekly report and replan from the worker on a real week; tune `MAX_TOOL_ROUNDS`, history length and prompts after reading real transcripts.
   - Follow-ups: streaming replies (SSE) instead of one request per turn; a daily readiness check-in and post-session debriefs were proposed but not chosen for v1.
 
-- [ ] 🟡 Sprint W checks on real devices and accounts — *added 11/11 (left open when Sprint W closed)*
+- [ ] 🟡 Sprint W checks on real devices and accounts — *added 11/11; all but W8 done 11/18*
   - ~~W2: the user's review of the 16 presets~~ — done 11/18 (blue line / ligne bleue, pursuit lap repeats 2 × 4, threshold renamed 2 × 15, 30/30 on at 125–135 %, French wording).
   - ~~W5: `.fit` on a real Garmin/Wahoo, `.zwo` in Zwift, `.erg`/`.mrc` in an ERG app~~ — done 11/18 (all load; Zwift on Windows reads `%LOCALAPPDATA%\Zwift\Workouts\<id>`, no longer Documents; track steps come out as timed free rides, as designed).
   - ~~W6: push against a real Intervals.icu account~~ — done 11/18 (user: one event per plan, edits/skip/delete follow, cue text and "press lap" on the Garmin all fine).
   - ~~W7: the stem strip printed at 5 × 15 cm; the lock-screen card under the phone clock~~ — done 11/18 (cards now download as files instead of opening the share sheet, `bc88fe6`; print size and lock screen fine).
   - W8: step placement on a real ERG trainer ride and a real road ride (pauses inside a block, loosely followed recoveries).
-  - W3/W4: library, editor and plan dialog on a real phone.
+  - ~~W3/W4: library, editor and plan dialog on a real phone~~ — done 11/18 (no issues).
 
 - [~] 🔴 A1 Sqorz polls re-normalize the whole history every time — *added 10/22; skip-when-unchanged done 10/22 (migration 0016, `NORMALIZER_VERSION`, "Sync now" forces); still open: retention and bulk lap upserts*
   - Why: whenever the payload changes, the normalizer re-reads the full history at several round trips per lap and recomputes records; `ingestion_runs`/`raw_snapshots` grow forever.
