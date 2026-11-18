@@ -42,6 +42,12 @@ export async function shareImage(blob: Blob, fileName: string, title: string): P
       throw err;
     }
   }
+  saveImage(blob, fileName);
+  return "downloaded";
+}
+
+/** Saves the PNG as a file download, never through the share sheet (the workout cards are files to keep). */
+export function saveImage(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -50,5 +56,4 @@ export async function shareImage(blob: Blob, fileName: string, title: string): P
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  return "downloaded";
 }

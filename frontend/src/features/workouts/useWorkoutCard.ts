@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useFormat } from "../../i18n/useFormat";
 import { useRecords } from "../records/useRecords";
-import { renderPng, shareImage, type ShareOutcome } from "../share/renderShareCard";
+import { renderPng, saveImage, type ShareOutcome } from "../share/renderShareCard";
 import { useEstimateFtp } from "./useWorkouts";
 import { bestTimes, CARD_LAYOUTS, drawWorkoutCard, workoutCardFileName, workoutCardModel, type WorkoutCardInput, type WorkoutCardSize, type WorkoutCardTexts } from "./workoutCard";
 
@@ -39,6 +39,8 @@ export function useWorkoutCard(athleteId: string | undefined) {
     const model = workoutCardModel({ ...source, ftpW, bests: bestTimes(records.data ?? []) }, texts, fmt);
     const layout = CARD_LAYOUTS[size];
     const blob = await renderPng(layout.width, layout.height, (ctx) => drawWorkoutCard(ctx, model, size, (count) => t("card.more", { count })));
-    return shareImage(blob, workoutCardFileName(source.name, size), source.name);
+    // A real download, not the share sheet: the card is a file to print or set as wallpaper.
+    saveImage(blob, workoutCardFileName(source.name, size));
+    return "downloaded";
   };
 }
