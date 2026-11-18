@@ -7,6 +7,7 @@ import pytest
 
 from app.coach_ai.client import MistralClient
 from app.coach_ai.ports import LlmError
+from app.core.config import get_settings
 
 
 def _client(handler) -> MistralClient:
@@ -70,6 +71,45 @@ async def test_a_refused_key_or_outage_is_an_llm_error(monkeypatch):
         await _client(lambda r: httpx.Response(503)).chat([{"role": "user", "content": "x"}])
     with pytest.raises(LlmError, match="isn.t configured"):
         await MistralClient(api_key="", model="m").chat([])
+
+
+async def test_a_read_timeout_is_not_retried(monkeypatch):
+    monkeypatch.setattr("app.coach_ai.client.asyncio.sleep", _no_sleep)
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        raise httpx.ReadTimeout("slow", request=request)
+
+    with pytest.raises(LlmError, match="unreachable"):
+        await _client(handler).chat([{"role": "user", "content": "x"}])
+    assert len(calls) == 1
+
+
+async def test_a_connect_error_is_retried(monkeypatch):
+    monkeypatch.setattr("app.coach_ai.client.asyncio.sleep", _no_sleep)
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        if len(calls) == 1:
+            raise httpx.ConnectError("down", request=request)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    reply = await _client(handler).chat([{"role": "user", "content": "x"}])
+    assert reply.content == "ok" and len(calls) == 2
+
+
+async def test_sends_the_reasoning_effort_and_flags_a_cut_off_reply(monkeypatch):
+    monkeypatch.setattr(get_settings(), "mistral_reasoning_effort", "medium")
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "…"}, "finish_reason": "length"}]})
+
+    reply = await _client(handler).chat([{"role": "user", "content": "x"}])
+    assert seen["body"]["reasoning_effort"] == "medium" and reply.truncated
 
 
 async def _no_sleep(_seconds):

@@ -17,7 +17,7 @@
 ## ✨ Features
 
 - [ ] 🟡 AI coach: checks against the live Mistral API — *added 11/12 (Sprint AI shipped the same day, scripted model only)*
-  - Confirm the model id for "Mistral Large 4" with `GET /v1/models` and set `MISTRAL_MODEL`; check function calling with our tool schemas (loose `ops` objects), French answers in « vous », and token cost per turn (the brief is a few thousand tokens every turn).
+  - [x] Model id, function calling, French « vous », cost per turn — *checked 11/18*: `mistral-large-4` (= `-latest`), parallel tool calls and `save_profile` well-formed, brief ≈ 3k tokens. It reasons: at the default effort `high` an intake plan took 13 min / $0.18 (4 proposals cut off at 8000 tokens); with `reasoning_effort=medium`, a 300 s timeout without read-timeout retries, a cut-off notice and prompt tweaks it took 2 min 51 s / $0.03, one valid proposal. The proposal call alone is still ~140 s → streaming matters.
   - Run an intake interview end to end on the test account: questions asked, `save_profile` filled, a 2–4-week plan proposed with valid step trees, Accept → calendar + Intervals.icu push.
   - Weekly report and replan from the worker on a real week; tune `MAX_TOOL_ROUNDS`, history length and prompts after reading real transcripts.
   - Follow-ups: streaming replies (SSE) instead of one request per turn; a daily readiness check-in and post-session debriefs were proposed but not chosen for v1.

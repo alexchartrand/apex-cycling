@@ -20,6 +20,8 @@ class LlmReply:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     model: str = ""
+    # The reply hit max_tokens: tool-call arguments are then cut-off JSON.
+    truncated: bool = False
 
 
 class LlmError(Exception):

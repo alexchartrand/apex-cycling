@@ -17,14 +17,15 @@ from app.coach_ai.models import AiConversation, AiMessage, AiProposal, AiUsage, 
 from app.coach_ai.ports import LlmClientPort, LlmReply
 from app.coach_ai.proposals import read_proposal
 from app.coach_ai.schemas import ConversationRead, ConversationSummary, MessageRead
-from app.coach_ai.tools import ToolContext, run_tool, tools_for
+from app.coach_ai.tools import CUT_OFF, ToolContext, run_tool, tools_for
 from app.db.base import utcnow
 
 MAX_TOOL_ROUNDS = 8
 # Messages of earlier turns sent back to the model (the brief carries the rest).
 HISTORY_MESSAGES = 40
 OLD_TOOL_RESULT_CHARS = 1500
-MAX_REPLY_TOKENS = 8000
+# Includes the model's hidden reasoning; a plan proposal with step trees is long.
+MAX_REPLY_TOKENS = 16000
 
 _PROPOSAL_KIND = {
     ConversationKind.CHAT: ProposalKind.ADJUSTMENT,
@@ -151,7 +152,10 @@ async def run_turn(
                     ],
                 )
                 for call in reply.tool_calls:
-                    result = await run_tool(ctx, call.name, call.arguments)
+                    if reply.truncated:  # the arguments are cut-off JSON
+                        result = context.to_json(CUT_OFF)
+                    else:
+                        result = await run_tool(ctx, call.name, call.arguments)
                     add(role="tool", content=result, tool_call_id=call.id, name=call.name, hidden=True)
                 continue
             final = (reply.content or "").strip()

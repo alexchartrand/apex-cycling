@@ -95,6 +95,9 @@ class Settings(BaseSettings):
     # cost estimate.
     mistral_api_key: str | None = None
     mistral_model: str = "mistral-large-4"
+    # Mistral Large 4 reasons before answering; its hidden reasoning counts as
+    # output tokens and time. low / medium / high (the API's default is high).
+    mistral_reasoning_effort: str | None = "medium"
     mistral_base_url: str = "https://api.mistral.ai/v1"
     mistral_price_input_per_mtok: float = 0.7
     mistral_price_output_per_mtok: float = 2.1

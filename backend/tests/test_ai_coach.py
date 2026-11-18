@@ -235,6 +235,23 @@ async def test_a_chat_turn_uses_tools_and_keeps_them_out_of_sight(client, db_ses
     assert usage["month_tokens"] == 50 + 150 + 150
 
 
+async def test_a_cut_off_tool_call_is_not_run_and_the_model_is_told_why(client, db_session, mistral_on, llm):
+    athlete_id = await _ready(client, db_session)
+    cut = LlmReply(
+        content="",
+        tool_calls=[ToolCall(id="c1", name="propose_changes", arguments='{"summary": "Plan", "ops": [{"op": "cre')],
+        prompt_tokens=50,
+        truncated=True,
+    )
+    llm.script = [cut, say("Je raccourcis.")]
+    turn = await client.post(f"/athletes/{athlete_id}/ai-coach/conversations", json={"content": "Un plan ?"})
+    assert turn.status_code == 201, turn.text
+    told = json.loads(llm.calls[1]["messages"][-1]["content"])
+    assert "cut off at the output limit" in told["error"]
+    async with db_session() as session:
+        assert (await session.scalars(select(AiProposal))).all() == []
+
+
 async def test_a_failed_model_call_keeps_nothing_but_the_tokens(client, db_session, mistral_on, llm):
     athlete_id = await _ready(client, db_session)
     llm.script = [call("get_training_load", {"weeks": 4}), LlmError("down")]

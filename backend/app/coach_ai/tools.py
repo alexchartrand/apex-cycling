@@ -271,6 +271,13 @@ async def _propose(ctx: ToolContext, args: dict) -> object:
     }
 
 
+CUT_OFF = {
+    "error": "your call was cut off at the output limit, so nothing was done. Send a shorter call: "
+    "use workout_id for library/preset workouts, write inline workouts only when none fits, "
+    "and detail fewer sessions (the rest can go in outline)."
+}
+
+
 async def run_tool(ctx: ToolContext, name: str, arguments: str) -> str:
     """The tool's answer as JSON text (errors included, for the model to read)."""
     try:
