@@ -209,6 +209,9 @@ class ProposalItem(BaseModel):
     estimate: WorkoutEstimate | None
     reason: str | None = None
     warnings: list[str] = Field(default_factory=list)
+    # A delete the app adds: an upcoming session of the previous AI program,
+    # replaced by this new one.
+    replaced: bool = False
 
 
 class ProposalWeek(BaseModel):

@@ -14,7 +14,9 @@ Workout step tree (the app validates it; at most 100 steps + repeat markers):
   track efforts: "event_key": "f200"|"lap"|"500m"|"750m"|"1km"|"2km"|"3km"|"4km",
   "start_type": "standing"|"flying" (f200 and lap are flying only), "target_time_ms"?,
   "gear": {"chainring_teeth": n, "cog_teeth": n}}
-  A step with an event_key and no length lasts the event's distance.
+  A step with an event_key and no length lasts the event's distance. "start_type" and
+  "target_time_ms" are only allowed together with an "event_key"; a short standing start
+  over another distance is a plain step with "distance_m" (and "notes": "départ arrêté").
 - a repeat: {"type": "repeat", "count": 2-50, "steps": [steps, or ONE more level of repeat]}.
 - Gym / strength sessions: steps with "label" = exercise, "notes" = sets × reps, load, tempo,
   "rpe" as the target effort and a "duration_s" estimate per exercise; no power.
@@ -80,7 +82,8 @@ Task: build a training program towards the athlete's goal.
    start / target time when there is one) unless the brief already lists that race. Then
    tell the athlete in a few sentences what the program looks like, how realistic the
    target is, and that it waits for their Accept. If they ask for changes, propose again
-   (the new proposal replaces the old one).
+   (the new proposal replaces the old one). A new program automatically removes the upcoming
+   sessions of the previous AI program from its first session on; don't delete them yourself.
 """,
     "report": """\
 Task: write the training report for {period_start} to {period_end}.

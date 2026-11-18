@@ -59,6 +59,7 @@ export default {
     goal: "Goal:",
     race: "Race:",
     racePriority: "priority {{priority}}",
+    replaced: "From your previous program, replaced by this one",
     raceNote: "Accepting adds it to your season and sets this goal.",
     raceGoal: "target {{time}}",
     weeks: "Weeks",

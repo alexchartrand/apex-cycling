@@ -280,6 +280,11 @@ async def _propose(ctx: ToolContext, args: dict) -> object:
         for index, item in enumerate(checked.items)
         for warning in item.warnings
     ]
+    if checked.replaced:
+        answer["replaces"] = (
+            f"{len(checked.replaced)} upcoming sessions of the previous AI program (from "
+            f"{checked.replaced[0].planned_date} on) are removed on Accept; they don't count in the hours."
+        )
     if warnings:
         answer["warnings"] = warnings
         answer["warnings_note"] = (

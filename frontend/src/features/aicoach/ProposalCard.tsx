@@ -61,6 +61,7 @@ function ItemRow({ item, expanded }: { item: ProposalItem; expanded: boolean }) 
           </div>
         )}
         {item.reason && <div className="ai-muted">{item.reason}</div>}
+        {item.replaced && <div className="ai-muted">{t("proposal.replaced")}</div>}
         {item.warnings.map((warning) => (
           <Badge key={warning} tone="marker">
             <TriangleAlert aria-hidden className="ai-inline-icon" /> {t(`proposal.warnings.${warningKey(warning)}`)}

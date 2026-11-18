@@ -62,6 +62,7 @@ export default {
     goal: "Objectif :",
     race: "Course :",
     racePriority: "priorité {{priority}}",
+    replaced: "De votre programme précédent, remplacé par celui-ci",
     raceNote: "Accepter l'ajoute à votre saison et fixe cet objectif.",
     raceGoal: "objectif {{time}}",
     weeks: "Semaines",

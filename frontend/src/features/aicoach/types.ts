@@ -77,6 +77,8 @@ export interface ProposalItem {
   estimate: WorkoutEstimate | null;
   reason: string | null;
   warnings: string[];
+  /** A session of the previous AI program, removed because this new program replaces it. */
+  replaced?: boolean;
 }
 
 export interface ProposalWeek {

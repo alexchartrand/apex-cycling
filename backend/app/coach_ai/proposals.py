@@ -110,6 +110,8 @@ class Checked:
     # Resolved workouts per op index (create/update with a workout).
     workouts: dict[int, _Resolved] = field(default_factory=dict)
     plans: dict[uuid.UUID, PlannedSession] = field(default_factory=dict)
+    # Upcoming sessions of the previous AI program a new program removes.
+    replaced: list[PlannedSession] = field(default_factory=list)
 
 
 def _snapshot(plan: PlannedSession, ftp_w: float | None) -> PlanSnapshot:
@@ -123,7 +125,17 @@ def _snapshot(plan: PlannedSession, ftp_w: float | None) -> PlanSnapshot:
     )
 
 
-async def check(db: AsyncSession, athlete: Athlete, payload: ProposalPayload, *, today: date | None = None) -> Checked:
+async def check(
+    db: AsyncSession,
+    athlete: Athlete,
+    payload: ProposalPayload,
+    *,
+    kind: ProposalKind | str | None = None,
+    today: date | None = None,
+) -> Checked:
+    """`kind` plan: a new program, which also removes the previous AI
+    program's sessions from its first session on (worked out on every check,
+    so a session done meanwhile is simply kept)."""
     user = await athlete_user(db, athlete)
     if today is None:
         today = local_day(datetime.now(timezone.utc), await athlete_timezone(db, athlete))
@@ -217,11 +229,50 @@ async def check(db: AsyncSession, athlete: Athlete, payload: ProposalPayload, *,
             )
         result.items.append(item)
 
+    if kind is not None and ProposalKind(kind) is ProposalKind.PLAN and not result.errors:
+        await _replace_previous_program(db, athlete, result, touched, today, metric_rows)
     if payload.race is not None and payload.race.date < today:
         result.errors.append(f"race: {payload.race.date} is in the past")
     _check_reach(result, payload, profile)
     await _weeks(db, athlete, result, profile, metric_rows)
     return result
+
+
+async def _replace_previous_program(
+    db: AsyncSession, athlete: Athlete, result: Checked, touched: set[uuid.UUID], today: date, metric_rows
+) -> None:
+    created = [item.planned_date for item in result.items if item.op == "create" and item.planned_date]
+    if not created:
+        return
+    start = max(min(created), today)
+    plans = await db.scalars(
+        select(PlannedSession)
+        .where(
+            PlannedSession.athlete_id == athlete.id,
+            PlannedSession.created_by_ai.is_(True),
+            PlannedSession.status == PlanStatus.PLANNED.value,
+            PlannedSession.planned_date >= start,
+        )
+        .order_by(PlannedSession.planned_date)
+    )
+    for plan in plans:
+        if plan.id in touched:  # the model already changes it
+            continue
+        result.replaced.append(plan)
+        result.items.append(
+            ProposalItem(
+                op="delete",
+                plan_id=plan.id,
+                before=_snapshot(plan, _ftp_on(metric_rows, plan.planned_date)),
+                planned_date=None,
+                title=None,
+                description=None,
+                workout_name=None,
+                workout=None,
+                estimate=None,
+                replaced=True,
+            )
+        )
 
 
 def _check_reach(result: Checked, payload: ProposalPayload, profile: CoachProfile) -> None:
@@ -309,7 +360,7 @@ async def create_proposal(
     payload, errors = payload_errors(raw_payload)
     if payload is None:
         return None, None, errors
-    checked = await check(db, athlete, payload)
+    checked = await check(db, athlete, payload, kind=kind)
     if checked.errors:
         return None, checked, checked.errors
     # One replan proposal at a time, and one per conversation: a newer one
@@ -354,7 +405,7 @@ async def read_proposal(db: AsyncSession, athlete: Athlete, proposal: AiProposal
     await expire_if_due(proposal)
     payload, errors = payload_errors(proposal.payload)
     pending = proposal.status == ProposalStatus.PENDING.value
-    checked = await check(db, athlete, payload) if payload is not None else None
+    checked = await check(db, athlete, payload, kind=proposal.kind) if payload is not None else None
     return ProposalRead(
         id=proposal.id,
         kind=ProposalKind(proposal.kind),
@@ -395,7 +446,7 @@ async def accept(db: AsyncSession, athlete: Athlete, proposal: AiProposal) -> li
     payload, errors = payload_errors(proposal.payload)
     if payload is None:
         raise StaleProposal(errors)
-    checked = await check(db, athlete, payload)
+    checked = await check(db, athlete, payload, kind=proposal.kind)
     if checked.errors:
         raise StaleProposal(checked.errors)
 
@@ -455,6 +506,10 @@ async def accept(db: AsyncSession, athlete: Athlete, proposal: AiProposal) -> li
         else:
             await plan_changed(db, plan)
             await db.delete(plan)
+
+    for plan in checked.replaced:
+        await plan_changed(db, plan)
+        await db.delete(plan)
 
     if payload.race is not None:
         await _add_race(db, athlete, payload)

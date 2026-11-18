@@ -413,6 +413,45 @@ async def test_warnings_go_back_to_the_model_and_the_race_lands_on_the_season(cl
         assert str(competition.goal_id) == goals[0]["id"]
 
 
+async def test_a_new_program_replaces_the_previous_ai_programs_upcoming_sessions(client, db_session, mistral_on, llm):
+    athlete_id = await _ready(client, db_session)
+    base = f"/athletes/{athlete_id}/ai-coach"
+    aid = uuid.UUID(athlete_id)
+    steps = _workout(60)["steps"]
+    async with db_session() as session:
+        def plan(days: int, title: str, *, ai: bool = True, status: str = "planned") -> PlannedSession:
+            row = PlannedSession(athlete_id=aid, planned_date=date.today() + timedelta(days=days), title=title,
+                                 targets=[], workout=steps, created_by_ai=ai, status=status)
+            session.add(row)
+            return row
+        plan(1, "Old before the new start")
+        plan(3, "Old A")
+        plan(4, "Old B")
+        plan(5, "Old done", status="done")
+        plan(6, "My own ride", ai=False)
+        await session.commit()
+
+    llm.script = [
+        call("propose_changes", {"summary": "New program", "goal": "1 km",
+                                 "ops": [{"op": "create", "date": _future(3), "title": "New", "workout": _workout(45)}]}),
+        say("Voici."),
+    ]
+    turn = await client.post(f"{base}/conversations", json={"kind": "intake", "content": "Nouveau programme"})
+    assert turn.status_code == 201, turn.text
+    told = json.loads(llm.calls[0 + 1]["messages"][-1]["content"])
+    assert told["ok"] and told["replaces"].startswith("2 upcoming sessions")
+    proposal = turn.json()["messages"][-1]["proposal"]
+    removed = [(i["before"]["title"], i["replaced"]) for i in proposal["items"] if i["op"] == "delete"]
+    assert removed == [("Old A", True), ("Old B", True)]
+    # The week counts the new session, not the replaced ones.
+    assert sum(w["duration_s"] for w in proposal["weeks"]) < 4 * 3600
+
+    accepted = await client.post(f"{base}/proposals/{proposal['id']}/accept")
+    assert accepted.status_code == 200, accepted.text
+    titles = sorted(p["title"] for p in (await client.get(f"/athletes/{athlete_id}/planned-sessions")).json())
+    assert titles == ["My own ride", "New", "Old before the new start", "Old done"]
+
+
 async def test_a_race_in_the_past_is_an_error(client, db_session, mistral_on, llm):
     athlete_id = await _ready(client, db_session)
     llm.script = [
