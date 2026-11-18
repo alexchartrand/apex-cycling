@@ -85,6 +85,25 @@ describe("LogPage", () => {
     expect(sessionCalls()).toContain("/api/athletes/a1/sessions?from=2026-02-23&to=2026-04-05");
   });
 
+  it("shows everything with no type selected, then only the picked types", async () => {
+    renderPage("/log");
+    expect(await screen.findByText("Ride gym")).toBeInTheDocument();
+    expect(screen.getByText("Ride r2")).toBeInTheDocument();
+    expect(screen.getByText("Session s3")).toBeInTheDocument();
+    const strength = screen.getByRole("button", { name: "Strength / gym" });
+    expect(strength).toHaveAttribute("aria-pressed", "false");
+
+    await userEvent.click(strength);
+    expect(strength).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Ride gym")).toBeInTheDocument();
+    expect(screen.queryByText("Ride r2")).not.toBeInTheDocument();
+    expect(screen.queryByText("Session s3")).not.toBeInTheDocument();
+
+    await userEvent.click(strength);
+    expect(await screen.findByText("Ride r2")).toBeInTheDocument();
+    expect(screen.getByText("Session s3")).toBeInTheDocument();
+  });
+
   it("filters by type from the legend, in the URL", async () => {
     renderPage("/log?types=strength");
     expect(await screen.findByText("Ride gym")).toBeInTheDocument();

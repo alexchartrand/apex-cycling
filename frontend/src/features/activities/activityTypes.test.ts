@@ -28,13 +28,15 @@ describe("activity types", () => {
     expect(parseTypeFilter("bogus")).toBeNull();
     expect([...parseTypeFilter("strength,bogus,cycling")!]).toEqual(["strength", "cycling"]);
     expect(typeFilterParam(new Set(["strength", "cycling"]))).toBe("cycling,strength");
-    expect(typeFilterParam(new Set(ACTIVITY_TYPES))).toBeNull();
+    expect(typeFilterParam(new Set(ACTIVITY_TYPES))).toBe(ACTIVITY_TYPES.join(","));
+    expect(typeFilterParam(null)).toBeNull();
   });
 
-  it("toggles types, never down to none", () => {
-    expect([...toggleType(null, "other")].sort()).toEqual(ACTIVITY_TYPES.filter((t) => t !== "other").sort());
-    expect(toggleType(new Set(["cycling"]), "cycling").size).toBe(ACTIVITY_TYPES.length);
-    expect([...toggleType(new Set(["cycling"]), "strength")]).toEqual(["cycling", "strength"]);
+  it("toggles types: the first pick shows only it, clearing the last shows everything", () => {
+    expect([...toggleType(null, "other")!]).toEqual(["other"]);
+    expect(toggleType(new Set(["cycling"]), "cycling")).toBeNull();
+    expect([...toggleType(new Set(["cycling"]), "strength")!]).toEqual(["cycling", "strength"]);
+    expect([...toggleType(new Set(["cycling", "strength"]), "cycling")!]).toEqual(["strength"]);
   });
 
   it("filters log items", () => {

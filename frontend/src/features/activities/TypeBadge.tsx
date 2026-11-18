@@ -26,7 +26,7 @@ export function TypeLegend({ shown, onToggle }: { shown: Set<ActivityType> | nul
           key={type}
           type="button"
           className={`type-legend__toggle type-${type}`}
-          aria-pressed={shown === null || shown.has(type)}
+          aria-pressed={shown !== null && shown.has(type)}
           onClick={() => onToggle(type)}
         >
           <span className="type-legend__dot" aria-hidden />

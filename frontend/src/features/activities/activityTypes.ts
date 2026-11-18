@@ -38,18 +38,18 @@ export function parseTypeFilter(param: string | null): Set<ActivityType> | null 
   return types.length ? new Set(types) : null;
 }
 
-/** The query value for a set of shown types; null when that is all of them (no filter). */
-export function typeFilterParam(types: Set<ActivityType>): string | null {
-  if (types.size === 0 || types.size === ACTIVITY_TYPES.length) return null;
+/** The query value for a set of selected types; null when none is selected (no filter). */
+export function typeFilterParam(types: Set<ActivityType> | null): string | null {
+  if (!types || types.size === 0) return null;
   return ACTIVITY_TYPES.filter((type) => types.has(type)).join(",");
 }
 
-/** Toggles one type; switching off the last one shown brings everything back. */
-export function toggleType(shown: Set<ActivityType> | null, type: ActivityType): Set<ActivityType> {
-  const next = new Set(shown ?? ACTIVITY_TYPES);
+/** Toggles one type in the filter: from no filter it shows only that type; deselecting the last one clears the filter (null = everything). */
+export function toggleType(selected: Set<ActivityType> | null, type: ActivityType): Set<ActivityType> | null {
+  const next = new Set(selected ?? []);
   if (next.has(type)) next.delete(type);
   else next.add(type);
-  return next.size === 0 ? new Set(ACTIVITY_TYPES) : next;
+  return next.size === 0 ? null : next;
 }
 
 /** The type picker's "follow the source" choice. */
