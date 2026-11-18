@@ -18,11 +18,11 @@
 
 - [ ] 🟡 AI coach: checks against the live Mistral API — *added 11/12 (Sprint AI shipped the same day, scripted model only)*
   - [x] Model id, function calling, French « vous », cost per turn — *checked 11/18*: `mistral-large-4` (= `-latest`), parallel tool calls and `save_profile` well-formed, brief ≈ 3k tokens. It reasons: at the default effort `high` an intake plan took 13 min / $0.18 (4 proposals cut off at 8000 tokens); with `reasoning_effort=medium`, a 300 s timeout without read-timeout retries, a cut-off notice and prompt tweaks it took 2 min 51 s / $0.03, one valid proposal. The proposal call alone is still ~140 s → streaming matters.
-  - [x] Intake end to end on the test account — *checked 11/18 through the API* (Intervals.icu push not part of it: the test account has no connection): 4 questions, `save_profile` complete in one call, 12-week program (3 weeks detailed, 18 sessions mostly presets, light weeks 3/6/9, dates/weekdays right), turns of 42 s and 125 s, Accept → 18 `created_by_ai` plans + the outline in `AiCoachProfile.program`. Follow-ups it showed:
-    - `proposals.check` doesn't warn on a session over `max_weekday_minutes` / `max_weekend_minutes` (two 92–93 min track Tuesdays against 90).
-    - The outline stopped at the week before the race (ends the week of 02-08 for a 02-20 race): check/warn that it reaches the goal date.
-    - The model called 1:20.9 → sub-1:10 in 12 weeks "ambitieux mais cohérent": the prompt should ask it to judge a target's realism from the records and say so.
-    - The intake's goal and race date stay text: offer to create the `Goal`/`Competition` (so the season page and taper follow) on Accept.
+  - [x] Intake end to end on the test account — *checked 11/18 through the API* (Intervals.icu push not part of it: the test account has no connection): 4 questions, `save_profile` complete in one call, 12-week program (3 weeks detailed, 18 sessions mostly presets, light weeks 3/6/9, dates/weekdays right), turns of 42 s and 125 s, Accept → 18 `created_by_ai` plans + the outline in `AiCoachProfile.program`. Follow-ups it showed, all fixed 11/18 (`5c2181d`, `f53059b`; rechecked live: honest 14 % gap + 1:15–1:16 intermediate target, race set, outline to the race, a new program replaces the previous one's 18 upcoming sessions):
+    - [x] `proposals.check` doesn't warn on a session over `max_weekday_minutes` / `max_weekend_minutes` (two 92–93 min track Tuesdays against 90).
+    - [x] The outline stopped at the week before the race (ends the week of 02-08 for a 02-20 race): check/warn that it reaches the goal date.
+    - [x] The model called 1:20.9 → sub-1:10 in 12 weeks "ambitieux mais cohérent": the prompt should ask it to judge a target's realism from the records and say so.
+    - [x] The intake's goal and race date stay text: offer to create the `Goal`/`Competition` (so the season page and taper follow) on Accept.
   - Weekly report and replan from the worker on a real week; tune `MAX_TOOL_ROUNDS`, history length and prompts after reading real transcripts.
   - Follow-ups: streaming replies (SSE) instead of one request per turn; a daily readiness check-in and post-session debriefs were proposed but not chosen for v1.
 
