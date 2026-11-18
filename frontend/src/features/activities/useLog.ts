@@ -4,7 +4,7 @@ import { parseLocalDate } from "../../i18n/format";
 import { sessionsRangeQuery, useSessionsRange } from "../training/useTraining";
 import { addDays, dayBounds } from "./dayRange";
 import { localDay } from "./format";
-import { monthCalendar } from "./logItems";
+import type { CalendarDay } from "./logItems";
 import { logWindows, newestMonth, pageWindow, type DayWindow } from "./logPages";
 import { activitiesRangeQuery, useActivitiesRange } from "./useActivities";
 
@@ -57,9 +57,8 @@ export function useLogList(athleteId: string, enabled: boolean) {
   };
 }
 
-/** The days a month's calendar grid shows, outside days included. */
-export function useLogMonth(athleteId: string, year: number, monthIndex: number, enabled: boolean) {
-  const weeks = monthCalendar(year, monthIndex, []);
+/** The days a calendar grid shows (a month's, outside days included, or one week's). */
+export function useLogDays(athleteId: string, weeks: CalendarDay[][], enabled: boolean) {
   const window = { from: weeks[0][0].day, to: weeks[weeks.length - 1][6].day };
   const queries = windowQueries(athleteId, window, enabled);
   const [sessions, activities] = useQueries({ queries: [queries.sessions, queries.activities] });

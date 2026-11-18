@@ -1,25 +1,27 @@
-import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, CloudDownload, Flag, HeartPulse, Sparkles, Zap } from "lucide-react";
+import { CalendarClock, CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, CloudDownload, Flag, HeartPulse, Sparkles, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Badge, Button, ButtonLink, Card, EmptyState, IconButton, PageHeader, SegmentedControl, SkeletonGroup } from "../components/ui";
 import { filterLogItems, parseTypeFilter, toggleType, typeFilterParam, typeIcon, typeOfLogItem } from "../features/activities/activityTypes";
 import { localDay, mpsToKmh } from "../features/activities/format";
-import { groupItemsByMonth, mergeLog, monthCalendar, type LogItem } from "../features/activities/logItems";
+import { groupItemsByMonth, mergeLog, monthCalendar, parseWeekParam, shiftDay, upcomingThisWeek, weekCalendar, weekStart, type CalendarDay, type LogItem } from "../features/activities/logItems";
 import { TypeBadge, TypeLegend } from "../features/activities/TypeBadge";
 import type { Activity } from "../features/activities/types";
-import { useLogList, useLogMonth } from "../features/activities/useLog";
+import { useLogDays, useLogList } from "../features/activities/useLog";
 import { useAthletePath, useCanEdit } from "../features/athletes/athleteScope";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
 import { PlanDetailDialog } from "../features/plan/PlanDetailDialog";
 import { PlanDialog } from "../features/plan/PlanDialog";
 import { usePlannedSessions } from "../features/plan/usePlan";
 import type { PlannedSession } from "../features/plan/types";
+import { lengthText } from "../features/workouts/profile";
 import { localIsoDate, parseLocalDate } from "../i18n/format";
 import { useFormat } from "../i18n/useFormat";
 import "./LogPage.css";
 
 type View = "list" | "calendar";
+type Span = "month" | "week";
 
 const MONTH_PARAM = /^(\d{4})-(0[1-9]|1[0-2])$/;
 
@@ -44,15 +46,20 @@ export function LogPage() {
   const [params, setParams] = useSearchParams();
   const view: View = params.get("view") === "calendar" ? "calendar" : "list";
 
+  const span: Span = params.get("span") === "week" ? "week" : "month";
+
   const today = new Date();
+  const todayKey = localIsoDate();
   const requested = MONTH_PARAM.exec(params.get("month") ?? "");
   const year = requested ? Number(requested[1]) : today.getFullYear();
   const monthIndex = requested ? Number(requested[2]) - 1 : today.getMonth();
+  const monday = parseWeekParam(params.get("week")) ?? weekStart(todayKey);
+  const gridWeeks: CalendarDay[][] = span === "week" ? weekCalendar(monday, []) : monthCalendar(year, monthIndex, []);
 
   // The list loads a few months at a time; the calendar only the days of its grid.
   const list = useLogList(athleteId, view === "list");
-  const month = useLogMonth(athleteId, year, monthIndex, view === "calendar");
-  const shown = view === "list" ? list : month;
+  const grid = useLogDays(athleteId, gridWeeks, view === "calendar");
+  const shown = view === "list" ? list : grid;
   const shownTypes = parseTypeFilter(params.get("types"));
   const items = filterLogItems(mergeLog(shown.sessions, shown.activities), shownTypes);
   const loading = athlete.isLoading || (view === "list" && list.isLoading);
@@ -72,6 +79,30 @@ export function LogPage() {
     const target = new Date(year, monthIndex + delta, 1);
     update({ month: `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}` });
   }
+
+  function go(delta: number) {
+    if (span === "week") update({ week: shiftDay(monday, 7 * delta) });
+    else goToMonth(delta);
+  }
+
+  /** Switching keeps the period in view: a week opens on the month's first week (this week in the current month), a month on the week's Thursday. */
+  function switchSpan(next: Span) {
+    if (next === "week") {
+      const first = `${year}-${String(monthIndex + 1).padStart(2, "0")}-01`;
+      const inCurrentMonth = year === today.getFullYear() && monthIndex === today.getMonth();
+      update({ span: "week", month: null, week: inCurrentMonth ? null : weekStart(first) });
+    } else {
+      const thursday = shiftDay(monday, 3);
+      update({ span: null, week: null, month: thursday.slice(0, 7) === todayKey.slice(0, 7) ? null : thursday.slice(0, 7) });
+    }
+  }
+
+  const sunday = shiftDay(monday, 6);
+  const periodTitle =
+    span === "week"
+      ? new Intl.DateTimeFormat(fmt.locale, { day: "numeric", month: "short", year: "numeric" }).formatRange(parseLocalDate(monday), parseLocalDate(sunday))
+      : monthFormat.format(new Date(year, monthIndex, 1));
+  const thisWeek = upcomingThisWeek(plans.data ?? [], todayKey);
 
   return (
     <>
@@ -117,6 +148,37 @@ export function LogPage() {
         />
       )}
 
+      {!loading && !failed && view === "list" && thisWeek.length > 0 && (
+        <section className="log__month log__week-plans" aria-labelledby="log-week-plans">
+          <h2 id="log-week-plans" className="log__month-title eyebrow">{t("activities:log.thisWeek")}</h2>
+          <Card padding="flush">
+            <ul className="log__list">
+              {thisWeek.map((plan, index) => (
+                <li key={plan.id}>
+                  <button type="button" className="log__row log__row--plan" onClick={() => setPlanOpen(plan)}>
+                    <DateBlock date={parseLocalDate(plan.planned_date)} />
+                    <span className="log__main">
+                      <span className="log__name">
+                        {plan.created_by_ai && <Sparkles className="log-calendar__chip-ai" aria-label={t("plan:byAi")} />}
+                        {plan.title}
+                      </span>
+                      <span className="log__tracks">
+                        <Badge tone={index === 0 ? "accent" : "neutral"} icon={<CalendarClock aria-hidden />}>
+                          {index === 0 ? t("activities:log.nextPlanned") : t("plan:status.planned")}
+                        </Badge>
+                        {plan.planned_date === todayKey && <Badge tone="highlight">{t("activities:log.today")}</Badge>}
+                      </span>
+                    </span>
+                    {plan.workout_estimate && plan.workout_estimate.duration_s > 0 && <span className="log__laps">{lengthText(plan.workout_estimate.duration_s)}</span>}
+                    <ChevronRight className="log__chevron" aria-hidden />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </section>
+      )}
+
       {items.length > 0 && view === "list" && (
         <div className="log">
           {groupItemsByMonth(items).map((group) => (
@@ -145,20 +207,37 @@ export function LogPage() {
       )}
 
       {!loading && !failed && view === "calendar" && (
-        <section className="log-calendar" aria-label={monthFormat.format(new Date(year, monthIndex, 1))}>
+        <section className={`log-calendar log-calendar--${span}`} aria-label={periodTitle}>
           <div className="log-calendar__nav">
-            <IconButton aria-label={t("activities:log.previousMonth")} onClick={() => goToMonth(-1)}>
+            <IconButton aria-label={t(span === "week" ? "activities:log.previousWeek" : "activities:log.previousMonth")} onClick={() => go(-1)}>
               <ChevronLeft aria-hidden />
             </IconButton>
-            <h2 className="log-calendar__title">{monthFormat.format(new Date(year, monthIndex, 1))}</h2>
-            <IconButton aria-label={t("activities:log.nextMonth")} onClick={() => goToMonth(1)}>
+            <h2 className="log-calendar__title">{periodTitle}</h2>
+            <IconButton aria-label={t(span === "week" ? "activities:log.nextWeek" : "activities:log.nextMonth")} onClick={() => go(1)}>
               <ChevronRight aria-hidden />
             </IconButton>
-            <Button variant="ghost" size="sm" onClick={() => update({ month: null })}>
+            <Button variant="ghost" size="sm" onClick={() => update({ month: null, week: null })}>
               {t("activities:log.today")}
             </Button>
+            <span className="log-calendar__span">
+            <SegmentedControl<Span>
+              size="sm"
+              aria-label={t("activities:log.spanLabel")}
+              value={span}
+              onChange={switchSpan}
+              options={[
+                { value: "week", label: t("activities:log.spans.week") },
+                { value: "month", label: t("activities:log.spans.month") },
+              ]}
+            />
+            </span>
           </div>
-          <Calendar year={year} monthIndex={monthIndex} items={items} plans={plans.data ?? []} onOpenPlan={setPlanOpen} />
+          <Calendar
+            weeks={span === "week" ? weekCalendar(monday, items) : monthCalendar(year, monthIndex, items)}
+            empty={t(span === "week" ? "activities:log.nothingThisWeek" : "activities:log.nothingThisMonth")}
+            plans={plans.data ?? []}
+            onOpenPlan={setPlanOpen}
+          />
         </section>
       )}
     </>
@@ -240,11 +319,10 @@ function DateBlock({ date }: { date: Date }) {
   );
 }
 
-function Calendar({ year, monthIndex, items, plans, onOpenPlan }: { year: number; monthIndex: number; items: LogItem[]; plans: PlannedSession[]; onOpenPlan: (plan: PlannedSession) => void }) {
+function Calendar({ weeks, empty, plans, onOpenPlan }: { weeks: CalendarDay[][]; empty: string; plans: PlannedSession[]; onOpenPlan: (plan: PlannedSession) => void }) {
   const path = useAthletePath();
   const { t } = useTranslation(["activities", "plan"]);
   const fmt = useFormat();
-  const weeks = monthCalendar(year, monthIndex, items);
   const todayKey = localDay(new Date().toISOString());
   // Monday-first weekday names from any Monday.
   const weekdays = Array.from({ length: 7 }, (_, i) =>
@@ -274,7 +352,10 @@ function Calendar({ year, monthIndex, items, plans, onOpenPlan }: { year: number
               .filter(Boolean)
               .join(" ")}
           >
-            <span className="log-calendar__number">{Number(day.day.slice(8))}</span>
+            <span className="log-calendar__number">
+              <span className="log-calendar__inline-weekday">{weekdays[(parseLocalDate(day.day).getDay() + 6) % 7]} </span>
+              {Number(day.day.slice(8))}
+            </span>
             <ul className="log-calendar__items">
               {day.items.map((item) => {
                 const name = item.kind === "session" ? item.session.event_name : (item.activity.name ?? t(`activities:types.${item.activity.activity_type}.short`));
@@ -314,7 +395,7 @@ function Calendar({ year, monthIndex, items, plans, onOpenPlan }: { year: number
           </div>
         ))}
       </div>
-      {!inMonth && <p className="log-calendar__empty ui-card__hint">{t("activities:log.nothingThisMonth")}</p>}
+      {!inMonth && <p className="log-calendar__empty ui-card__hint">{empty}</p>}
     </Card>
   );
 }

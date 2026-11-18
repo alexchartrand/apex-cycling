@@ -306,3 +306,82 @@
 }
 
 .log-calendar__chip-ai { width: 0.9em; height: 0.9em; flex: none; margin-right: 2px; vertical-align: -0.1em; }
+
+/* The list's "still planned this week" rows are buttons (they open the plan). */
+.log__week-plans {
+  margin-bottom: var(--space-6);
+}
+
+.log__row--plan {
+  width: 100%;
+  border: 0;
+  border-left: 3px dashed var(--color-marker);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.log-calendar__nav {
+  flex-wrap: wrap;
+}
+
+.log-calendar__span {
+  margin-left: auto;
+}
+
+.log-calendar__inline-weekday {
+  display: none;
+}
+
+/* A week has room for taller days. */
+.log-calendar--week .log-calendar__day {
+  min-height: 180px;
+}
+
+.log-calendar--week .log-calendar__chip {
+  white-space: normal;
+}
+
+@media (max-width: 640px) {
+  /* Phones: a week reads as a list of days with the names written out, not ticks. */
+  .log-calendar--week .log-calendar__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .log-calendar--week .log-calendar__weekday {
+    display: none;
+  }
+
+  .log-calendar--week .log-calendar__day {
+    min-height: 0;
+    padding: var(--space-2) var(--space-3);
+    border-right: 0;
+  }
+
+  .log-calendar--week .log-calendar__inline-weekday {
+    display: inline;
+    text-transform: capitalize;
+  }
+
+  .log-calendar--week .log-calendar__chip {
+    height: auto;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+  }
+
+  .log-calendar--week .log-calendar__chip--typed {
+    background: color-mix(in srgb, var(--type-color) 14%, var(--color-surface));
+    border-left: 3px solid var(--type-color);
+  }
+
+  .log-calendar--week .log-calendar__chip--plan {
+    border: 1px dashed var(--color-border-strong);
+    border-left: 3px solid var(--color-marker);
+  }
+
+  .log-calendar--week .log-calendar__chip-text,
+  .log-calendar--week .log-calendar__chip-icon {
+    display: inline;
+  }
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SessionSummary } from "../training/types";
-import { groupItemsByMonth, mergeLog, monthCalendar } from "./logItems";
+import { groupItemsByMonth, mergeLog, monthCalendar, parseWeekParam, shiftDay, upcomingThisWeek, weekCalendar, weekStart } from "./logItems";
 import type { Activity } from "./types";
 
 function session(id: string, date: string): SessionSummary {
@@ -70,5 +70,37 @@ describe("monthCalendar", () => {
 
   it("covers a February that fits exactly four weeks", () => {
     expect(monthCalendar(2027, 1, [])).toHaveLength(4); // Feb 2027: Mon 1st – Sun 28th
+  });
+});
+
+describe("weeks", () => {
+  it("finds the Monday and moves by days across months", () => {
+    expect(weekStart("2026-11-18")).toBe("2026-11-16"); // a Wednesday
+    expect(weekStart("2026-11-16")).toBe("2026-11-16");
+    expect(weekStart("2026-11-22")).toBe("2026-11-16"); // Sunday belongs to the week before
+    expect(shiftDay("2026-02-26", 7)).toBe("2026-03-05");
+    expect(shiftDay("2026-03-30", -7)).toBe("2026-03-23"); // across the DST change
+    expect(parseWeekParam("2026-03-04")).toBe("2026-03-02");
+    expect(parseWeekParam("bogus")).toBeNull();
+    expect(parseWeekParam(null)).toBeNull();
+  });
+
+  it("builds one week of days with their items", () => {
+    const items = mergeLog([session("s1", "2026-03-04"), session("s2", "2026-03-10")], []);
+    const [week] = weekCalendar("2026-03-02", items);
+    expect(week.map((d) => d.day)).toEqual(["2026-03-02", "2026-03-03", "2026-03-04", "2026-03-05", "2026-03-06", "2026-03-07", "2026-03-08"]);
+    expect(week[2].items).toHaveLength(1);
+    expect(week.every((d) => d.inMonth)).toBe(true);
+  });
+
+  it("keeps the plans still to ride this week, soonest first", () => {
+    const plans = [
+      { id: "sun", planned_date: "2026-11-22", status: "planned" },
+      { id: "today", planned_date: "2026-11-18", status: "planned" },
+      { id: "yesterday", planned_date: "2026-11-17", status: "planned" },
+      { id: "done", planned_date: "2026-11-19", status: "done" },
+      { id: "next", planned_date: "2026-11-23", status: "planned" },
+    ];
+    expect(upcomingThisWeek(plans, "2026-11-18").map((p) => p.id)).toEqual(["today", "sun"]);
   });
 });

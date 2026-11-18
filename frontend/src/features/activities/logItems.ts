@@ -75,3 +75,48 @@ export function monthCalendar(year: number, monthIndex: number, items: LogItem[]
   } while (cursor.getMonth() === monthIndex);
   return weeks;
 }
+
+const DAY_PARAM = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+
+function dateOf(day: string): Date {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** The Monday (`YYYY-MM-DD`) of the week holding local day `day`. */
+export function weekStart(day: string): string {
+  const date = dateOf(day);
+  date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+  return ymd(date);
+}
+
+/** `day` moved by whole days (local calendar, so DST never shifts it). */
+export function shiftDay(day: string, days: number): string {
+  const date = dateOf(day);
+  date.setDate(date.getDate() + days);
+  return ymd(date);
+}
+
+/** `?week=` (any day of it) → its Monday; null when absent or not a date. */
+export function parseWeekParam(param: string | null): string | null {
+  return param && DAY_PARAM.test(param) ? weekStart(param) : null;
+}
+
+/** One Monday-first week, each day holding that day's log items (every day counts as "in" the period). */
+export function weekCalendar(monday: string, items: LogItem[]): CalendarDay[][] {
+  const byDay = new Map<string, LogItem[]>();
+  for (const item of items) byDay.set(item.day, [...(byDay.get(item.day) ?? []), item]);
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const day = shiftDay(monday, i);
+    return { day, inMonth: true, items: byDay.get(day) ?? [] };
+  });
+  return [week];
+}
+
+/** Plans still to ride this week: `planned`, from `today` to Sunday, soonest first. */
+export function upcomingThisWeek<P extends { planned_date: string; status: string }>(plans: P[], today: string): P[] {
+  const sunday = shiftDay(weekStart(today), 6);
+  return plans
+    .filter((plan) => plan.status === "planned" && plan.planned_date >= today && plan.planned_date <= sunday)
+    .sort((a, b) => (a.planned_date < b.planned_date ? -1 : a.planned_date > b.planned_date ? 1 : 0));
+}

@@ -20,6 +20,17 @@ const activity = (id: string, start: string, activity_type = "cycling") => ({
 const SESSIONS = [session("s3", "2026-05-20"), session("s2", "2026-03-02"), session("s1", "2025-06-10")];
 const ACTIVITIES = [activity("gym", "2026-05-01T12:00:00Z", "strength"), activity("r2", "2026-04-10T12:00:00Z"), activity("r1", "2025-05-05T12:00:00Z")];
 
+const isoDay = (offset: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const plan = (id: string, planned_date: string, status = "planned") => ({
+  id, planned_date, title: `Plan ${id}`, description: null, targets: [], workout: null, workout_estimate: null, workout_gears: [],
+  source_workout_id: null, status, created_by_name: null, session: null, activity: null, can_edit: true, can_mark: true, created_by_ai: false, intervals: null,
+});  // prettier-ignore
+let PLANS: ReturnType<typeof plan>[] = [];
+
 /** A tiny backend honouring the bounds, as the real one does. */
 function respond(url: string): unknown {
   const parsed = new URL(url, "http://test");
@@ -28,6 +39,7 @@ function respond(url: string): unknown {
     const rows = SESSIONS.filter((s) => (!q.get("from") || s.event_date >= q.get("from")!) && (!q.get("to") || s.event_date <= q.get("to")!));
     return q.get("limit") ? rows.slice(0, Number(q.get("limit"))) : rows;
   }
+  if (parsed.pathname.endsWith("/planned-sessions")) return PLANS;
   if (parsed.pathname.endsWith("/activities")) {
     const rows = ACTIVITIES.filter((a) => (!q.get("start") || a.start_time >= q.get("start")!) && (!q.get("end") || a.start_time < q.get("end")!));
     const offset = Number(q.get("offset") ?? 0);
@@ -55,6 +67,7 @@ describe("LogPage", () => {
   });
 
   afterEach(() => {
+    PLANS = [];
     vi.unstubAllGlobals();
     fetchMock.mockReset();
   });
@@ -115,5 +128,38 @@ describe("LogPage", () => {
     await userEvent.click(track);
     expect(await screen.findByText("Session s3")).toBeInTheDocument();
     expect(screen.queryByText("Ride r2")).not.toBeInTheDocument();
+  });
+
+  it("shows one week of the calendar, and switches back to its month", async () => {
+    renderPage("/log?view=calendar&span=week&week=2026-03-04");
+    expect(await screen.findByText("Session s2")).toBeInTheDocument();
+    // Monday 2 to Sunday 8 March 2026.
+    expect(sessionCalls()).toContain("/api/athletes/a1/sessions?from=2026-03-02&to=2026-03-08");
+    expect(screen.getAllByRole("gridcell")).toHaveLength(7);
+
+    await userEvent.click(screen.getByRole("button", { name: "Next week" }));
+    expect(await screen.findByText("Nothing this week.")).toBeInTheDocument();
+    expect(sessionCalls()).toContain("/api/athletes/a1/sessions?from=2026-03-09&to=2026-03-15");
+
+    await userEvent.click(screen.getByRole("radio", { name: "Month" }));
+    expect(await screen.findByRole("heading", { name: /march 2026/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("gridcell")).toHaveLength(42);
+  });
+
+  it("lists what is still planned this week above the log, soonest first", async () => {
+    const monday = (() => {
+      const d = new Date();
+      return -((d.getDay() + 6) % 7);
+    })();
+    PLANS = [plan("later", isoDay(6 + monday)), plan("now", isoDay(0)), plan("past", isoDay(-1)), plan("done", isoDay(0), "done"), plan("next-week", isoDay(7 + monday))];
+    renderPage();
+    expect(await screen.findByText("Plan now")).toBeInTheDocument();
+    const rows = screen.getAllByRole("button", { name: /Plan (now|later)/ });
+    expect(rows[0]).toHaveTextContent("Next up");
+    expect(screen.queryByText("Plan past")).not.toBeInTheDocument();
+    expect(screen.queryByText("Plan done")).not.toBeInTheDocument();
+    expect(screen.queryByText("Plan next-week")).not.toBeInTheDocument();
+    // Sunday's plan is still this week, unless today is Sunday and it was "now".
+    if (6 + monday > 0) expect(screen.getByText("Plan later")).toBeInTheDocument();
   });
 });
