@@ -274,6 +274,21 @@ async def test_over_the_cap_the_model_isnt_called(client, db_session, mistral_on
     assert llm.calls == []
 
 
+async def test_the_brief_says_when_the_athlete_last_trained_strava_left_out(client, db_session, mistral_on):
+    athlete_id = await _ready(client, db_session)
+    async with db_session() as session:
+        athlete = await session.get(Athlete, uuid.UUID(athlete_id))
+        assert (await build_brief(session, athlete, locale="fr"))["last_training"] is None
+        now = datetime.now(timezone.utc)
+        session.add(Activity(athlete_id=athlete.id, source=ActivitySource.UPLOAD, name="Before the break",
+                             start_time=now - timedelta(days=60), elapsed_s=3600))
+        session.add(Activity(athlete_id=athlete.id, source=ActivitySource.STRAVA, name="Strava ride",
+                             start_time=now - timedelta(days=1), elapsed_s=3600))
+        await session.commit()
+        last = (await build_brief(session, athlete, locale="fr"))["last_training"]
+    assert last["name"] == "Before the break" and 59 <= last["days_ago"] <= 61
+
+
 async def test_the_brief_never_contains_strava_data(client, db_session, mistral_on):
     athlete_id = await _ready(client, db_session)
     async with db_session() as session:

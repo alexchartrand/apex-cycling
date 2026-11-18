@@ -23,7 +23,8 @@
     - [x] The outline stopped at the week before the race (ends the week of 02-08 for a 02-20 race): check/warn that it reaches the goal date.
     - [x] The model called 1:20.9 → sub-1:10 in 12 weeks "ambitieux mais cohérent": the prompt should ask it to judge a target's realism from the records and say so.
     - [x] The intake's goal and race date stay text: offer to create the `Goal`/`Competition` (so the season page and taper follow) on Accept.
-  - Weekly report and replan from the worker on a real week; tune `MAX_TOOL_ROUNDS`, history length and prompts after reading real transcripts.
+  - [x] Weekly report from the worker — *checked 11/18* (test athlete's approval moved back to 11/01 so the 11/09–11/15 report was due): written at the next 15-min round, 7 calls, 1½ min, ~$0.04, `ai_report` notification delivered (bell only in dev, no SMTP/VAPID). Honest about an empty week, focus tied to the accepted program and the race. It said "7 days" without training when it had been 63: the brief now carries `last_training` and the prompt asks for a gradual return after a break.
+  - [ ] Replan from the worker on missed sessions — after 11/23–24 pass on the test account (18 AI plans from 11/23 are on its calendar), check the worker's replan proposal; then tune `MAX_TOOL_ROUNDS`, history length and prompts from the transcripts.
   - Follow-ups: streaming replies (SSE) instead of one request per turn; a daily readiness check-in and post-session debriefs were proposed but not chosen for v1.
 
 - [ ] 🟡 Sprint W checks on real devices and accounts — *added 11/11; all but W8 done 11/18*

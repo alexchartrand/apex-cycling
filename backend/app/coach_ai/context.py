@@ -174,6 +174,37 @@ async def recent_training(db: AsyncSession, athlete: Athlete, start: date, end: 
     return [entry for _, entry in sorted(items, key=lambda pair: pair[0])]
 
 
+async def last_training(db: AsyncSession, athlete: Athlete, today: date) -> dict | None:
+    """The latest ride or track session up to today, however old (recent_training
+    only covers 21 days, so a long break would look like a quiet week)."""
+    zone = await athlete_timezone(db, athlete)
+    until = datetime.combine(today + timedelta(days=2), datetime.min.time(), tzinfo=timezone.utc)
+    candidates: list[tuple[date, str, str | None]] = []
+    activities = await db.scalars(
+        select(Activity)
+        .where(*visible_conditions(athlete, ai_viewer()), Activity.start_time < until)
+        .order_by(Activity.start_time.desc())
+        .limit(3)  # the time-zone cut below may drop the newest
+    )
+    for activity in activities:
+        day = local_day(activity.start_time, zone)
+        if day <= today:
+            candidates.append((day, activity.activity_type, activity.name))
+            break
+    event = await db.scalar(
+        select(TrainingEvent)
+        .where(TrainingEvent.athlete_id == athlete.id, TrainingEvent.event_date <= today)
+        .order_by(TrainingEvent.event_date.desc())
+        .limit(1)
+    )
+    if event is not None:
+        candidates.append((event.event_date, "track", event.title_override or event.name))
+    if not candidates:
+        return None
+    day, kind, name = max(candidates, key=lambda c: c[0])
+    return {"date": day.isoformat(), "days_ago": (today - day).days, "type": kind, "name": name}
+
+
 async def load_summary(db: AsyncSession, athlete: Athlete, today: date, *, weeks: int = 8) -> dict:
     load = await training_load(db, athlete, ai_viewer(), through=today, days=weeks * 7)
     per_week: dict[date, float] = {}
@@ -280,6 +311,7 @@ async def build_brief(db: AsyncSession, athlete: Athlete, *, locale: str) -> dic
         "goals": goals,
         "competitions": competitions,
         "plans": await plan_lines(db, athlete, today - timedelta(days=14), today + timedelta(days=28)),
+        "last_training": await last_training(db, athlete, today),
         "recent_training": await recent_training(db, athlete, today - timedelta(days=21), today),
         "gears": [g.label for g in await _gears(db, athlete.id)],
     }
