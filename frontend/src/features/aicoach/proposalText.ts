@@ -1,7 +1,10 @@
+const WARNING_KEYS = ["not_available_day", "over_hours", "too_long", "outline_short"] as const;
+export type WarningKey = (typeof WARNING_KEYS)[number] | "other";
+
 /** "over_hours:2026-11-16" → "over_hours"; the translation keys of the proposal warnings. */
-export function warningKey(warning: string): "not_available_day" | "over_hours" | "other" {
+export function warningKey(warning: string): WarningKey {
   const key = warning.split(":")[0];
-  return key === "not_available_day" || key === "over_hours" ? key : "other";
+  return (WARNING_KEYS as readonly string[]).includes(key) ? (key as WarningKey) : "other";
 }
 
 /** ISO weekdays, Monday first. */

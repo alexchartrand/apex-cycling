@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.coach_ai.models import ConversationKind, ProposalKind, ProposalStatus, ReportKind
 from app.planning.models import PlanStatus
+from app.training.distances import STANDARD_EVENTS_BY_KEY
+from app.training.efforts import StartType
 from app.workouts.schemas import WorkoutEstimate, WorkoutItem, check_steps
 
 
@@ -141,10 +143,40 @@ class OutlineWeek(BaseModel):
     notes: str | None = Field(default=None, max_length=500)
 
 
+class ProposalRace(BaseModel):
+    """The race a program aims at. On Accept it goes on the season calendar
+    (a `Competition`, so the taper countdown follows) and, with an event, a
+    start and a time, becomes a `Goal` tied to it."""
+
+    name: str = Field(min_length=1, max_length=120)
+    date: Day
+    priority: Literal["A", "B", "C"] = "A"
+    location: str | None = Field(default=None, max_length=120)
+    event_key: str | None = None
+    start_type: StartType | None = None
+    target_time_ms: int | None = Field(default=None, gt=0, le=7_200_000)
+
+    @model_validator(mode="after")
+    def _event(self) -> "ProposalRace":
+        if self.event_key is None:
+            return self
+        event = STANDARD_EVENTS_BY_KEY.get(self.event_key)
+        if event is None:
+            raise ValueError(f"Unknown event {self.event_key!r}")
+        if self.start_type is not None and self.start_type not in event.start_types:
+            raise ValueError(f"{self.event_key} has no {self.start_type.value} start")
+        return self
+
+    @property
+    def makes_goal(self) -> bool:
+        return self.event_key is not None and self.start_type is not None and self.target_time_ms is not None
+
+
 class ProposalPayload(BaseModel):
     ops: list[ProposalOp] = Field(default_factory=list, max_length=80)
     # A new program: its goal and the outline of the weeks after the detailed ones.
     goal: str | None = Field(default=None, max_length=500)
+    race: ProposalRace | None = None
     outline: list[OutlineWeek] = Field(default_factory=list, max_length=30)
 
     @model_validator(mode="after")
@@ -192,6 +224,7 @@ class ProposalRead(BaseModel):
     status: ProposalStatus
     summary: str
     goal: str | None
+    race: ProposalRace | None = None
     created_at: datetime
     expires_at: datetime
     decided_at: datetime | None

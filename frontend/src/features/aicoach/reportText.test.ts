@@ -13,6 +13,8 @@ describe("proposal text", () => {
   it("maps warnings to their keys", () => {
     expect(warningKey("over_hours:2026-11-16")).toBe("over_hours");
     expect(warningKey("not_available_day")).toBe("not_available_day");
+    expect(warningKey("too_long")).toBe("too_long");
+    expect(warningKey("outline_short:2027-02-20")).toBe("outline_short");
     expect(warningKey("something")).toBe("other");
   });
 

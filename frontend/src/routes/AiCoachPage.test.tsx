@@ -24,6 +24,7 @@ const proposal: Proposal = {
   status: "pending",
   summary: "Move **Thursday** to Friday.",
   goal: null,
+  race: { name: "Provincials", date: "2027-02-20", priority: "A", event_key: "1km", start_type: "standing", target_time_ms: 69_000 },
   created_at: "2026-11-12T10:00:00Z",
   expires_at: "2026-11-19T10:00:00Z",
   decided_at: null,
@@ -46,7 +47,7 @@ const proposal: Proposal = {
   weeks: [{ week_start: "2026-11-09", sessions: 3, duration_s: 10_800, tss: 180 }],
   outline: [],
   errors: [],
-  warnings: [],
+  warnings: ["outline_short:2027-02-20"],
   can_decide: true,
 };
 
@@ -137,6 +138,8 @@ describe("AI coach page", () => {
     const card = await screen.findByRole("article", { name: "Proposed changes" });
     expect(within(card).getByText("Thursday")).toBeInTheDocument(); // bold from Markdown, as an element
     expect(within(card).getByText("Not one of your training days")).toBeInTheDocument();
+    expect(within(card).getByText(/Provincials/)).toHaveTextContent("target 1:09");
+    expect(within(card).getByText("The program stops before your race")).toBeInTheDocument();
     expect(within(card).getByText("Waiting for you")).toBeInTheDocument();
 
     await userEvent.click(within(card).getByRole("button", { name: "Accept" }));

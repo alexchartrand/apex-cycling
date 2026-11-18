@@ -31,6 +31,7 @@ from app.core.config import get_settings
 from app.main import app
 from app.notifications.models import Notification
 from app.planning.models import PlannedSession
+from app.seasons.models import Competition
 from app.workouts.models import Workout
 from tests.test_account import _other_client, _rows_referencing, _signup
 
@@ -349,6 +350,79 @@ async def test_intake_saves_answers_proposes_a_plan_and_accepting_writes_the_cal
         assert [(w.name, w.tags, w.created_by_ai) for w in library] == [("Endurance", ["ai"], True)]
     assert (await client.get(f"{base}/profile")).json()["program"]["goal"] == "Sub 1:10 kilo"
     assert (await client.post(f"{base}/proposals/{proposal['id']}/accept")).status_code == 409
+
+
+def _next(isoweekday: int, after_days: int = 1) -> date:
+    day = date.today() + timedelta(days=after_days)
+    while day.isoweekday() != isoweekday:
+        day += timedelta(days=1)
+    return day
+
+
+async def test_warnings_go_back_to_the_model_and_the_race_lands_on_the_season(client, db_session, mistral_on, llm):
+    athlete_id = await _ready(client, db_session)
+    base = f"/athletes/{athlete_id}/ai-coach"
+    await client.put(f"{base}/profile", json={"answers": {"max_weekday_minutes": 60, "max_weekend_minutes": 120}})
+    race_day = _next(6, after_days=60)  # a Saturday about two months out
+    tuesday = _next(2)
+    # The athlete already put that race in their season: Accept reuses it.
+    made = await client.post(f"/athletes/{athlete_id}/competitions", json={"name": "Provinciaux", "competition_date": race_day.isoformat()})
+    assert made.status_code == 201, made.text
+    race = {"name": "Championnats", "date": race_day.isoformat(), "priority": "A",
+            "event_key": "1km", "start_type": "standing", "target_time_ms": 69_000}
+    short_outline = [{"week_start": (tuesday - timedelta(days=1) + timedelta(weeks=2)).isoformat(), "focus": "Build"}]
+    full_outline = [
+        {"week_start": (tuesday - timedelta(days=1) + timedelta(weeks=w)).isoformat(), "focus": "Build"}
+        for w in range(1, (race_day - tuesday).days // 7 + 1)
+    ]
+
+    llm.script = [say("Bonjour !")]
+    conversation_id = (await client.post(f"{base}/conversations", json={"kind": "intake"})).json()["conversation_id"]
+    llm.script = [
+        call("propose_changes", {"summary": "v1", "goal": "1 km", "race": race, "outline": short_outline,
+                                 "ops": [{"op": "create", "date": tuesday.isoformat(), "title": "Long", "workout": _workout(90)}]}),
+        call("propose_changes", {"summary": "v2", "goal": "1 km", "race": race, "outline": full_outline,
+                                 "ops": [{"op": "create", "date": tuesday.isoformat(), "title": "Short", "workout": _workout(60)}]}, "c2"),
+        say("Voici le programme."),
+    ]
+    turn = await client.post(f"{base}/conversations/{conversation_id}/messages", json={"content": "Go"})
+    assert turn.status_code == 200, turn.text
+    first = json.loads(llm.calls[2]["messages"][-1]["content"])
+    assert first["ok"] and any(w.endswith(": too_long") for w in first["warnings"])
+    assert f"outline_short:{race_day.isoformat()}" in first["warnings"]
+    second = json.loads(llm.calls[3]["messages"][-1]["content"])
+    assert second["ok"] and "warnings" not in second
+    # The fixed proposal replaced the first one, which gets no card.
+    cards = [m["proposal"]["summary"] for m in turn.json()["messages"] if m.get("proposal")]
+    assert cards == ["v2"]
+    statuses = {p["summary"]: p["status"] for p in (await client.get(f"{base}/proposals")).json()}
+    assert statuses == {"v1": "superseded", "v2": "pending"}
+
+    proposal = turn.json()["messages"][-1]["proposal"]
+    assert proposal["race"]["event_key"] == "1km"
+    accepted = await client.post(f"{base}/proposals/{proposal['id']}/accept")
+    assert accepted.status_code == 200, accepted.text
+    competitions = (await client.get(f"/athletes/{athlete_id}/competitions")).json()
+    assert [c["name"] for c in competitions] == ["Provinciaux"]
+    goals = (await client.get(f"/athletes/{athlete_id}/goals")).json()
+    assert [(g["event_key"], g["start_type"], g["target_time_ms"], g["target_date"]) for g in goals] == [
+        ("1km", "standing", 69_000, race_day.isoformat())
+    ]
+    async with db_session() as session:
+        competition = (await session.scalars(select(Competition))).one()
+        assert str(competition.goal_id) == goals[0]["id"]
+
+
+async def test_a_race_in_the_past_is_an_error(client, db_session, mistral_on, llm):
+    athlete_id = await _ready(client, db_session)
+    llm.script = [
+        call("propose_changes", {"summary": "x", "race": {"name": "Old", "date": "2020-01-01"},
+                                 "ops": [{"op": "create", "date": _future(1), "title": "E", "workout": _workout(30)}]}),
+        say("Oups."),
+    ]
+    await client.post(f"/athletes/{athlete_id}/ai-coach/conversations", json={"content": "Plan"})
+    told = json.loads(llm.calls[1]["messages"][-1]["content"])
+    assert told["ok"] is False and any(e.startswith("race:") for e in told["errors"])
 
 
 async def test_chat_changes_never_touch_the_coachs_plans(client, db_session, mistral_on, llm):

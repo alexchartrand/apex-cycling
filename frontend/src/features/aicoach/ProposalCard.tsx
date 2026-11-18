@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { errorMessage } from "../../api/errors";
 import { Badge, Button, type BadgeTone } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
+import { formatRecordTime } from "../records/timeInput";
+import type { StandardEventKey } from "../records/types";
 import { IntensityChart } from "../workouts/IntensityChart";
 import { clockText } from "../workouts/profile";
 import { Markdown } from "./Markdown";
@@ -74,6 +76,7 @@ function ItemRow({ item, expanded }: { item: ProposalItem; expanded: boolean }) 
 /** A set of calendar changes the AI coach proposes; nothing changes until the athlete accepts. */
 export function ProposalCard({ athleteId, proposal, compact = false }: { athleteId: string; proposal: Proposal; compact?: boolean }) {
   const { t } = useTranslation("aicoach");
+  const { t: tr } = useTranslation("records");
   const fmt = useFormat();
   const decide = useDecideProposal(athleteId);
   const [expanded, setExpanded] = useState(false);
@@ -81,6 +84,8 @@ export function ProposalCard({ athleteId, proposal, compact = false }: { athlete
   const items = showAll ? proposal.items : proposal.items.slice(0, 4);
   const pending = proposal.status === "pending";
   const overHours = proposal.warnings.filter((w) => w.startsWith("over_hours:")).map((w) => w.slice("over_hours:".length));
+  const shortOutline = proposal.warnings.some((w) => warningKey(w) === "outline_short");
+  const race = proposal.race;
 
   return (
     <article className="ai-proposal" aria-label={t("proposal.label")}>
@@ -94,6 +99,24 @@ export function ProposalCard({ athleteId, proposal, compact = false }: { athlete
         <p className="ai-proposal__goal">
           <strong>{t("proposal.goal")}</strong> {proposal.goal}
         </p>
+      )}
+      {race && (
+        <p className="ai-proposal__goal">
+          <strong>{t("proposal.race")}</strong> {race.name} · {fmt.date(race.date, "long")} · {t("proposal.racePriority", { priority: race.priority })}
+          {race.event_key && race.start_type && race.target_time_ms != null && (
+            <>
+              {" "}
+              · {tr(`events.${race.event_key as StandardEventKey}`)} {tr(`startTypes.${race.start_type}`)},{" "}
+              {t("proposal.raceGoal", { time: formatRecordTime(race.target_time_ms, fmt) })}
+            </>
+          )}
+          {pending && <span className="ai-muted"> — {t("proposal.raceNote")}</span>}
+        </p>
+      )}
+      {shortOutline && (
+        <Badge tone="marker">
+          <TriangleAlert aria-hidden className="ai-inline-icon" /> {t("proposal.warnings.outline_short")}
+        </Badge>
       )}
 
       {proposal.weeks.length > 0 && (

@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.activities.fusion_service import add_activity_metrics_to_efforts
 from app.athletes.models import Athlete
 from app.coach_ai import context
-from app.coach_ai.models import AiCoachProfile, AiProposal, ProposalKind
+from app.coach_ai.models import AiCoachProfile, AiProposal, ProposalKind, ProposalStatus
 from app.coach_ai.proposals import athlete_user, create_proposal
 from app.coach_ai.schemas import PROFILE_FIELDS, CoachProfile
 from app.db.base import utcnow
@@ -105,13 +105,17 @@ PROPOSE_TOOL = _fn(
     '{"op":"create","date","title","description"?, and either "workout_id" (library/preset) or "workout":'
     '{"name","description"?,"steps":[…],"save_to_library"?}} | {"op":"update","plan_id", any of date/title/'
     'description/workout_id/workout} | {"op":"skip","plan_id","reason"?} | {"op":"delete","plan_id","reason"?}. '
-    "For a new program also give goal and outline (weeks not yet detailed: "
+    "For a new program also give goal, race and outline (weeks not yet detailed, up to and including the race week: "
     '[{"week_start":"YYYY-MM-DD (a Monday)","focus","hours"?,"notes"?}]). '
+    'race = {"name","date","priority":"A"|"B"|"C","location"?,"event_key"?,"start_type"?,"target_time_ms"?}: '
+    "on Accept it goes on the athlete's season calendar (taper countdown) and, with event, start and time, "
+    "becomes their goal. Give it when the program aims at a race the brief doesn't list yet. "
     "The answer lists errors to fix (then call again) or the proposal id.",
     {
         "summary": {"type": "string", "description": "What changes and why, 1-4 sentences, athlete's language"},
         "ops": {"type": "array", "items": {"type": "object"}},
         "goal": {"type": "string"},
+        "race": {"type": "object"},
         "outline": {"type": "array", "items": {"type": "object"}},
     },
     ["summary", "ops"],
@@ -252,8 +256,8 @@ async def _save_profile(ctx: ToolContext, args: dict) -> object:
 
 
 async def _propose(ctx: ToolContext, args: dict) -> object:
-    raw = {key: args[key] for key in ("ops", "goal", "outline") if args.get(key) not in (None, "", [])}
-    proposal, _, errors = await create_proposal(
+    raw = {key: args[key] for key in ("ops", "goal", "race", "outline") if args.get(key) not in (None, "", [])}
+    proposal, checked, errors = await create_proposal(
         ctx.db,
         ctx.athlete,
         kind=ctx.proposal_kind,
@@ -263,12 +267,28 @@ async def _propose(ctx: ToolContext, args: dict) -> object:
     )
     if proposal is None:
         return {"ok": False, "errors": errors}
+    # A proposal made earlier in this turn and now replaced gets no card.
+    ctx.proposals = [p for p in ctx.proposals if p.status == ProposalStatus.PENDING.value]
     ctx.proposals.append(proposal)
-    return {
+    answer: dict = {
         "ok": True,
         "proposal_id": str(proposal.id),
         "note": "Shown to the athlete as a card with Accept / Reject. Don't repeat its content in detail.",
     }
+    warnings = list(checked.warnings) + [
+        f"ops[{index}] {item.planned_date} “{item.title}”: {warning}"
+        for index, item in enumerate(checked.items)
+        for warning in item.warnings
+    ]
+    if warnings:
+        answer["warnings"] = warnings
+        answer["warnings_note"] = (
+            "too_long = longer than the athlete's maximum for that day; outline_short = the program stops "
+            "before its race; over_hours = a week over the stated hours; not_available_day = not a training "
+            "day. Fix real problems by calling propose_changes again (the new proposal replaces this one); "
+            "otherwise tell the athlete briefly why."
+        )
+    return answer
 
 
 CUT_OFF = {

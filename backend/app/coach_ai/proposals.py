@@ -33,6 +33,9 @@ from app.coach_ai.schemas import (
     UpdateOp,
 )
 from app.db.base import utcnow
+from app.goals.models import Goal
+from app.seasons.models import Competition
+from app.training.records_service import best_entry, get_records_board
 from app.planning.models import PlannedSession, PlanStatus
 from app.planning.push import plan_changed
 from app.workouts import structure
@@ -46,6 +49,8 @@ PROPOSAL_LIFETIME = timedelta(days=7)
 MAX_DAYS_AHEAD = 26 * 7
 # Over the stated weekly hours by more than this is worth a warning.
 HOURS_SLACK = 1.15
+# Weekdays 1-5 use max_weekday_minutes, 6-7 max_weekend_minutes.
+WEEKEND = (6, 7)
 
 
 def week_start(day: date) -> date:
@@ -181,6 +186,9 @@ async def check(db: AsyncSession, athlete: Athlete, payload: ProposalPayload, *,
 
             steps = resolved.steps if resolved else (_ITEMS.validate_python(plan.workout) if plan and plan.workout else None)
             estimate = structure.estimate(steps, ftp_w=_ftp_on(metric_rows, new_date)) if steps and new_date else None
+            limit = profile.max_weekend_minutes if new_date and new_date.isoweekday() in WEEKEND else profile.max_weekday_minutes
+            if estimate is not None and limit and estimate.duration_s > limit * 60:
+                warnings.append("too_long")
             item = ProposalItem(
                 op=op.op,
                 plan_id=plan.id if plan else None,
@@ -209,8 +217,25 @@ async def check(db: AsyncSession, athlete: Athlete, payload: ProposalPayload, *,
             )
         result.items.append(item)
 
+    if payload.race is not None and payload.race.date < today:
+        result.errors.append(f"race: {payload.race.date} is in the past")
+    _check_reach(result, payload, profile)
     await _weeks(db, athlete, result, profile, metric_rows)
     return result
+
+
+def _check_reach(result: Checked, payload: ProposalPayload, profile: CoachProfile) -> None:
+    """A program (it has a goal or a race) should run up to its race: the
+    detailed sessions and the outline together cover the race week."""
+    if payload.goal is None and payload.race is None:
+        return
+    target = payload.race.date if payload.race else profile.goal_date
+    if target is None:
+        return
+    ends = [item.planned_date for item in result.items if item.planned_date]
+    ends += [week.week_start + timedelta(days=6) for week in payload.outline]
+    if not ends or max(ends) < target:
+        result.warnings.append(f"outline_short:{target.isoformat()}")
 
 
 async def _weeks(db, athlete, result: Checked, profile: CoachProfile, metric_rows) -> None:
@@ -287,13 +312,18 @@ async def create_proposal(
     checked = await check(db, athlete, payload)
     if checked.errors:
         return None, checked, checked.errors
-    if kind is ProposalKind.REPLAN:
-        # One replan proposal at a time: a newer one replaces the older.
+    # One replan proposal at a time, and one per conversation: a newer one
+    # (the model fixing its warnings, or the athlete asking for changes)
+    # replaces the older.
+    same = AiProposal.kind == ProposalKind.REPLAN.value if kind is ProposalKind.REPLAN else None
+    if conversation_id is not None:
+        same = AiProposal.conversation_id == conversation_id if same is None else (same | (AiProposal.conversation_id == conversation_id))
+    if same is not None:
         for older in await db.scalars(
             select(AiProposal).where(
                 AiProposal.athlete_id == athlete.id,
-                AiProposal.kind == ProposalKind.REPLAN.value,
                 AiProposal.status == ProposalStatus.PENDING.value,
+                same,
             )
         ):
             older.status = ProposalStatus.SUPERSEDED.value
@@ -331,6 +361,7 @@ async def read_proposal(db: AsyncSession, athlete: Athlete, proposal: AiProposal
         status=ProposalStatus(proposal.status),
         summary=proposal.summary,
         goal=payload.goal if payload else None,
+        race=payload.race if payload else None,
         created_at=proposal.created_at,
         expires_at=proposal.expires_at,
         decided_at=proposal.decided_at,
@@ -425,6 +456,9 @@ async def accept(db: AsyncSession, athlete: Athlete, proposal: AiProposal) -> li
             await plan_changed(db, plan)
             await db.delete(plan)
 
+    if payload.race is not None:
+        await _add_race(db, athlete, payload)
+
     if payload.outline or payload.goal:
         row = await db.scalar(select(AiCoachProfile).where(AiCoachProfile.athlete_id == athlete.id))
         if row is None:
@@ -463,6 +497,48 @@ async def accept(db: AsyncSession, athlete: Athlete, proposal: AiProposal) -> li
             other.decided_at = utcnow()
     await db.commit()
     return touched
+
+
+async def _add_race(db: AsyncSession, athlete: Athlete, payload: ProposalPayload) -> None:
+    """Puts the program's race on the season calendar, with its goal — unless
+    the athlete already has a race that day or that goal (then they are
+    reused, never duplicated)."""
+    race = payload.race
+    competition = await db.scalar(
+        select(Competition).where(Competition.athlete_id == athlete.id, Competition.competition_date == race.date).limit(1)
+    )
+    if competition is None:
+        competition = Competition(
+            athlete_id=athlete.id,
+            competition_date=race.date,
+            name=race.name.strip(),
+            priority=race.priority,
+            location=race.location,
+        )
+        db.add(competition)
+    if not race.makes_goal or competition.goal_id is not None:
+        return
+    goal = await db.scalar(
+        select(Goal).where(
+            Goal.athlete_id == athlete.id,
+            Goal.event_key == race.event_key,
+            Goal.start_type == race.start_type.value,
+            Goal.target_date == race.date,
+        ).limit(1)
+    )
+    if goal is None:
+        baseline = best_entry(await get_records_board(db, athlete.id), race.event_key, race.start_type, None)
+        goal = Goal(
+            athlete_id=athlete.id,
+            event_key=race.event_key,
+            start_type=race.start_type.value,
+            target_time_ms=race.target_time_ms,
+            target_date=race.date,
+            baseline_ms=baseline.time_ms if baseline else None,
+        )
+        db.add(goal)
+        await db.flush()
+    competition.goal_id = goal.id
 
 
 async def reject(db: AsyncSession, proposal: AiProposal) -> None:

@@ -86,12 +86,24 @@ export interface ProposalWeek {
   tss: number | null;
 }
 
+export interface ProposalRace {
+  name: string;
+  date: string;
+  priority: "A" | "B" | "C";
+  location?: string | null;
+  event_key?: string | null;
+  start_type?: "standing" | "flying" | null;
+  target_time_ms?: number | null;
+}
+
 export interface Proposal {
   id: string;
   kind: "plan" | "adjustment" | "replan";
   status: ProposalStatus;
   summary: string;
   goal: string | null;
+  /** The race the program aims at: put on the season calendar (and made a goal) on Accept. */
+  race?: ProposalRace | null;
   created_at: string;
   expires_at: string;
   decided_at: string | null;
