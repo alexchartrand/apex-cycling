@@ -31,8 +31,8 @@
         },
         "rpe": 3,
         "notes": {
-          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
-          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+          "en": "Easy laps on the blue line, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la ligne bleue, quelques tours plus rapides les 5 dernières minutes."
         }
       },
       {
@@ -147,8 +147,8 @@
         },
         "rpe": 3,
         "notes": {
-          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
-          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+          "en": "Easy laps on the blue line, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la ligne bleue, quelques tours plus rapides les 5 dernières minutes."
         }
       },
       {
@@ -249,8 +249,8 @@
         },
         "rpe": 3,
         "notes": {
-          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
-          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+          "en": "Easy laps on the blue line, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la ligne bleue, quelques tours plus rapides les 5 dernières minutes."
         }
       },
       {
@@ -307,8 +307,8 @@
       "fr": "Allure poursuite 3 × 2 km"
     },
     "description": {
-      "en": "Three 2 km at your 4 km schedule. Set the target time per lap from your pursuit plan.",
-      "fr": "Trois 2 km sur le tableau de marche du 4 km. Fixer le temps au tour selon votre plan de poursuite."
+      "en": "Three 2 km at your 4 km schedule. Duplicate it and set each 2 km's target time from your pursuit plan.",
+      "fr": "Trois 2 km sur le tableau de marche du 4 km. La dupliquer et y fixer le temps visé de chaque 2 km selon votre plan de poursuite."
     },
     "tags": {
       "en": [
@@ -332,8 +332,8 @@
         },
         "rpe": 3,
         "notes": {
-          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
-          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+          "en": "Easy laps on the blue line, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la ligne bleue, quelques tours plus rapides les 5 dernières minutes."
         }
       },
       {
@@ -386,8 +386,8 @@
       "fr": "Tours allure poursuite"
     },
     "description": {
-      "en": "Two sets of six laps on and one lap off at pursuit pace, to groove the lap time.",
-      "fr": "Deux séries de six tours à l'allure de poursuite et un tour facile, pour caler le temps au tour."
+      "en": "Two sets of four laps on and one lap off at pursuit pace, to groove the lap time.",
+      "fr": "Deux séries de quatre tours à l'allure de poursuite et un tour facile, pour caler le temps au tour."
     },
     "tags": {
       "en": [
@@ -411,8 +411,8 @@
         },
         "rpe": 3,
         "notes": {
-          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
-          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+          "en": "Easy laps on the blue line, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la ligne bleue, quelques tours plus rapides les 5 dernières minutes."
         }
       },
       {
@@ -421,7 +421,7 @@
         "steps": [
           {
             "type": "repeat",
-            "count": 6,
+            "count": 4,
             "steps": [
               {
                 "laps": 1,
@@ -500,8 +500,8 @@
         },
         "rpe": 3,
         "notes": {
-          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
-          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+          "en": "Easy laps on the blue line, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la ligne bleue, quelques tours plus rapides les 5 dernières minutes."
         }
       },
       {
@@ -584,8 +584,8 @@
         },
         "rpe": 3,
         "notes": {
-          "en": "Easy laps on the blue band, building to a few faster laps in the last 5 min.",
-          "fr": "Tours faciles sur la côte d'azur, quelques tours plus rapides les 5 dernières minutes."
+          "en": "Easy laps on the blue line, building to a few faster laps in the last 5 min.",
+          "fr": "Tours faciles sur la ligne bleue, quelques tours plus rapides les 5 dernières minutes."
         }
       },
       {
@@ -727,7 +727,7 @@
     },
     "description": {
       "en": "Aerobic base: 90 minutes in zone 2.",
-      "fr": "Fond aérobie : 90 minutes en zone 2."
+      "fr": "Base aérobique : 90 minutes en zone 2."
     },
     "tags": {
       "en": [
@@ -908,12 +908,12 @@
   {
     "key": "threshold-2x20",
     "name": {
-      "en": "Threshold 2 × 20 min",
-      "fr": "Seuil 2 × 20 min"
+      "en": "Threshold 2 × 15 min",
+      "fr": "Seuil 2 × 15 min"
     },
     "description": {
-      "en": "Two 20-minute efforts at FTP.",
-      "fr": "Deux efforts de 20 minutes au seuil (FTP)."
+      "en": "Two 15-minute efforts at FTP.",
+      "fr": "Deux efforts de 15 minutes au seuil (FTP)."
     },
     "tags": {
       "en": [
@@ -1116,7 +1116,8 @@
                 },
                 "power": {
                   "unit": "ftp_pct",
-                  "low": 130
+                  "low": 125,
+                  "high": 135
                 }
               },
               {
@@ -1167,7 +1168,7 @@
     "key": "sprint-openers",
     "name": {
       "en": "Sprint openers",
-      "fr": "Déblocage sprint"
+      "fr": "Activation sprint"
     },
     "description": {
       "en": "Short pre-race activation: three sprints and three short efforts above threshold.",

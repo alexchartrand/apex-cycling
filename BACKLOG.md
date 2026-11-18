@@ -23,7 +23,7 @@
   - Follow-ups: streaming replies (SSE) instead of one request per turn; a daily readiness check-in and post-session debriefs were proposed but not chosen for v1.
 
 - [ ] 🟡 Sprint W checks on real devices and accounts — *added 11/11 (left open when Sprint W closed)*
-  - W2: the user's review of the 16 presets in `app/workouts/presets.json` (efforts, recoveries, French wording).
+  - ~~W2: the user's review of the 16 presets~~ — done 11/18 (blue line / ligne bleue, pursuit lap repeats 2 × 4, threshold renamed 2 × 15, 30/30 on at 125–135 %, French wording).
   - W5: a `.fit` imported on a real Garmin/Wahoo (manufacturer = development, no serial registry; notes shown?), `.zwo` in Zwift, `.erg`/`.mrc` in an ERG app.
   - W6: push against a real Intervals.icu account — cue text and "press lap" on a Garmin, whether the `uid` upsert dedupes, and that deletes now remove the event.
   - W7: the stem strip printed at 5 × 15 cm; the lock-screen card under the iOS/Android clock.
