@@ -84,6 +84,7 @@ export default {
       progress: "Progress",
       power: "Power",
       season: "Season",
+      plans: "Plans",
       ai: "AI coach",
     },
   },

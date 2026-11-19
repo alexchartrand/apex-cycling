@@ -8,6 +8,7 @@ from app.coach_ai.models import ConversationKind, ProposalKind, ProposalStatus, 
 from app.planning.models import PlanStatus
 from app.training.distances import STANDARD_EVENTS_BY_KEY
 from app.training.efforts import StartType
+from app.training_plans.schemas import OutlineWeek, Phase, Sport
 from app.workouts.schemas import WorkoutEstimate, WorkoutItem, check_steps
 
 
@@ -25,11 +26,9 @@ def _blank_is_none(value: str | None) -> str | None:
 class CoachProfile(BaseModel):
     """What the interview learnt about the athlete (all optional: the AI asks
     for what's missing, the athlete can edit it in Settings). Days are ISO
-    weekdays, 1 = Monday."""
+    weekdays, 1 = Monday. A plan's goal, dates and weekly hours are the
+    plan's (`TrainingPlan`), not the athlete's."""
 
-    goal: str | None = Field(default=None, max_length=500)
-    goal_date: date | None = None
-    hours_per_week: float | None = Field(default=None, ge=0.5, le=40)
     available_days: list[int] = Field(default_factory=list, max_length=7)
     track_days: list[int] = Field(default_factory=list, max_length=7)
     max_weekday_minutes: int | None = Field(default=None, ge=15, le=600)
@@ -42,7 +41,7 @@ class CoachProfile(BaseModel):
     power_meter: bool | None = None
     other: str | None = Field(default=None, max_length=1000)
 
-    _clean = field_validator("goal", "experience", "injuries", "gym_details", "other")(_blank_is_none)
+    _clean = field_validator("experience", "injuries", "gym_details", "other")(_blank_is_none)
 
     @field_validator("available_days", "track_days")
     @classmethod
@@ -64,7 +63,6 @@ class CoachSettings(BaseModel):
 class CoachProfileRead(BaseModel):
     answers: CoachProfile
     settings: CoachSettings
-    program: dict | None
 
 
 class CoachProfileWrite(BaseModel):
@@ -103,6 +101,8 @@ class CreateOp(_WithWorkout):
     date: Day
     title: str = Field(min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
+    # The plan it goes in, when not the proposal's own (`ProposalPayload`).
+    training_plan_id: uuid.UUID | None = None
 
     @model_validator(mode="after")
     def _needs_workout(self) -> "CreateOp":
@@ -134,13 +134,18 @@ class DeleteOp(BaseModel):
 ProposalOp = Annotated[CreateOp | UpdateOp | SkipOp | DeleteOp, Field(discriminator="op")]
 
 
-class OutlineWeek(BaseModel):
-    """A week of the program not yet written session by session."""
+class ProposalPlan(BaseModel):
+    """A new training plan the proposal makes. Dates left out are taken from
+    the sessions, the outline and the race."""
 
-    week_start: date
-    focus: str = Field(min_length=1, max_length=200)
-    hours: float | None = Field(default=None, ge=0, le=40)
-    notes: str | None = Field(default=None, max_length=500)
+    name: str = Field(min_length=1, max_length=120)
+    sport: Sport
+    start_date: date | None = None
+    end_date: date | None = None
+    goal_text: str | None = Field(default=None, max_length=500)
+    goal_date: date | None = None
+    hours_per_week: float | None = Field(default=None, ge=0.5, le=40)
+    phases: list[Phase] = Field(default_factory=list, max_length=20)
 
 
 class ProposalRace(BaseModel):
@@ -173,16 +178,23 @@ class ProposalRace(BaseModel):
 
 
 class ProposalPayload(BaseModel):
+    """`plan` makes a new training plan, `training_plan_id` works on an
+    existing one (never both); created sessions go in it. `goal` is the plan's
+    goal text and `outline` the weeks after the detailed ones."""
+
     ops: list[ProposalOp] = Field(default_factory=list, max_length=80)
-    # A new program: its goal and the outline of the weeks after the detailed ones.
+    training_plan_id: uuid.UUID | None = None
+    plan: ProposalPlan | None = None
     goal: str | None = Field(default=None, max_length=500)
     race: ProposalRace | None = None
     outline: list[OutlineWeek] = Field(default_factory=list, max_length=30)
 
     @model_validator(mode="after")
     def _not_empty(self) -> "ProposalPayload":
-        if not self.ops and not self.outline:
+        if not self.ops and not self.outline and self.plan is None:
             raise ValueError("A proposal changes at least one session")
+        if self.plan is not None and self.training_plan_id is not None:
+            raise ValueError("Give either plan (a new one) or training_plan_id, not both")
         return self
 
 
@@ -209,8 +221,8 @@ class ProposalItem(BaseModel):
     estimate: WorkoutEstimate | None
     reason: str | None = None
     warnings: list[str] = Field(default_factory=list)
-    # A delete the app adds: an upcoming session of the previous AI program,
-    # replaced by this new one.
+    # A delete the app adds: an upcoming session the AI wrote for this plan
+    # before, replaced by the new program.
     replaced: bool = False
 
 
@@ -228,6 +240,10 @@ class ProposalRead(BaseModel):
     summary: str
     goal: str | None
     race: ProposalRace | None = None
+    # The plan it makes (`plan`) or works on (`training_plan_id` + its name).
+    plan: ProposalPlan | None = None
+    training_plan_id: uuid.UUID | None = None
+    training_plan_name: str | None = None
     created_at: datetime
     expires_at: datetime
     decided_at: datetime | None
@@ -256,6 +272,7 @@ class ConversationSummary(BaseModel):
     id: uuid.UUID
     kind: ConversationKind
     title: str | None
+    training_plan_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime | None
 
@@ -266,6 +283,8 @@ class ConversationRead(ConversationSummary):
 
 class ConversationCreate(BaseModel):
     kind: Literal["chat", "intake"] = "chat"
+    # An intake started from a plan builds that plan.
+    training_plan_id: uuid.UUID | None = None
     # The first message (a chat starts with the athlete's; an intake with the AI's questions).
     content: str | None = Field(default=None, max_length=4000)
 

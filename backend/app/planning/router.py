@@ -28,6 +28,7 @@ _NO_PLAN = HTTPException(status.HTTP_404_NOT_FOUND, "Planned session not found")
 _FORBIDDEN = HTTPException(status.HTTP_403_FORBIDDEN, "You can't change this planned session")
 _NO_GEAR = HTTPException(status.HTTP_404_NOT_FOUND, "Gear not found")
 _NO_WORKOUT = HTTPException(status.HTTP_404_NOT_FOUND, "Workout not found")
+_NO_TRAINING_PLAN = HTTPException(status.HTTP_404_NOT_FOUND, "Training plan not found")
 
 
 @router.get("", response_model=list[PlannedSessionRead])
@@ -35,11 +36,14 @@ async def list_planned_sessions(
     athlete_id: uuid.UUID,
     from_date: date | None = Query(default=None, alias="from"),
     to_date: date | None = Query(default=None, alias="to"),
+    training_plan_id: uuid.UUID | None = None,
     athlete: Athlete = Depends(require_athlete_access),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[PlannedSessionRead]:
-    return await service.list_plans(db, athlete, current_user, start=from_date, end=to_date)
+    return await service.list_plans(
+        db, athlete, current_user, start=from_date, end=to_date, training_plan_id=training_plan_id
+    )
 
 
 @router.post("", response_model=PlannedSessionRead, status_code=status.HTTP_201_CREATED)
@@ -58,6 +62,8 @@ async def create_planned_session(
         raise _NO_GEAR from None
     except service.UnknownWorkout:
         raise _NO_WORKOUT from None
+    except service.UnknownTrainingPlan:
+        raise _NO_TRAINING_PLAN from None
     await push_now(db, background, pusher, athlete.id)
     return created
 
@@ -81,6 +87,8 @@ async def update_planned_session(
         raise _NO_GEAR from None
     except service.UnknownWorkout:
         raise _NO_WORKOUT from None
+    except service.UnknownTrainingPlan:
+        raise _NO_TRAINING_PLAN from None
     if updated is None:
         raise _NO_PLAN
     await push_now(db, background, pusher, athlete.id)

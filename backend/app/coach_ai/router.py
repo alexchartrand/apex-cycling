@@ -70,6 +70,7 @@ from app.core.config import get_settings
 from app.core.rate_limit import limiter
 from app.db.base import utcnow
 from app.db.session import get_db
+from app.training_plans.service import own_plan as own_training_plan
 
 logger = logging.getLogger("coach_ai.router")
 
@@ -173,13 +174,11 @@ async def withdraw_consent(
 
 async def _profile_read(db: AsyncSession, athlete: Athlete) -> CoachProfileRead:
     access = await access_row(db, athlete.id)
-    row = await db.scalar(select(AiCoachProfile).where(AiCoachProfile.athlete_id == athlete.id))
     return CoachProfileRead(
         answers=await proposal_service.profile_answers(db, athlete.id),
         settings=CoachSettings(
             weekly_reports=access.weekly_reports, report_weekday=access.report_weekday, report_hour=access.report_hour
         ),
-        program=row.program if row else None,
     )
 
 
@@ -256,7 +255,7 @@ def _stream_turn(
     athlete_id: uuid.UUID,
     viewer_id: uuid.UUID,
     conversation_id: uuid.UUID | None,
-    new_conversation: tuple[ConversationKind, str | None] | None,
+    new_conversation: tuple[ConversationKind, str | None, uuid.UUID | None] | None,
     user_text: str,
     hidden_user_text: bool = False,
 ) -> StreamingResponse:
@@ -340,6 +339,12 @@ async def create_conversation(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "A chat starts with a message")
     kind = ConversationKind(payload.kind)
     title = service.title_from(content) if kind is ConversationKind.CHAT else _INTAKE_TITLE[locale]
+    if payload.training_plan_id is not None:
+        plan = await own_training_plan(db, athlete.id, payload.training_plan_id)
+        if plan is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Training plan not found")
+        if kind is ConversationKind.INTAKE:
+            title = plan.name[:120]
     if _wants_stream(request):
         athlete_id, viewer_id = athlete.id, current_user.id
         await _checked_for_stream(db, athlete)
@@ -349,11 +354,11 @@ async def create_conversation(
             athlete_id=athlete_id,
             viewer_id=viewer_id,
             conversation_id=None,
-            new_conversation=(kind, title),
+            new_conversation=(kind, title, payload.training_plan_id),
             user_text=content or _INTAKE_KICKOFF[locale],
             hidden_user_text=content is None,
         )
-    conversation = await service.start_conversation(db, athlete, kind, title)
+    conversation = await service.start_conversation(db, athlete, kind, title, payload.training_plan_id)
     conversation_id = conversation.id
     try:
         messages, _ = await service.run_turn(

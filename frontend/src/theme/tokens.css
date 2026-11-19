@@ -109,6 +109,14 @@
   --color-type-indoor_cycling: var(--chart-5);
   --color-type-strength: var(--chart-3);
   --color-type-other: var(--chart-6);
+  /* Training plan phases (`features/trainingPlans/phases.ts`). */
+  --color-phase-base: var(--chart-4);
+  --color-phase-build: var(--chart-2);
+  --color-phase-peak: var(--chart-1);
+  --color-phase-taper: var(--chart-5);
+  --color-phase-race: var(--chart-3);
+  --color-phase-recovery: var(--chart-6);
+  --color-phase-transition: var(--chart-6);
 
   /* Velodrome diagram */
   --track-infield: #D9E2C8;
@@ -179,6 +187,14 @@
   --color-type-indoor_cycling: var(--chart-5);
   --color-type-strength: var(--chart-3);
   --color-type-other: var(--chart-6);
+  /* Training plan phases (`features/trainingPlans/phases.ts`). */
+  --color-phase-base: var(--chart-4);
+  --color-phase-build: var(--chart-2);
+  --color-phase-peak: var(--chart-1);
+  --color-phase-taper: var(--chart-5);
+  --color-phase-race: var(--chart-3);
+  --color-phase-recovery: var(--chart-6);
+  --color-phase-transition: var(--chart-6);
 
   --track-infield: #14213A;
   --track-surface: #5A4632;

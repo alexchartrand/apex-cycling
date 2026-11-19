@@ -90,8 +90,8 @@ READ_TOOLS = [
 
 PROFILE_TOOL = _fn(
     "save_profile",
-    "Store what the athlete told you about themself (only the fields you learnt). Fields: "
-    "goal (text), goal_date (YYYY-MM-DD), hours_per_week (number), available_days and track_days "
+    "Store what the athlete told you about themself (only the fields you learnt). A plan's goal, dates and "
+    "weekly hours are not stored here: they go in propose_changes' plan. Fields: available_days and track_days "
     "(ISO weekdays 1=Mon…7=Sun), max_weekday_minutes, max_weekend_minutes, experience (text), "
     "injuries (text, 'none' if none), gym (bool), gym_details (equipment, experience), indoor_trainer (bool), "
     "power_meter (bool), other (text).",
@@ -105,6 +105,12 @@ PROPOSE_TOOL = _fn(
     '{"op":"create","date","title","description"?, and either "workout_id" (library/preset) or "workout":'
     '{"name","description"?,"steps":[…],"save_to_library"?}} | {"op":"update","plan_id", any of date/title/'
     'description/workout_id/workout} | {"op":"skip","plan_id","reason"?} | {"op":"delete","plan_id","reason"?}. '
+    "Every session belongs to a training plan. For a new plan give plan = "
+    '{"name","sport":"cycling"|"track_cycling","start_date"?,"end_date"?,"goal_text"?,"goal_date"?,'
+    '"hours_per_week"?,"phases"?:[{"kind":"base"|"build"|"peak"|"taper"|"race"|"recovery"|"transition",'
+    '"start","end","focus"?,"hours"?}]}; to work on an existing plan give training_plan_id instead '
+    "(the brief's training_plans; a plan with by=coach can't be changed). A create op may name another plan "
+    "with its own training_plan_id. "
     "For a new program also give goal, race and outline (weeks not yet detailed, up to and including the race week: "
     '[{"week_start":"YYYY-MM-DD (a Monday)","focus","hours"?,"notes"?}]). '
     'race = {"name","date","priority":"A"|"B"|"C","location"?,"event_key"?,"start_type"?,"target_time_ms"?}: '
@@ -114,6 +120,8 @@ PROPOSE_TOOL = _fn(
     {
         "summary": {"type": "string", "description": "What changes and why, 1-4 sentences, athlete's language"},
         "ops": {"type": "array", "items": {"type": "object"}},
+        "plan": {"type": "object"},
+        "training_plan_id": {"type": "string"},
         "goal": {"type": "string"},
         "race": {"type": "object"},
         "outline": {"type": "array", "items": {"type": "object"}},
@@ -128,6 +136,8 @@ class ToolContext:
     athlete: Athlete
     conversation_id: uuid.UUID
     proposal_kind: ProposalKind
+    # The plan the conversation is about: proposals work on it unless they say otherwise.
+    training_plan_id: uuid.UUID | None = None
     allow_profile: bool = True
     allow_proposals: bool = True
     proposals: list[AiProposal] = field(default_factory=list)
@@ -256,7 +266,13 @@ async def _save_profile(ctx: ToolContext, args: dict) -> object:
 
 
 async def _propose(ctx: ToolContext, args: dict) -> object:
-    raw = {key: args[key] for key in ("ops", "goal", "race", "outline") if args.get(key) not in (None, "", [])}
+    raw = {
+        key: args[key]
+        for key in ("ops", "plan", "training_plan_id", "goal", "race", "outline")
+        if args.get(key) not in (None, "", [], {})
+    }
+    if ctx.training_plan_id is not None and "plan" not in raw:
+        raw.setdefault("training_plan_id", str(ctx.training_plan_id))
     proposal, checked, errors = await create_proposal(
         ctx.db,
         ctx.athlete,
@@ -282,14 +298,15 @@ async def _propose(ctx: ToolContext, args: dict) -> object:
     ]
     if checked.replaced:
         answer["replaces"] = (
-            f"{len(checked.replaced)} upcoming sessions of the previous AI program (from "
+            f"{len(checked.replaced)} upcoming sessions you wrote for this plan before (from "
             f"{checked.replaced[0].planned_date} on) are removed on Accept; they don't count in the hours."
         )
     if warnings:
         answer["warnings"] = warnings
         answer["warnings_note"] = (
             "too_long = longer than the athlete's maximum for that day; outline_short = the program stops "
-            "before its race; over_hours = a week over the stated hours; not_available_day = not a training "
+            "before its race or goal date; over_hours = a week over the hours of the plans running then; "
+            "not_available_day = not a training "
             "day. Fix real problems by calling propose_changes again (the new proposal replaces this one); "
             "otherwise tell the athlete briefly why."
         )

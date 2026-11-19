@@ -41,6 +41,7 @@ from app.equipment.models import Bike, GearSetup
 from app.goals.models import Goal
 from app.notifications.models import Notification, NotificationPreference, PushSubscription
 from app.planning.models import IntervalsPlanEvent, PlannedSession
+from app.training_plans.models import TrainingPlan
 from app.workouts.models import Workout
 from app.seasons.models import CalendarFeed, Competition, Season
 from app.training.models import (
@@ -197,6 +198,17 @@ async def build_export(db: AsyncSession, user: User) -> bytes:
                 "goals.csv",
                 Goal,
                 list(await db.scalars(select(Goal).where(Goal.athlete_id == athlete.id).order_by(Goal.target_date))),
+            ),
+            (
+                "training_plans.csv",
+                TrainingPlan,
+                list(
+                    await db.scalars(
+                        select(TrainingPlan)
+                        .where(TrainingPlan.athlete_id == athlete.id)
+                        .order_by(TrainingPlan.start_date)
+                    )
+                ),
             ),
             (
                 "planned_sessions.csv",
@@ -359,6 +371,7 @@ async def delete_athlete(db: AsyncSession, athlete: Athlete) -> None:
     # activities (they point at sessions): rows now, original files once the deletion commits.
     await db.execute(delete(IntervalsPlanEvent).where(IntervalsPlanEvent.athlete_id == athlete.id))
     await db.execute(delete(PlannedSession).where(PlannedSession.athlete_id == athlete.id))
+    await db.execute(delete(TrainingPlan).where(TrainingPlan.athlete_id == athlete.id))  # they point at goals and races
     activity_ids = select(Activity.id).where(Activity.athlete_id == athlete.id)
     delete_originals_after_commit(
         db,
@@ -437,6 +450,9 @@ async def delete_account(db: AsyncSession, user: User) -> None:
     )
     await db.execute(
         update(PlannedSession).where(PlannedSession.created_by_user_id == user.id).values(created_by_user_id=None)
+    )
+    await db.execute(
+        update(TrainingPlan).where(TrainingPlan.created_by_user_id == user.id).values(created_by_user_id=None)
     )
     # Athletes keep the plans scheduled from these workouts, minus the pointer back.
     await db.execute(

@@ -87,8 +87,16 @@ def _usage(athlete_id: uuid.UUID, reply: LlmReply, purpose: str) -> AiUsage:
     )
 
 
-async def start_conversation(db: AsyncSession, athlete: Athlete, kind: ConversationKind, title: str | None) -> AiConversation:
-    conversation = AiConversation(athlete_id=athlete.id, kind=kind.value, title=title, updated_at=utcnow())
+async def start_conversation(
+    db: AsyncSession,
+    athlete: Athlete,
+    kind: ConversationKind,
+    title: str | None,
+    training_plan_id: uuid.UUID | None = None,
+) -> AiConversation:
+    conversation = AiConversation(
+        athlete_id=athlete.id, kind=kind.value, title=title, updated_at=utcnow(), training_plan_id=training_plan_id
+    )
     db.add(conversation)
     await db.flush()
     return conversation
@@ -131,12 +139,15 @@ async def run_turn(
         add(role="user", content=user_text, hidden=hidden_user_text)
 
     brief = await context.build_brief(db, athlete, locale=locale)
+    if conversation.training_plan_id is not None:
+        brief["this_conversation_plan_id"] = str(conversation.training_plan_id)
     system = prompts.system_prompt(kind.value, locale=locale, brief_json=context.to_json(brief), extra=extra)
     ctx = ToolContext(
         db=db,
         athlete=athlete,
         conversation_id=conversation.id,
         proposal_kind=_PROPOSAL_KIND[kind],
+        training_plan_id=conversation.training_plan_id,
         allow_profile=kind in (ConversationKind.CHAT, ConversationKind.INTAKE),
     )
     tools = tools_for(ctx)
@@ -241,6 +252,7 @@ def summary(conversation: AiConversation) -> ConversationSummary:
         id=conversation.id,
         kind=ConversationKind(conversation.kind),
         title=conversation.title,
+        training_plan_id=conversation.training_plan_id,
         created_at=conversation.created_at,
         updated_at=conversation.updated_at,
     )

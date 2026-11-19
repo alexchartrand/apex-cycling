@@ -69,9 +69,11 @@ async function streamTurn(path: string, body: unknown, onEvent: (event: TurnEven
   throw new ApiError(ERROR_STATUS[detail] ?? 502, detail);
 }
 
+export type StartPayload = { kind: "chat" | "intake"; content?: string; training_plan_id?: string };
+
 export const startConversation = (
   athleteId: string,
-  payload: { kind: "chat" | "intake"; content?: string },
+  payload: StartPayload,
   onEvent: (event: TurnEvent) => void,
 ) => streamTurn(`${base(athleteId)}/conversations`, payload, onEvent);
 

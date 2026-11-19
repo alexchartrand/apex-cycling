@@ -12,6 +12,9 @@ import { ProtectedRoute } from "./routes/ProtectedRoute";
 // only load where they are used.
 const AiCoachPage = lazy(() => import("./routes/AiCoachPage").then((m) => ({ default: m.AiCoachPage })));
 const CoachAiPanel = lazy(() => import("./features/aicoach/CoachAiPanel").then((m) => ({ default: m.CoachAiPanel })));
+const TrainingPlansPage = lazy(() => import("./routes/TrainingPlansPage").then((m) => ({ default: m.TrainingPlansPage })));
+const TrainingPlanPage = lazy(() => import("./routes/TrainingPlanPage").then((m) => ({ default: m.TrainingPlanPage })));
+const TrainingPlanEditPage = lazy(() => import("./routes/TrainingPlanEditPage").then((m) => ({ default: m.TrainingPlanEditPage })));
 const AdminPage = lazy(() => import("./routes/AdminPage").then((m) => ({ default: m.AdminPage })));
 const ClubPage = lazy(() => import("./routes/ClubPage").then((m) => ({ default: m.ClubPage })));
 const ClubsPage = lazy(() => import("./routes/ClubsPage").then((m) => ({ default: m.ClubsPage })));
@@ -80,6 +83,10 @@ export function App() {
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/power" element={<PowerCurvePage />} />
           <Route path="/season" element={<SeasonPage />} />
+          <Route path="/plans" element={<TrainingPlansPage />} />
+          <Route path="/plans/new" element={<TrainingPlanEditPage />} />
+          <Route path="/plans/:planId" element={<TrainingPlanPage />} />
+          <Route path="/plans/:planId/edit" element={<TrainingPlanEditPage key="edit" />} />
           <Route path="/workouts" element={<WorkoutsPage />} />
           <Route path="/workouts/new" element={<WorkoutEditPage />} />
           <Route path="/workouts/:workoutId" element={<WorkoutPage />} />
@@ -100,6 +107,10 @@ export function App() {
             <Route path="progress" element={<ProgressPage />} />
             <Route path="power" element={<PowerCurvePage />} />
             <Route path="season" element={<SeasonPage />} />
+            <Route path="plans" element={<TrainingPlansPage />} />
+            <Route path="plans/new" element={<TrainingPlanEditPage />} />
+            <Route path="plans/:planId" element={<TrainingPlanPage />} />
+            <Route path="plans/:planId/edit" element={<TrainingPlanEditPage key="edit" />} />
             <Route path="ai" element={<CoachAiPanel />} />
           </Route>
           <Route path="/club" element={<ClubsPage />} />

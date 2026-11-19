@@ -21,6 +21,7 @@ from app.goals.models import Goal
 from app.goals.prediction import pick_power, predict_time_s
 from app.goals.schemas import GoalBest, GoalPrediction, GoalRead, GoalUpdate, GoalWrite
 from app.seasons.models import Competition
+from app.training_plans.links import detach_goal
 from app.training.distances import STANDARD_EVENTS_BY_KEY
 from app.training.efforts import StartType
 from app.training.models import Track
@@ -249,6 +250,7 @@ async def delete_goal(db: AsyncSession, athlete_id: uuid.UUID, goal_id: uuid.UUI
         return False
     # A race aiming for this goal just loses the target.
     await db.execute(update(Competition).where(Competition.goal_id == goal_id).values(goal_id=None))
+    await detach_goal(db, goal_id)  # and a plan aiming for it
     await db.delete(goal)
     await db.commit()
     return True

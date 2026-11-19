@@ -51,6 +51,8 @@ export default {
   dialog: {
     addTitle: "Planifier une séance",
     editTitle: "Modifier la séance planifiée",
+    trainingPlan: "Plan d'entraînement",
+    noTrainingPlan: "Aucun",
     title: "Titre",
     titlePlaceholder: "p. ex. Départs arrêtés",
     titleRequired: "Donnez-lui un titre",

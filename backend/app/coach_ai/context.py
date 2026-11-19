@@ -36,6 +36,10 @@ from app.planning.service import _gears
 from app.seasons.service import list_competitions
 from app.training.models import TrainingEvent
 from app.training.records_service import get_records_board
+from app.training_plans.models import TrainingPlan
+from app.training_plans.phases import current_phase
+from app.training_plans.schemas import Phase
+from app.training_plans.service import author_of, is_locked_for_ai
 from app.workouts import structure
 from app.workouts.schemas import WorkoutItem
 from pydantic import TypeAdapter
@@ -106,6 +110,8 @@ async def plan_lines(
         }
         if is_locked(plan, athlete):
             line["locked"] = True
+        if plan.training_plan_id:
+            line["training_plan_id"] = str(plan.training_plan_id)
         if plan.workout:
             items = _ITEMS.validate_python(plan.workout)
             estimate = structure.estimate(items, ftp_w=_ftp_on(rows, plan.planned_date))
@@ -252,6 +258,42 @@ async def records_summary(db: AsyncSession, athlete: Athlete) -> list[dict]:
     return [{k: v for k, v in r.items() if k != "ms"} for r in best.values()]
 
 
+async def training_plans_summary(db: AsyncSession, athlete: Athlete, today: date) -> list[dict]:
+    """The plans running now or still to come (finished ones are history)."""
+    out = []
+    for plan in await db.scalars(
+        select(TrainingPlan)
+        .where(TrainingPlan.athlete_id == athlete.id, TrainingPlan.end_date >= today)
+        .order_by(TrainingPlan.start_date)
+    ):
+        phases = [Phase.model_validate(p) for p in plan.phases or []]
+        current = current_phase(phases, today)
+        line: dict = {
+            "training_plan_id": str(plan.id),
+            "name": plan.name,
+            "sport": plan.sport,
+            "start": plan.start_date.isoformat(),
+            "end": plan.end_date.isoformat(),
+            "by": author_of(plan, athlete),
+        }
+        if plan.goal_text:
+            line["goal"] = plan.goal_text
+        if plan.goal_date:
+            line["goal_date"] = plan.goal_date.isoformat()
+        if plan.hours_per_week:
+            line["hours_per_week"] = plan.hours_per_week
+        if phases:
+            line["phases"] = [p.model_dump(mode="json", exclude_none=True) for p in phases]
+        if current is not None:
+            line["current_phase"] = phases[current].kind
+        if plan.weeks:
+            line["outline"] = [w for w in plan.weeks if w.get("week_start", "") >= (today - timedelta(days=6)).isoformat()]
+        if is_locked_for_ai(plan, athlete):
+            line["locked"] = True
+        out.append(line)
+    return out
+
+
 async def build_brief(db: AsyncSession, athlete: Athlete, *, locale: str) -> dict:
     today = await today_of(db, athlete)
     zone = await athlete_timezone(db, athlete)
@@ -304,7 +346,7 @@ async def build_brief(db: AsyncSession, athlete: Athlete, *, locale: str) -> dic
             "resting_hr": metrics["resting_hr"].value if metrics["resting_hr"] else None,
         },
         "intake": profile_row.answers if profile_row else {},
-        "program": profile_row.program if profile_row else None,
+        "training_plans": await training_plans_summary(db, athlete, today),
         "load": await load_summary(db, athlete, today),
         "power": await power_summary(db, athlete),
         "records": await records_summary(db, athlete),

@@ -34,6 +34,8 @@ const plan = (over: Partial<PlannedSession> = {}): PlannedSession => ({
   can_edit: false,
   can_mark: true,
   created_by_ai: false,
+  training_plan_id: null,
+  training_plan_name: null,
   intervals: null,
   ...over,
 });

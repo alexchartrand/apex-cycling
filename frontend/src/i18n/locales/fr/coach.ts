@@ -87,6 +87,7 @@ export default {
       progress: "Progression",
       power: "Puissance",
       season: "Saison",
+      plans: "Plans",
       ai: "Coach IA",
     },
   },

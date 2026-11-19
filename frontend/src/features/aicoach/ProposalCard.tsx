@@ -3,6 +3,7 @@ import { ArrowRight, CalendarMinus, CalendarPlus, CalendarX, Pencil, Sparkles, T
 import { useTranslation } from "react-i18next";
 import { errorMessage } from "../../api/errors";
 import { Badge, Button, type BadgeTone } from "../../components/ui";
+import { TypeBadge } from "../activities/TypeBadge";
 import { useFormat } from "../../i18n/useFormat";
 import { formatRecordTime } from "../records/timeInput";
 import type { StandardEventKey } from "../records/types";
@@ -98,6 +99,18 @@ export function ProposalCard({ athleteId, proposal, compact = false }: { athlete
         <span className="ai-proposal__kind">{t(`proposal.kind.${proposal.kind}`)}</span>
         <Badge tone={STATUS_TONE[proposal.status]}>{t(`proposal.status.${proposal.status}`)}</Badge>
       </header>
+      {(proposal.plan || proposal.training_plan_name) && (
+        <p className="ai-proposal__goal">
+          <strong>{proposal.plan ? t("proposal.newPlan") : t("proposal.forPlan")}</strong>{" "}
+          {proposal.plan ? proposal.plan.name : proposal.training_plan_name}
+          {proposal.plan && (
+            <>
+              {" "}
+              <TypeBadge type={proposal.plan.sport} short />
+            </>
+          )}
+        </p>
+      )}
       <Markdown text={proposal.summary} />
       {proposal.goal && (
         <p className="ai-proposal__goal">

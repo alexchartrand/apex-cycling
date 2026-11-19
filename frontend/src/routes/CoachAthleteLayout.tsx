@@ -9,7 +9,7 @@ import { useCoachAthleteSummary } from "../features/coaching/useCoaching";
 import { useAiAccess } from "../features/aicoach/useAiCoach";
 import "../features/coaching/Coaching.css";
 
-const SECTIONS = ["summary", "log", "records", "progress", "power", "season", "ai"] as const;
+const SECTIONS = ["summary", "log", "records", "progress", "power", "season", "plans", "ai"] as const;
 type Section = (typeof SECTIONS)[number];
 
 /** Which tab a page under the athlete belongs to: a session or a recording is part of the log. */

@@ -77,10 +77,16 @@ export function ChatPanel({
   athleteId,
   conversationId,
   onOpen,
+  build = null,
+  onBuildStarted,
 }: {
   athleteId: string;
   conversationId: string | null;
   onOpen: (id: string | null) => void;
+  /** Start building a plan on arrival: "new", or the id of the training plan to fill. */
+  build?: string | null;
+  /** Called as the `build` intake starts, so the page drops `build` from its URL and a remount can't start it again. */
+  onBuildStarted?: () => void;
 }) {
   const { t } = useTranslation(["aicoach", "common"]);
   const fmt = useFormat();
@@ -128,9 +134,29 @@ export function ChatPanel({
     }
   }
 
-  function buildPlan() {
-    start.mutate({ kind: "intake" }, { onSuccess: (turn) => onOpen(turn.conversation_id) });
+  function buildPlan(trainingPlanId?: string) {
+    start.mutate(
+      { kind: "intake", ...(trainingPlanId ? { training_plan_id: trainingPlanId } : {}) },
+      { onSuccess: (turn) => onOpen(turn.conversation_id) },
+    );
   }
+
+  // Arriving from a plan's "Ask the AI coach" (`?build=`): start once. Not straight from
+  // the effect: StrictMode's unmount/remount of a fresh mount detaches TanStack's mutation
+  // observer from a mutation started in between, so the panel would never see the turn end
+  // (stuck "thinking", composer disabled). The timeout fires after that double run, the ref
+  // covers a re-run, and the page clearing `build` covers a real remount.
+  const built = useRef<string | null>(null);
+  useEffect(() => {
+    if (!build || built.current === build) return;
+    const timer = setTimeout(() => {
+      built.current = build;
+      buildPlan(build === "new" ? undefined : build);
+      onBuildStarted?.();
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per `build` value
+  }, [build]);
 
   return (
     <div className="ai-chat">
@@ -169,7 +195,7 @@ export function ChatPanel({
             description={t("chat.welcomeHint")}
             action={
               <div className="ai-chat__starts">
-                <Button icon={<Target aria-hidden />} onClick={buildPlan}>
+                <Button icon={<Target aria-hidden />} onClick={() => buildPlan()}>
                   {t("chat.buildPlan")}
                 </Button>
                 <div className="ai-chat__suggestions">

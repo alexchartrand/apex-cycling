@@ -48,6 +48,8 @@ export default {
   dialog: {
     addTitle: "Plan a session",
     editTitle: "Edit planned session",
+    trainingPlan: "Training plan",
+    noTrainingPlan: "None",
     title: "Title",
     titlePlaceholder: "e.g. Kilo openers",
     titleRequired: "Give it a title",

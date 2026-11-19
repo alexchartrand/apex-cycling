@@ -81,6 +81,8 @@
 
 ## 🗺️ Deferred to v2+
 
+- **Plan templates** — save a training plan's phases/weekly structure and re-apply it shifted to a new goal date (useful for coaches with several athletes). Proposed with training plans (2026-11-18), not built.
+
 - [ ] 🟢 Training-plan recommendations — *added 7/23*
   - Notes: additive module over existing fact tables.
 
@@ -91,6 +93,8 @@
   - Notes: only if plain-Postgres progression queries get slow.
 
 ## ✅ Done
+
+- **Training plans (2026-11-18)** — `TrainingPlan` per sport with its own goal/date/hours, phases (timeline + suggested periodization), week outline, progress (planned vs done per week); created by the athlete, a coach or the AI coach (intake can target a plan); several at once; delete removes only sessions still to ride. Goal fields left the AI coach "About me" tab; migration 0027 turns the old AI program into a plan. Browser-checked on an isolated stack; the AI flow only with the scripted model.
 - [x] Activity types: cycling / track / indoor / strength / other, guessed from the source (FIT sub-sport, Intervals.icu/Strava type; track while linked to a sqorz session), set by the athlete with the name from the recording header; type colours in the Log list/calendar with a type filter, weekly time/load by type on Progress, power curve/CP/FTP read rides only, gym never auto-links (migration 0026; `python -m app.activities.cli reclassify` refines older FIT uploads) — *added 11/17, done 11/17*
 - [x] Sprint AI — AI coach on Mistral: admin-approved access + consent + monthly token cap, intake interview → program proposal, chat that reads and proposes plan changes (athlete accepts every change; coach plans locked, coach may edit AI plans), weekly reports at the athlete's chosen time, missed-session replan, coach-view tab (migration 0025) — *added 11/12, done 11/12*
 - [x] Sprint W — Workout builder & library: W1 model/CRUD (0020), W2 presets, W3 library + editor, W4 scheduling (0021; plan dialog requires a library workout, shown read-only, since 11/11), W5 .fit/.zwo/.erg/.mrc, W6 Intervals.icu push (0022; pushed at once since 11/11, deletes by event id), W7 workout card PNG, W8 power-step compliance (0023) — *added 10/30, done 11/11*

@@ -62,6 +62,9 @@ export interface PlannedSession {
   can_mark: boolean;
   /** Written by the AI coach (accepted by the athlete from one of its proposals). */
   created_by_ai: boolean;
+  /** The training plan it belongs to. */
+  training_plan_id: string | null;
+  training_plan_name: string | null;
   /** Its copy on the athlete's Intervals.icu calendar, when they push plans there. */
   intervals: "pending" | "sent" | "failed" | null;
 }
@@ -73,6 +76,7 @@ export interface PlannedSessionWrite {
   targets: PlannedEffort[];
   workout: WorkoutItem[] | null;
   source_workout_id: string | null;
+  training_plan_id?: string | null;
 }
 
 export interface PlannedSessionUpdate {
@@ -83,6 +87,8 @@ export interface PlannedSessionUpdate {
   /** Null removes it, and its source with it. */
   workout?: WorkoutItem[] | null;
   source_workout_id?: string | null;
+  /** Null takes it out of its training plan. */
+  training_plan_id?: string | null;
   status?: PlanStatus;
 }
 

@@ -71,6 +71,8 @@ class PlannedSessionWrite(BaseModel):
     targets: list[PlannedEffort] = Field(default_factory=list, max_length=30)
     workout: list[WorkoutItem] | None = Field(default=None, min_length=1, max_length=50)
     source_workout_id: uuid.UUID | None = None
+    # The training plan it belongs to (one of the athlete's).
+    training_plan_id: uuid.UUID | None = None
 
     _clean_description = field_validator("description")(_blank_is_none)
     _check_workout = field_validator("workout")(_check_workout)
@@ -96,6 +98,8 @@ class PlannedSessionUpdate(BaseModel):
     targets: list[PlannedEffort] | None = Field(default=None, max_length=30)
     workout: list[WorkoutItem] | None = Field(default=None, min_length=1, max_length=50)
     source_workout_id: uuid.UUID | None = None
+    # Null takes it out of its training plan.
+    training_plan_id: uuid.UUID | None = None
     status: PlanStatus | None = None
 
     _clean_description = field_validator("description")(_blank_is_none)
@@ -174,6 +178,9 @@ class PlannedSessionRead(BaseModel):
     can_mark: bool
     # Written by the AI coach (accepted by the athlete from one of its proposals).
     created_by_ai: bool = False
+    # The training plan it belongs to.
+    training_plan_id: uuid.UUID | None = None
+    training_plan_name: str | None = None
     # Its copy on the athlete's Intervals.icu calendar, when they push plans
     # there: on its way, there, or the last attempt failed (retried).
     intervals: Literal["pending", "sent", "failed"] | None = None

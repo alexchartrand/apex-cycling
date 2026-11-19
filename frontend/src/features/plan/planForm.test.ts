@@ -31,6 +31,8 @@ const plan = (over: Partial<PlannedSession> = {}): PlannedSession => ({
   can_edit: true,
   can_mark: true,
   created_by_ai: false,
+  training_plan_id: null,
+  training_plan_name: null,
   intervals: null,
   ...over,
 });
@@ -66,7 +68,16 @@ describe("plan form", () => {
       targets: [{ label: "Kilo", reps: 2, event_key: "1km", start_type: "standing", target_time_ms: 70_500, gear_setup_id: "g1" }],
       workout: null,
       source_workout_id: null,
+      training_plan_id: null,
     });
+  });
+
+  it("keeps the session's training plan", () => {
+    const form = planFormFrom(plan({ workout: STEPS, training_plan_id: "tp1" }));
+    expect(form.trainingPlanId).toBe("tp1");
+    expect(planPayload(form)?.training_plan_id).toBe("tp1");
+    expect(planPayload({ ...form, trainingPlanId: "" })?.training_plan_id).toBeNull();
+    expect(emptyPlanForm("2026-11-10", "tp2").trainingPlanId).toBe("tp2");
   });
 
   it("an edit keeps the plan's own copy of the workout and sends it back unchanged", () => {

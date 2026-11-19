@@ -15,6 +15,8 @@ import { WorkoutTotals } from "../workouts/WorkoutTotals";
 import { effortText, emptyPlanForm, planFormErrors, planFormFrom, planPayload, withLibraryWorkout, workoutGearLabels, type PlanForm } from "./planForm";
 import type { PlannedSession } from "./types";
 import { useSavePlan } from "./usePlan";
+import { defaultPlanFor } from "../trainingPlans/phases";
+import { useTrainingPlans } from "../trainingPlans/useTrainingPlans";
 import "../workouts/Workouts.css";
 import "./Plan.css";
 
@@ -34,12 +36,15 @@ export function PlanDialog({
   date,
   plan,
   workout,
+  trainingPlanId,
   onClose,
 }: {
   athleteId: string;
   date: string;
   plan: PlannedSession | null;
   workout?: Workout;
+  /** A new session goes in this training plan (else the only one covering its day). */
+  trainingPlanId?: string;
   onClose: () => void;
 }) {
   const { t } = useTranslation("plan");
@@ -52,11 +57,16 @@ export function PlanDialog({
   const save = useSavePlan(athleteId);
   const library = useWorkouts({});
   const ftp = useEstimateFtp();
+  const trainingPlans = useTrainingPlans(athleteId);
   const [form, setForm] = useState<PlanForm>(() => {
     if (plan) return planFormFrom(plan);
-    const empty = emptyPlanForm(date);
+    const empty = emptyPlanForm(date, trainingPlanId);
     return workout ? withLibraryWorkout(empty, workout) : empty;
   });
+  // Until the person picks one, a new session follows its date into the plan covering it.
+  const [planTouched, setPlanTouched] = useState(plan != null || trainingPlanId != null);
+  const plans = trainingPlans.data ?? [];
+  const shownPlanId = planTouched ? form.trainingPlanId : (defaultPlanFor(plans, form.date) ?? "");
   // What the plan had when the dialog opened stays a choice until another workout replaces it.
   const [kept, setKept] = useState(plan != null && (plan.workout != null || plan.targets.length > 0));
   const [picking, setPicking] = useState(false);
@@ -82,7 +92,7 @@ export function PlanDialog({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const payload = planPayload(form);
+    const payload = planPayload({ ...form, trainingPlanId: shownPlanId });
     if (!payload) {
       setShowErrors(true);
       return;
@@ -176,6 +186,28 @@ export function PlanDialog({
           />
         </div>
         <Textarea label={t("dialog.description")} rows={3} maxLength={5000} value={form.description} onChange={(e) => set("description", e.target.value)} />
+        {(plans.length > 0 || form.trainingPlanId !== "") && (
+          <Select
+            label={t("dialog.trainingPlan")}
+            value={shownPlanId}
+            onChange={(e) => {
+              setPlanTouched(true);
+              set("trainingPlanId", e.target.value);
+            }}
+          >
+            <option value="">{t("dialog.noTrainingPlan")}</option>
+            {plans
+              .filter((p) => p.state !== "finished" || p.id === shownPlanId)
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            {shownPlanId !== "" && !plans.some((p) => p.id === shownPlanId) && plan?.training_plan_name && (
+              <option value={shownPlanId}>{plan.training_plan_name}</option>
+            )}
+          </Select>
+        )}
 
         {form.workout == null && form.legacyTargets.length > 0 && (
           <div className="plan-form__legacy">

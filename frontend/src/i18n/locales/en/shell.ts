@@ -6,6 +6,7 @@ export default {
     progress: "Progress",
     season: "Season",
     workouts: "Workouts",
+    plans: "Plans",
     aiCoach: "AI coach",
     power: "Power",
     tools: "Tools",

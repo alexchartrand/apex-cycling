@@ -24,7 +24,11 @@ export function usePlannedSessions(athleteId: string) {
 
 function useInvalidatePlan(athleteId: string) {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: ["planned-sessions", athleteId] });
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ["planned-sessions", athleteId] });
+    // A plan's progress counts its sessions.
+    queryClient.invalidateQueries({ queryKey: ["training-plans", athleteId] });
+  };
 }
 
 export function useSavePlan(athleteId: string) {

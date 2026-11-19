@@ -13,12 +13,14 @@ export type PlanForm = {
   workout: WorkoutItem[] | null;
   /** The library workout the steps were copied from. */
   sourceWorkoutId: string | null;
+  /** The training plan it belongs to ("" = none). */
+  trainingPlanId: string;
 };
 
 export type PlanFormErrors = { title?: true; date?: true; workout?: true };
 
-export function emptyPlanForm(date: string): PlanForm {
-  return { date, title: "", description: "", legacyTargets: [], workout: null, sourceWorkoutId: null };
+export function emptyPlanForm(date: string, trainingPlanId: string | null = null): PlanForm {
+  return { date, title: "", description: "", legacyTargets: [], workout: null, sourceWorkoutId: null, trainingPlanId: trainingPlanId ?? "" };
 }
 
 export function planFormFrom(plan: PlannedSession): PlanForm {
@@ -29,6 +31,7 @@ export function planFormFrom(plan: PlannedSession): PlanForm {
     legacyTargets: plan.workout ? [] : plan.targets,
     workout: plan.workout,
     sourceWorkoutId: plan.source_workout_id,
+    trainingPlanId: plan.training_plan_id ?? "",
   };
 }
 
@@ -73,6 +76,7 @@ export function planPayload(form: PlanForm): PlannedSessionWrite | null {
     targets: workout ? [] : form.legacyTargets.map(({ gear_label: _label, ...target }) => target),
     workout,
     source_workout_id: workout ? form.sourceWorkoutId : null,
+    training_plan_id: form.trainingPlanId || null,
   };
 }
 

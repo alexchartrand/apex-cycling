@@ -32,6 +32,7 @@ from app.core.config import get_settings
 from app.main import app
 from app.notifications.models import Notification
 from app.planning.models import PlannedSession
+from app.training_plans.models import TrainingPlan
 from app.seasons.models import Competition
 from app.workouts.models import Workout
 from tests.test_account import _other_client, _rows_referencing, _signup
@@ -405,7 +406,7 @@ async def test_intake_saves_answers_proposes_a_plan_and_accepting_writes_the_cal
     conversation_id = started.json()["conversation_id"]
     # The kick-off is hidden: the conversation opens on the coach's questions.
     assert [m["role"] for m in started.json()["messages"]] == ["assistant"]
-    assert "Task: build a training program" in llm.calls[0]["messages"][0]["content"]
+    assert "Task: build a training plan" in llm.calls[0]["messages"][0]["content"]
 
     ops = [
         {"op": "create", "date": _future(1), "title": "Endurance", "workout": {**_workout(60), "save_to_library": True}},
@@ -415,9 +416,10 @@ async def test_intake_saves_answers_proposes_a_plan_and_accepting_writes_the_cal
         }},
     ]
     llm.script = [
-        call("save_profile", {"fields": {"hours_per_week": 6, "available_days": [2, 4, 6], "injuries": "none", "gym": True}}),
+        call("save_profile", {"fields": {"available_days": [2, 4, 6], "injuries": "none", "gym": True}}),
         call("propose_changes", {"summary": "Base block", "ops": [{"op": "create", "date": "2020-01-01", "title": "x", "workout_id": str(uuid.uuid4())}]}, "c2"),
         call("propose_changes", {"summary": "Two base weeks, then build.", "goal": "Sub 1:10 kilo", "ops": ops,
+                                 "plan": {"name": "Kilo", "sport": "track_cycling", "hours_per_week": 6},
                                  "outline": [{"week_start": _future(14), "focus": "Build", "hours": 7}]}, "c3"),
         say("Here is your program. It waits for your OK."),
     ]
@@ -436,7 +438,9 @@ async def test_intake_saves_answers_proposes_a_plan_and_accepting_writes_the_cal
     assert proposal["items"][0]["estimate"]["duration_s"] == 3600
     assert proposal["goal"] == "Sub 1:10 kilo" and proposal["outline"][0]["focus"] == "Build"
     profile = (await client.get(f"{base}/profile")).json()
-    assert profile["answers"]["hours_per_week"] == 6 and profile["answers"]["available_days"] == [2, 4, 6]
+    assert profile["answers"]["available_days"] == [2, 4, 6] and "hours_per_week" not in profile["answers"]
+    assert proposal["plan"]["name"] == "Kilo"
+    assert (await client.get(f"/athletes/{athlete_id}/training-plans")).json() == []
     # Nothing on the calendar yet.
     assert (await client.get(f"/athletes/{athlete_id}/planned-sessions")).json() == []
 
@@ -449,7 +453,16 @@ async def test_intake_saves_answers_proposes_a_plan_and_accepting_writes_the_cal
     async with db_session() as session:
         library = (await session.scalars(select(Workout))).all()
         assert [(w.name, w.tags, w.created_by_ai) for w in library] == [("Endurance", ["ai"], True)]
-    assert (await client.get(f"{base}/profile")).json()["program"]["goal"] == "Sub 1:10 kilo"
+    training_plans = (await client.get(f"/athletes/{athlete_id}/training-plans")).json()
+    assert [(t["name"], t["sport"], t["goal_text"], t["hours_per_week"], t["author"]) for t in training_plans] == [
+        ("Kilo", "track_cycling", "Sub 1:10 kilo", 6, "ai")
+    ]
+    assert training_plans[0]["weeks"][0]["focus"] == "Build"
+    assert training_plans[0]["start_date"] == _future(1) and training_plans[0]["end_date"] == (
+        date.fromisoformat(_future(14)) + timedelta(days=6)
+    ).isoformat()
+    assert {p["training_plan_id"] for p in plans} == {training_plans[0]["id"]}
+    assert training_plans[0]["progress"]["upcoming"] == 2
     assert (await client.post(f"{base}/proposals/{proposal['id']}/accept")).status_code == 409
 
 
@@ -481,8 +494,10 @@ async def test_warnings_go_back_to_the_model_and_the_race_lands_on_the_season(cl
     conversation_id = (await client.post(f"{base}/conversations", json={"kind": "intake"})).json()["conversation_id"]
     llm.script = [
         call("propose_changes", {"summary": "v1", "goal": "1 km", "race": race, "outline": short_outline,
+                                 "plan": {"name": "Kilo", "sport": "track_cycling"},
                                  "ops": [{"op": "create", "date": tuesday.isoformat(), "title": "Long", "workout": _workout(90)}]}),
         call("propose_changes", {"summary": "v2", "goal": "1 km", "race": race, "outline": full_outline,
+                                 "plan": {"name": "Kilo", "sport": "track_cycling"},
                                  "ops": [{"op": "create", "date": tuesday.isoformat(), "title": "Short", "workout": _workout(60)}]}, "c2"),
         say("Voici le programme."),
     ]
@@ -512,6 +527,9 @@ async def test_warnings_go_back_to_the_model_and_the_race_lands_on_the_season(cl
     async with db_session() as session:
         competition = (await session.scalars(select(Competition))).one()
         assert str(competition.goal_id) == goals[0]["id"]
+    plan = (await client.get(f"/athletes/{athlete_id}/training-plans")).json()[0]
+    assert plan["race"]["name"] == "Provinciaux" and plan["goal"]["id"] == goals[0]["id"]
+    assert plan["end_date"] == race_day.isoformat() and plan["goal_date"] == race_day.isoformat()
 
 
 async def test_a_new_program_replaces_the_previous_ai_programs_upcoming_sessions(client, db_session, mistral_on, llm):
@@ -520,9 +538,18 @@ async def test_a_new_program_replaces_the_previous_ai_programs_upcoming_sessions
     aid = uuid.UUID(athlete_id)
     steps = _workout(60)["steps"]
     async with db_session() as session:
-        def plan(days: int, title: str, *, ai: bool = True, status: str = "planned") -> PlannedSession:
+        def training_plan(name: str, sport: str) -> TrainingPlan:
+            row = TrainingPlan(athlete_id=aid, name=name, sport=sport, start_date=date.today(),
+                               end_date=date.today() + timedelta(days=60), created_by_ai=True)
+            session.add(row)
+            return row
+        track, road = training_plan("Track", "track_cycling"), training_plan("Road", "cycling")
+        await session.flush()
+
+        def plan(days: int, title: str, *, ai: bool = True, status: str = "planned", in_plan=track) -> PlannedSession:
             row = PlannedSession(athlete_id=aid, planned_date=date.today() + timedelta(days=days), title=title,
-                                 targets=[], workout=steps, created_by_ai=ai, status=status)
+                                 targets=[], workout=steps, created_by_ai=ai, status=status,
+                                 training_plan_id=in_plan.id if in_plan else None)
             session.add(row)
             return row
         plan(1, "Old before the new start")
@@ -530,10 +557,12 @@ async def test_a_new_program_replaces_the_previous_ai_programs_upcoming_sessions
         plan(4, "Old B")
         plan(5, "Old done", status="done")
         plan(6, "My own ride", ai=False)
+        plan(4, "Road ride", in_plan=road)  # another plan: never touched
         await session.commit()
+        track_id = str(track.id)
 
     llm.script = [
-        call("propose_changes", {"summary": "New program", "goal": "1 km",
+        call("propose_changes", {"summary": "New program", "goal": "1 km", "training_plan_id": track_id,
                                  "ops": [{"op": "create", "date": _future(3), "title": "New", "workout": _workout(45)}]}),
         say("Voici."),
     ]
@@ -550,7 +579,49 @@ async def test_a_new_program_replaces_the_previous_ai_programs_upcoming_sessions
     accepted = await client.post(f"{base}/proposals/{proposal['id']}/accept")
     assert accepted.status_code == 200, accepted.text
     titles = sorted(p["title"] for p in (await client.get(f"/athletes/{athlete_id}/planned-sessions")).json())
-    assert titles == ["My own ride", "New", "Old before the new start", "Old done"]
+    assert titles == ["My own ride", "New", "Old before the new start", "Old done", "Road ride"]
+    plans = await client.get(f"/athletes/{athlete_id}/planned-sessions", params={"training_plan_id": track_id})
+    assert "New" in [p["title"] for p in plans.json()]
+    track_plan = await client.get(f"/athletes/{athlete_id}/training-plans/{track_id}")
+    assert track_plan.json()["goal_text"] == "1 km"
+
+
+async def test_an_intake_without_a_plan_is_refused_and_an_intake_from_a_plan_builds_it(
+    client, db_session, mistral_on, llm
+):
+    athlete_id = await _ready(client, db_session)
+    base = f"/athletes/{athlete_id}/ai-coach"
+    created = await client.post(
+        f"/athletes/{athlete_id}/training-plans",
+        json={"name": "Route", "sport": "cycling", "start_date": _future(1), "end_date": _future(40)},
+    )
+    assert created.status_code == 201, created.text
+    plan_id = created.json()["id"]
+    llm.script = [
+        call("propose_changes", {"summary": "x", "ops": [{"op": "create", "date": _future(2), "title": "E", "workout": _workout(30)}]}),
+        say("Oups."),
+    ]
+    await client.post(f"{base}/conversations", json={"kind": "intake", "content": "Plan"})
+    told = json.loads(llm.calls[1]["messages"][-1]["content"])
+    assert told["ok"] is False and any("a new program needs plan" in e for e in told["errors"])
+
+    llm.script = [
+        call("propose_changes", {"summary": "Route", "ops": [{"op": "create", "date": _future(2), "title": "E", "workout": _workout(30)}]}),
+        say("Voici."),
+    ]
+    turn = await client.post(f"{base}/conversations", json={"kind": "intake", "training_plan_id": plan_id})
+    assert turn.status_code == 201, turn.text
+    assert '"this_conversation_plan_id"' in llm.calls[2]["messages"][0]["content"]
+    proposal = turn.json()["messages"][-1]["proposal"]
+    assert proposal["training_plan_id"] == plan_id and proposal["training_plan_name"] == "Route"
+    assert (await client.post(f"{base}/proposals/{proposal['id']}/accept")).status_code == 200
+    sessions = (await client.get(f"/athletes/{athlete_id}/planned-sessions")).json()
+    assert [s["training_plan_name"] for s in sessions] == ["Route"]
+    # The athlete's own plan keeps its name and dates.
+    plan = (await client.get(f"/athletes/{athlete_id}/training-plans/{plan_id}")).json()
+    assert (plan["name"], plan["author"], plan["end_date"]) == ("Route", "athlete", _future(40))
+    missing = await client.post(f"{base}/conversations", json={"kind": "intake", "training_plan_id": str(uuid.uuid4())})
+    assert missing.status_code == 404
 
 
 async def test_a_race_in_the_past_is_an_error(client, db_session, mistral_on, llm):

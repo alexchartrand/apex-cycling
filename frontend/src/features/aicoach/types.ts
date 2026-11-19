@@ -1,3 +1,4 @@
+import type { OutlineWeek, Phase, Sport } from "../trainingPlans/types";
 import type { WorkoutEstimate, WorkoutItem } from "../workouts/types";
 
 export interface AiUsage {
@@ -17,11 +18,8 @@ export interface AiAccess {
   model: string;
 }
 
-/** Days are ISO weekdays, 1 = Monday. */
+/** Days are ISO weekdays, 1 = Monday. A plan's goal, dates and hours are the plan's (`TrainingPlan`). */
 export interface CoachProfile {
-  goal?: string | null;
-  goal_date?: string | null;
-  hours_per_week?: number | null;
   available_days?: number[];
   track_days?: number[];
   max_weekday_minutes?: number | null;
@@ -41,17 +39,23 @@ export interface CoachSettings {
   report_hour: number;
 }
 
-export interface OutlineWeek {
-  week_start: string;
-  focus: string;
-  hours?: number | null;
-  notes?: string | null;
-}
+export type { OutlineWeek } from "../trainingPlans/types";
 
 export interface CoachProfileRead {
   answers: CoachProfile;
   settings: CoachSettings;
-  program: { goal?: string | null; accepted_at?: string; outline?: OutlineWeek[] } | null;
+}
+
+/** A new training plan a proposal makes. */
+export interface ProposalPlan {
+  name: string;
+  sport: Sport;
+  start_date?: string | null;
+  end_date?: string | null;
+  goal_text?: string | null;
+  goal_date?: string | null;
+  hours_per_week?: number | null;
+  phases?: Phase[];
 }
 
 export type ProposalOp = "create" | "update" | "skip" | "delete";
@@ -77,7 +81,7 @@ export interface ProposalItem {
   estimate: WorkoutEstimate | null;
   reason: string | null;
   warnings: string[];
-  /** A session of the previous AI program, removed because this new program replaces it. */
+  /** A session the AI wrote for this plan before, removed because this new program replaces it. */
   replaced?: boolean;
 }
 
@@ -106,6 +110,10 @@ export interface Proposal {
   goal: string | null;
   /** The race the program aims at: put on the season calendar (and made a goal) on Accept. */
   race?: ProposalRace | null;
+  /** The plan it makes, or the one it works on. */
+  plan?: ProposalPlan | null;
+  training_plan_id?: string | null;
+  training_plan_name?: string | null;
   created_at: string;
   expires_at: string;
   decided_at: string | null;
@@ -132,6 +140,8 @@ export interface ConversationSummary {
   id: string;
   kind: ConversationKind;
   title: string | null;
+  /** The training plan an intake builds. */
+  training_plan_id?: string | null;
   created_at: string;
   updated_at: string | null;
 }

@@ -8,6 +8,7 @@ export default {
     records: "Records",
     progress: "Progression",
     season: "Saison",
+    plans: "Plans",
     workouts: "Entraînements",
     aiCoach: "Coach IA",
     power: "Puissance",

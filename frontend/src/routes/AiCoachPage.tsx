@@ -34,14 +34,15 @@ export function AiCoachPage() {
   const requested = params.get("tab") as Tab | null;
   const tab: Tab = requested && TABS.includes(requested) ? requested : reportId ? "reports" : proposalId ? "proposals" : "chat";
   const conversationId = params.get("c");
+  const build = params.get("build");
 
-  function update(changes: Record<string, string | null>) {
+  function update(changes: Record<string, string | null>, replace = false) {
     const next = new URLSearchParams(params);
     for (const [name, value] of Object.entries(changes)) {
       if (value === null) next.delete(name);
       else next.set(name, value);
     }
-    setParams(next, { replace: false });
+    setParams(next, { replace });
   }
 
   if (me.isLoading || access.isLoading) return <SkeletonGroup lines={5} />;
@@ -82,7 +83,13 @@ export function AiCoachPage() {
       {header}
       <Tabs items={items} value={tab} onValueChange={(next) => update({ tab: next, report: null, proposal: null })} aria-label={t("tabs.label")}>
         <TabPanel value="chat">
-          <ChatPanel athleteId={athleteId} conversationId={conversationId} onOpen={(id) => update({ tab: "chat", c: id })} />
+          <ChatPanel
+            athleteId={athleteId}
+            conversationId={conversationId}
+            build={build}
+            onBuildStarted={() => update({ build: null }, true)}
+            onOpen={(id) => update({ tab: "chat", c: id, build: null })}
+          />
         </TabPanel>
         <TabPanel value="proposals">
           <ProposalList athleteId={athleteId} highlightId={proposalId} onOpenConversation={(id) => update({ tab: "chat", c: id, proposal: null })} />

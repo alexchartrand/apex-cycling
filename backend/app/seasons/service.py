@@ -36,6 +36,7 @@ from app.seasons.schemas import (
 )
 from app.training.efforts import StartType
 from app.training.models import ManualResult, Track, TrainingEvent
+from app.training_plans.links import detach_competition
 from app.training.records_service import _EVENT_ORDER, _START_ORDER, _place_key, load_session_inputs, results_of
 
 # The feed looks this far back and ahead.
@@ -313,6 +314,7 @@ async def delete_competition(db: AsyncSession, athlete_id: uuid.UUID, competitio
     competition = await db.get(Competition, competition_id)
     if competition is None or competition.athlete_id != athlete_id:
         return False
+    await detach_competition(db, competition_id)  # a plan aiming for it keeps going without it
     await db.delete(competition)
     await db.commit()
     return True

@@ -38,6 +38,9 @@ from app.seasons.models import Competition
 from app.training.records_service import best_entry, get_records_board
 from app.planning.models import PlannedSession, PlanStatus
 from app.planning.push import plan_changed
+from app.training_plans.models import TrainingPlan
+from app.training_plans.schemas import TrainingPlanWrite
+from app.training_plans.service import is_locked_for_ai, plans_covering
 from app.workouts import structure
 from app.workouts.models import Workout
 from app.workouts.schemas import WorkoutItem
@@ -110,8 +113,13 @@ class Checked:
     # Resolved workouts per op index (create/update with a workout).
     workouts: dict[int, _Resolved] = field(default_factory=dict)
     plans: dict[uuid.UUID, PlannedSession] = field(default_factory=dict)
-    # Upcoming sessions of the previous AI program a new program removes.
+    # Upcoming sessions the AI wrote for the target plan, which a new program for it removes.
     replaced: list[PlannedSession] = field(default_factory=list)
+    # The plan the proposal works on (`training_plan_id`), or the new one it
+    # makes as it would be stored (`plan`); other plans its creates name.
+    target: TrainingPlan | None = None
+    new_plan: TrainingPlanWrite | None = None
+    other_plans: dict[uuid.UUID, TrainingPlan] = field(default_factory=dict)
 
 
 def _snapshot(plan: PlannedSession, ftp_w: float | None) -> PlanSnapshot:
@@ -152,6 +160,7 @@ async def check(
     }
     result.plans = plans
     touched: set[uuid.UUID] = set()
+    await _resolve_target(db, athlete, payload, kind, result)
 
     for index, op in enumerate(payload.ops):
         where = f"ops[{index}]"
@@ -171,6 +180,15 @@ async def check(
             if plan.status == PlanStatus.DONE.value:
                 result.errors.append(f"{where}: “{plan.title}” is already done")
                 continue
+        elif op.training_plan_id is not None and op.training_plan_id not in result.other_plans:
+            other = await db.get(TrainingPlan, op.training_plan_id)
+            if other is None or other.athlete_id != athlete.id:
+                result.errors.append(f"{where}: no training plan {op.training_plan_id}")
+                continue
+            if is_locked_for_ai(other, athlete):
+                result.errors.append(f"{where}: “{other.name}” is the coach's plan and can't be changed")
+                continue
+            result.other_plans[other.id] = other
         before = _snapshot(plan, _ftp_on(metric_rows, plan.planned_date)) if plan is not None else None
 
         new_date: date | None = None
@@ -229,18 +247,74 @@ async def check(
             )
         result.items.append(item)
 
-    if kind is not None and ProposalKind(kind) is ProposalKind.PLAN and not result.errors:
+    if (
+        kind is not None
+        and ProposalKind(kind) is ProposalKind.PLAN
+        and result.target is not None
+        and not result.errors
+    ):
         await _replace_previous_program(db, athlete, result, touched, today, metric_rows)
     if payload.race is not None and payload.race.date < today:
         result.errors.append(f"race: {payload.race.date} is in the past")
-    _check_reach(result, payload, profile)
+    if payload.plan is not None and not result.errors:
+        _resolve_new_plan(result, payload, today)
+    _check_reach(result, payload)
     await _weeks(db, athlete, result, profile, metric_rows)
     return result
+
+
+async def _resolve_target(
+    db: AsyncSession, athlete: Athlete, payload: ProposalPayload, kind: ProposalKind | str | None, result: Checked
+) -> None:
+    if payload.training_plan_id is not None:
+        target = await db.get(TrainingPlan, payload.training_plan_id)
+        if target is None or target.athlete_id != athlete.id:
+            result.errors.append(f"training_plan_id: no training plan {payload.training_plan_id}")
+        elif is_locked_for_ai(target, athlete):
+            result.errors.append(f"training_plan_id: “{target.name}” is the coach's plan and can't be changed")
+        else:
+            result.target = target
+    elif kind is not None and ProposalKind(kind) is ProposalKind.PLAN and payload.plan is None:
+        result.errors.append(
+            "a new program needs plan {name, sport, …} for a new training plan, or training_plan_id to rebuild one"
+        )
+
+
+def _resolve_new_plan(result: Checked, payload: ProposalPayload, today: date) -> None:
+    """The new plan as it would be stored: dates left out come from the
+    sessions, the outline and the race."""
+    plan = payload.plan
+    created = [item.planned_date for item in result.items if item.op == "create" and item.planned_date]
+    weeks = [w.week_start for w in payload.outline]
+    start = plan.start_date or min([*created, *weeks], default=today)
+    ends = [*created, *(w + timedelta(days=6) for w in weeks)]
+    end = plan.end_date or (payload.race.date if payload.race else None) or plan.goal_date or max(ends, default=start)
+    try:
+        result.new_plan = TrainingPlanWrite(
+            name=plan.name,
+            sport=plan.sport,
+            start_date=start,
+            end_date=end,
+            goal_text=plan.goal_text or payload.goal,
+            goal_date=plan.goal_date or (payload.race.date if payload.race else None),
+            hours_per_week=plan.hours_per_week,
+            phases=plan.phases,
+            weeks=payload.outline,
+        )
+    except ValidationError as exc:
+        result.errors.extend(f"plan: {err['msg']}" for err in exc.errors()[:5])
+        return
+    outside = [d for d in created if not start <= d <= end]
+    if outside:
+        result.errors.append(f"plan: sessions on {outside[0]} fall outside the plan ({start} – {end})")
 
 
 async def _replace_previous_program(
     db: AsyncSession, athlete: Athlete, result: Checked, touched: set[uuid.UUID], today: date, metric_rows
 ) -> None:
+    """A new program for an existing plan replaces the upcoming sessions the
+    AI wrote for that plan before, from the new program's first session on.
+    Other plans are never touched."""
     created = [item.planned_date for item in result.items if item.op == "create" and item.planned_date]
     if not created:
         return
@@ -249,6 +323,7 @@ async def _replace_previous_program(
         select(PlannedSession)
         .where(
             PlannedSession.athlete_id == athlete.id,
+            PlannedSession.training_plan_id == result.target.id,
             PlannedSession.created_by_ai.is_(True),
             PlannedSession.status == PlanStatus.PLANNED.value,
             PlannedSession.planned_date >= start,
@@ -275,18 +350,35 @@ async def _replace_previous_program(
         )
 
 
-def _check_reach(result: Checked, payload: ProposalPayload, profile: CoachProfile) -> None:
-    """A program (it has a goal or a race) should run up to its race: the
-    detailed sessions and the outline together cover the race week."""
-    if payload.goal is None and payload.race is None:
+def _check_reach(result: Checked, payload: ProposalPayload) -> None:
+    """A program (it has a goal, a race or a new plan) should run up to its
+    race or goal date: the detailed sessions and the outline together cover it."""
+    if payload.goal is None and payload.race is None and payload.plan is None:
         return
-    target = payload.race.date if payload.race else profile.goal_date
+    plan_goal = result.new_plan.goal_date if result.new_plan else (result.target.goal_date if result.target else None)
+    target = payload.race.date if payload.race else plan_goal
     if target is None:
         return
     ends = [item.planned_date for item in result.items if item.planned_date]
     ends += [week.week_start + timedelta(days=6) for week in payload.outline]
+    if result.target is not None:  # its outline already covers some weeks
+        ends += [date.fromisoformat(w["week_start"]) + timedelta(days=6) for w in result.target.weeks or []]
     if not ends or max(ends) < target:
         result.warnings.append(f"outline_short:{target.isoformat()}")
+
+
+def _stored_plan(plan: TrainingPlanWrite) -> dict:
+    return {
+        "name": plan.name,
+        "sport": plan.sport,
+        "start_date": plan.start_date,
+        "end_date": plan.end_date,
+        "goal_text": plan.goal_text,
+        "goal_date": plan.goal_date,
+        "hours_per_week": plan.hours_per_week,
+        "phases": [p.model_dump(mode="json", exclude_none=True) for p in plan.phases],
+        "weeks": [w.model_dump(mode="json", exclude_none=True) for w in plan.weeks],
+    }
 
 
 async def _weeks(db, athlete, result: Checked, profile: CoachProfile, metric_rows) -> None:
@@ -340,10 +432,17 @@ async def _weeks(db, athlete, result: Checked, profile: CoachProfile, metric_row
         ProposalWeek(week_start=week, sessions=int(t[0]), duration_s=t[1], tss=round(t[2], 1) if t[2] else None)
         for week, t in sorted(totals.items())
     ]
-    if profile.hours_per_week:
-        for week in result.weeks:
-            if week.duration_s > profile.hours_per_week * 3600 * HOURS_SLACK:
-                result.warnings.append(f"over_hours:{week.week_start.isoformat()}")
+    # The hours of every plan running that week (the new one included).
+    covering = await plans_covering(db, athlete.id, first, last)
+    if result.new_plan is not None:
+        covering = [*covering, TrainingPlan(**_stored_plan(result.new_plan))]
+    for week in result.weeks:
+        week_end = week.week_start + timedelta(days=6)
+        hours = sum(
+            p.hours_per_week or 0 for p in covering if p.start_date <= week_end and p.end_date >= week.week_start
+        )
+        if hours and week.duration_s > hours * 3600 * HOURS_SLACK:
+            result.warnings.append(f"over_hours:{week.week_start.isoformat()}")
 
 
 async def create_proposal(
@@ -413,6 +512,9 @@ async def read_proposal(db: AsyncSession, athlete: Athlete, proposal: AiProposal
         summary=proposal.summary,
         goal=payload.goal if payload else None,
         race=payload.race if payload else None,
+        plan=payload.plan if payload else None,
+        training_plan_id=payload.training_plan_id if payload else None,
+        training_plan_name=checked.target.name if checked and checked.target else None,
         created_at=proposal.created_at,
         expires_at=proposal.expires_at,
         decided_at=proposal.decided_at,
@@ -450,6 +552,18 @@ async def accept(db: AsyncSession, athlete: Athlete, proposal: AiProposal) -> li
     if checked.errors:
         raise StaleProposal(checked.errors)
 
+    plan_row = checked.target
+    if checked.new_plan is not None:
+        plan_row = TrainingPlan(
+            athlete_id=athlete.id,
+            created_by_user_id=None,
+            created_by_ai=True,
+            ai_proposal_id=proposal.id,
+            **_stored_plan(checked.new_plan),
+        )
+        db.add(plan_row)
+        await db.flush()
+
     touched: list[uuid.UUID] = []
     for index, op in enumerate(payload.ops):
         resolved = checked.workouts.get(index)
@@ -478,6 +592,7 @@ async def accept(db: AsyncSession, athlete: Athlete, proposal: AiProposal) -> li
                 targets=[],
                 workout=_ITEMS.dump_python(resolved.steps, mode="json", exclude_none=True),
                 source_workout_id=source_id,
+                training_plan_id=op.training_plan_id or (plan_row.id if plan_row else None),
             )
             db.add(plan)
             await plan_changed(db, plan)
@@ -511,53 +626,63 @@ async def accept(db: AsyncSession, athlete: Athlete, proposal: AiProposal) -> li
         await plan_changed(db, plan)
         await db.delete(plan)
 
-    if payload.race is not None:
-        await _add_race(db, athlete, payload)
-
-    if payload.outline or payload.goal:
-        row = await db.scalar(select(AiCoachProfile).where(AiCoachProfile.athlete_id == athlete.id))
-        if row is None:
-            row = AiCoachProfile(athlete_id=athlete.id, answers={})
-            db.add(row)
-        if proposal.kind == ProposalKind.PLAN.value or row.program is None:
-            row.program = {
-                "goal": payload.goal,
-                "accepted_at": utcnow().isoformat(),
-                "outline": [w.model_dump(mode="json", exclude_none=True) for w in payload.outline],
-            }
-        else:  # an adjustment refines the outline of the weeks it covers
-            program = dict(row.program)
-            outline = {w["week_start"]: w for w in program.get("outline", [])}
-            for week in payload.outline:
-                outline[week.week_start.isoformat()] = week.model_dump(mode="json", exclude_none=True)
-            program["outline"] = [outline[k] for k in sorted(outline)]
-            if payload.goal:
-                program["goal"] = payload.goal
-            row.program = program
-        row.updated_at = utcnow()
+    race = await _add_race(db, athlete, payload) if payload.race is not None else None
+    if plan_row is not None:
+        _refine_plan(plan_row, payload, proposal, race)
 
     proposal.status = ProposalStatus.ACCEPTED.value
     proposal.decided_at = utcnow()
-    if proposal.kind == ProposalKind.PLAN.value:
-        # A new program replaces the other program proposals still waiting.
-        for other in await db.scalars(
-            select(AiProposal).where(
-                AiProposal.athlete_id == athlete.id,
-                AiProposal.kind == ProposalKind.PLAN.value,
-                AiProposal.status == ProposalStatus.PENDING.value,
-                AiProposal.id != proposal.id,
-            )
-        ):
-            other.status = ProposalStatus.SUPERSEDED.value
-            other.decided_at = utcnow()
+    if checked.target is not None and proposal.kind == ProposalKind.PLAN.value:
+        # A new program for a plan replaces the other ones still waiting for it.
+        await supersede_for_plan(db, athlete.id, checked.target.id, keep=proposal.id)
     await db.commit()
     return touched
 
 
-async def _add_race(db: AsyncSession, athlete: Athlete, payload: ProposalPayload) -> None:
+def _refine_plan(
+    plan: TrainingPlan, payload: ProposalPayload, proposal: AiProposal, race: tuple[Competition, Goal | None] | None
+) -> None:
+    """The outline weeks the proposal gives replace those of the same weeks,
+    and the plan's race is the proposal's. A plan the AI wrote also takes its
+    goal; the athlete's own plan keeps theirs (they change it on the plan)."""
+    if payload.outline and plan.weeks is not None:
+        weeks = {w["week_start"]: w for w in plan.weeks or []}
+        for week in payload.outline:
+            weeks[week.week_start.isoformat()] = week.model_dump(mode="json", exclude_none=True)
+        plan.weeks = [weeks[k] for k in sorted(weeks)]
+    if plan.created_by_ai:
+        plan.ai_proposal_id = proposal.id
+        if payload.goal and payload.plan is None:
+            plan.goal_text = payload.goal
+    if race is not None:
+        competition, goal = race
+        if plan.competition_id is None or plan.created_by_ai:
+            plan.competition_id = competition.id
+        if goal is not None and plan.sport == "track_cycling" and (plan.goal_id is None or plan.created_by_ai):
+            plan.goal_id = goal.id
+    if plan.created_by_ai and plan.competition_id is None:
+        # A plan the AI extends past its end grows with it (one aiming at a race ends there).
+        for week in payload.outline:
+            plan.end_date = max(plan.end_date, week.week_start + timedelta(days=6))
+
+
+async def supersede_for_plan(
+    db: AsyncSession, athlete_id: uuid.UUID, plan_id: uuid.UUID, *, keep: uuid.UUID | None = None
+) -> None:
+    """Pending proposals working on this plan are superseded (it was deleted,
+    or another program for it was accepted)."""
+    for other in await db.scalars(
+        select(AiProposal).where(AiProposal.athlete_id == athlete_id, AiProposal.status == ProposalStatus.PENDING.value)
+    ):
+        if other.id != keep and (other.payload or {}).get("training_plan_id") == str(plan_id):
+            other.status = ProposalStatus.SUPERSEDED.value
+            other.decided_at = utcnow()
+
+
+async def _add_race(db: AsyncSession, athlete: Athlete, payload: ProposalPayload) -> tuple[Competition, Goal | None]:
     """Puts the program's race on the season calendar, with its goal — unless
     the athlete already has a race that day or that goal (then they are
-    reused, never duplicated)."""
+    reused, never duplicated). Returns both."""
     race = payload.race
     competition = await db.scalar(
         select(Competition).where(Competition.athlete_id == athlete.id, Competition.competition_date == race.date).limit(1)
@@ -571,8 +696,11 @@ async def _add_race(db: AsyncSession, athlete: Athlete, payload: ProposalPayload
             location=race.location,
         )
         db.add(competition)
-    if not race.makes_goal or competition.goal_id is not None:
-        return
+        await db.flush()
+    if not race.makes_goal:
+        return competition, None
+    if competition.goal_id is not None:
+        return competition, await db.get(Goal, competition.goal_id)
     goal = await db.scalar(
         select(Goal).where(
             Goal.athlete_id == athlete.id,
@@ -594,6 +722,7 @@ async def _add_race(db: AsyncSession, athlete: Athlete, payload: ProposalPayload
         db.add(goal)
         await db.flush()
     competition.goal_id = goal.id
+    return competition, goal
 
 
 async def reject(db: AsyncSession, proposal: AiProposal) -> None:

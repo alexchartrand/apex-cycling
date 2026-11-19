@@ -34,6 +34,7 @@ from app.planning.schemas import (
     PlanWorkoutGear,
 )
 from app.training.models import TrainingEvent
+from app.training_plans.models import TrainingPlan
 from app.workouts import structure
 from app.workouts.schemas import WorkoutItem
 from app.workouts.service import visible_workout_ids
@@ -51,6 +52,19 @@ class UnknownGear(Exception):
 
 class UnknownWorkout(Exception):
     """The plan names a library workout the viewer can't see."""
+
+
+class UnknownTrainingPlan(Exception):
+    """The session names a training plan that isn't this athlete's."""
+
+
+async def _check_training_plan(db: AsyncSession, athlete: Athlete, plan_id: uuid.UUID | None) -> None:
+    """Raises `UnknownTrainingPlan`."""
+    if plan_id is None:
+        return
+    plan = await db.get(TrainingPlan, plan_id)
+    if plan is None or plan.athlete_id != athlete.id:
+        raise UnknownTrainingPlan
 
 
 async def _gears(db: AsyncSession, athlete_id: uuid.UUID) -> list[PlanWorkoutGear]:
@@ -152,6 +166,18 @@ async def _reads(
     metric_rows = await _metric_rows(db, athlete.id) if with_workout else []
     sources = await visible_workout_ids(db, viewer, {p.source_workout_id for p in plans if p.source_workout_id})
     pushed = await push_states(db, {p.id for p in plans})
+    training_plan_ids = {p.training_plan_id for p in plans if p.training_plan_id}
+    training_plans = (
+        dict(
+            (
+                await db.execute(
+                    select(TrainingPlan.id, TrainingPlan.name).where(TrainingPlan.id.in_(training_plan_ids))
+                )
+            ).all()
+        )
+        if training_plan_ids
+        else {}
+    )
     reads = []
     for plan in plans:
         event = events.get(plan.training_event_id) if plan.training_event_id else None
@@ -184,6 +210,8 @@ async def _reads(
                 else None,
                 can_edit=athlete_side or plan.created_by_user_id == viewer.id or (plan.created_by_ai and coach),
                 created_by_ai=plan.created_by_ai,
+                training_plan_id=plan.training_plan_id,
+                training_plan_name=training_plans.get(plan.training_plan_id) if plan.training_plan_id else None,
                 can_mark=athlete_side,
                 intervals=pushed.get(plan.id),
             )
@@ -192,10 +220,19 @@ async def _reads(
 
 
 async def list_plans(
-    db: AsyncSession, athlete: Athlete, viewer: User, *, start: date | None, end: date | None
+    db: AsyncSession,
+    athlete: Athlete,
+    viewer: User,
+    *,
+    start: date | None,
+    end: date | None,
+    training_plan_id: uuid.UUID | None = None,
 ) -> list[PlannedSessionRead]:
-    """Soonest first, between `start` and `end` (inclusive) when given."""
+    """Soonest first, between `start` and `end` (inclusive) when given, of
+    one training plan when given."""
     query = select(PlannedSession).where(PlannedSession.athlete_id == athlete.id)
+    if training_plan_id is not None:
+        query = query.where(PlannedSession.training_plan_id == training_plan_id)
     if start is not None:
         query = query.where(PlannedSession.planned_date >= start)
     if end is not None:
@@ -224,8 +261,9 @@ async def create_plan(
     db: AsyncSession, athlete: Athlete, viewer: User, payload: PlannedSessionWrite
 ) -> PlannedSessionRead:
     """Raises `UnknownGear` for another athlete's gear, `UnknownWorkout` for
-    a library workout the viewer can't see."""
+    a library workout the viewer can't see, `UnknownTrainingPlan`."""
     await _check_source(db, viewer, payload.source_workout_id)
+    await _check_training_plan(db, athlete, payload.training_plan_id)
     plan = PlannedSession(
         athlete_id=athlete.id,
         created_by_user_id=viewer.id,
@@ -235,6 +273,7 @@ async def create_plan(
         targets=await _stored_targets(db, athlete, payload.targets),
         workout=_stored_workout(payload.workout),
         source_workout_id=payload.source_workout_id if payload.workout else None,
+        training_plan_id=payload.training_plan_id,
     )
     db.add(plan)
     await notify_plan_added(db, athlete, viewer, payload.title, payload.planned_date)
@@ -262,6 +301,8 @@ async def update_plan(
         changes["targets"] = await _stored_targets(db, athlete, payload.targets or [])
     if "source_workout_id" in changes:
         await _check_source(db, viewer, payload.source_workout_id)
+    if "training_plan_id" in changes:
+        await _check_training_plan(db, athlete, payload.training_plan_id)
     if "workout" in changes:
         changes["workout"] = _stored_workout(payload.workout)
         if payload.workout is None:

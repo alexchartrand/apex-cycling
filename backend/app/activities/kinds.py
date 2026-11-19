@@ -27,6 +27,9 @@ CYCLING_TYPES: frozenset[ActivityType] = frozenset(
 )
 CYCLING_TYPE_VALUES: tuple[str, ...] = tuple(sorted(t.value for t in CYCLING_TYPES))
 
+# The sports a training plan can be for (`training_plans`).
+PLAN_SPORTS: tuple[str, ...] = (ActivityType.CYCLING.value, ActivityType.TRACK_CYCLING.value)
+
 # Normalized (lower case, letters only) source names → kind.
 _NAMES: dict[str, ActivityType] = {
     # FIT sport / sub_sport (fitdecode's names), TCX, GPX

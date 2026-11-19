@@ -2,7 +2,7 @@
 
 `AiCoachAccess` is the gate (a platform admin enables it, the athlete
 consents, a monthly token cap bounds the cost); `AiCoachProfile` is what the
-intake interview learnt plus the accepted program outline; conversations
+intake interview learnt about the athlete; conversations
 keep every message the model saw (tool calls included) so a chat can go on;
 an `AiProposal` is a set of calendar changes waiting for the athlete's
 Accept — the AI never writes the calendar itself; `AiReport` is a weekly or
@@ -67,14 +67,14 @@ class AiCoachAccess(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class AiCoachProfile(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    """`answers` holds the intake (`schemas.CoachProfile`); `program` the
-    accepted plan's goal and block outline, which later reports refine."""
+    """`answers` holds the intake about the athlete (`schemas.CoachProfile`:
+    availability, equipment, injuries…). What belongs to one plan — its goal,
+    dates, hours, outline — lives on the `TrainingPlan` (`training_plans`)."""
 
     __tablename__ = "ai_coach_profiles"
 
     athlete_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("athletes.id"), unique=True)
     answers: Mapped[dict] = mapped_column(JSON, default=dict)
-    program: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
@@ -86,6 +86,9 @@ class AiConversation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     kind: Mapped[str] = mapped_column(String(16), default=ConversationKind.CHAT.value)
     title: Mapped[str | None] = mapped_column(String(120), nullable=True)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The training plan this conversation builds or adjusts (no FK: the plan
+    # may be deleted and the conversation kept).
+    training_plan_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
 
 
 class AiMessage(UUIDPrimaryKeyMixin, TimestampMixin, Base):

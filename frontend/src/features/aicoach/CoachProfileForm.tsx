@@ -1,15 +1,15 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { errorMessage } from "../../api/errors";
-import { Button, Card, Checkbox, Dialog, Input, Select, SkeletonGroup, Textarea, useToast } from "../../components/ui";
-import { useFormat } from "../../i18n/useFormat";
+import { ArrowRight } from "lucide-react";
+import { Button, ButtonLink, Card, Checkbox, Dialog, Input, Select, SkeletonGroup, Textarea, useToast } from "../../components/ui";
 import { useLanguage } from "../../i18n/useLanguage";
 import { WEEKDAYS, weekdayName } from "./proposalText";
 import type { CoachProfile, CoachSettings } from "./types";
 import { useCoachProfile, useConsent, useSaveCoachProfile } from "./useAiCoach";
 
 type Draft = Record<
-  "goal" | "goal_date" | "hours_per_week" | "max_weekday_minutes" | "max_weekend_minutes" | "experience" | "injuries" | "gym_details" | "other",
+  "max_weekday_minutes" | "max_weekend_minutes" | "experience" | "injuries" | "gym_details" | "other",
   string
 > & {
   available_days: number[];
@@ -25,9 +25,6 @@ const txt = (value: string) => value.trim() || null;
 
 function toDraft(answers: CoachProfile): Draft {
   return {
-    goal: str(answers.goal),
-    goal_date: str(answers.goal_date),
-    hours_per_week: str(answers.hours_per_week),
     max_weekday_minutes: str(answers.max_weekday_minutes),
     max_weekend_minutes: str(answers.max_weekend_minutes),
     experience: str(answers.experience),
@@ -44,9 +41,6 @@ function toDraft(answers: CoachProfile): Draft {
 
 function fromDraft(draft: Draft): CoachProfile {
   return {
-    goal: txt(draft.goal),
-    goal_date: txt(draft.goal_date),
-    hours_per_week: num(draft.hours_per_week),
     max_weekday_minutes: num(draft.max_weekday_minutes),
     max_weekend_minutes: num(draft.max_weekend_minutes),
     experience: txt(draft.experience),
@@ -81,7 +75,6 @@ function DayPicker({ legend, value, onChange }: { legend: string; value: number[
 /** What the AI coach knows about the athlete (it fills it during the interview), the report schedule and consent. */
 export function CoachProfileForm({ athleteId }: { athleteId: string }) {
   const { t } = useTranslation(["aicoach", "common"]);
-  const fmt = useFormat();
   const { language } = useLanguage();
   const { toast } = useToast();
   const profile = useCoachProfile(athleteId);
@@ -101,7 +94,6 @@ export function CoachProfileForm({ athleteId }: { athleteId: string }) {
 
   if (profile.isLoading || !draft || !settings) return <SkeletonGroup lines={6} />;
   const set = <K extends keyof Draft>(field: K, value: Draft[K]) => setDraft({ ...draft, [field]: value });
-  const program = profile.data?.program;
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -113,34 +105,19 @@ export function CoachProfileForm({ athleteId }: { athleteId: string }) {
 
   return (
     <div className="ai-stack">
-      {program && (
-        <Card as="section" title={t("profile.program")}>
-          {program.goal && <p>{program.goal}</p>}
-          {program.outline && program.outline.length > 0 && (
-            <ol className="ai-outline">
-              {program.outline.map((week) => (
-                <li key={week.week_start}>
-                  <strong>{t("proposal.weekOf", { date: fmt.date(week.week_start, "dayMonth") })}</strong> · {week.focus}
-                  {week.hours != null && <> · {t("proposal.hours", { value: fmt.number(week.hours) })}</>}
-                </li>
-              ))}
-            </ol>
-          )}
-        </Card>
-      )}
+      <Card as="section" title={t("profile.plansTitle")}>
+        <p className="ai-muted">{t("profile.plansHint")}</p>
+        <div className="ai-row">
+          <ButtonLink to="/plans" variant="secondary" size="sm" iconRight={<ArrowRight aria-hidden />}>
+            {t("profile.plansLink")}
+          </ButtonLink>
+        </div>
+      </Card>
 
       <form onSubmit={onSubmit} className="ai-stack">
         <Card as="section" title={t("profile.title")}>
           <p className="ai-muted">{t("profile.hint")}</p>
           <div className="ai-form-grid">
-            <Textarea label={t("profile.goal")} value={draft.goal} onChange={(e) => set("goal", e.target.value)} rows={2} maxLength={500} />
-            <Input label={t("profile.goalDate")} type="date" value={draft.goal_date} onChange={(e) => set("goal_date", e.target.value)} />
-            <Input
-              label={t("profile.hours")}
-              inputMode="decimal"
-              value={draft.hours_per_week}
-              onChange={(e) => set("hours_per_week", e.target.value)}
-            />
             <Input
               label={t("profile.weekdayMinutes")}
               inputMode="numeric"

@@ -16,6 +16,7 @@ import {
   saveCoachProfile,
   sendMessage,
   startConversation,
+  type StartPayload,
   updateAdminAi,
   withdrawConsent,
 } from "./api";
@@ -95,7 +96,7 @@ export function useStartConversation(athleteId: string) {
   const afterTurn = useAfterTurn(athleteId);
   const { live, onEvent, begin, end } = useLiveReply();
   const mutation = useMutation({
-    mutationFn: (payload: { kind: "chat" | "intake"; content?: string }) => startConversation(athleteId, payload, onEvent),
+    mutationFn: (payload: StartPayload) => startConversation(athleteId, payload, onEvent),
     onMutate: begin,
     onSuccess: afterTurn,
     onSettled: end,
@@ -148,6 +149,7 @@ export function useDecideProposal(athleteId: string) {
       queryClient.invalidateQueries({ queryKey: key(athleteId) });
       // Accepting writes the calendar (and the library, for saved workouts).
       queryClient.invalidateQueries({ queryKey: ["planned-sessions", athleteId] });
+      queryClient.invalidateQueries({ queryKey: ["training-plans", athleteId] });
       queryClient.invalidateQueries({ queryKey: ["workouts"] });
     },
   });

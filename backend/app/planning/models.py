@@ -45,6 +45,10 @@ class PlannedSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # coach may edit these too; the AI never touches a coach's plans.
     created_by_ai: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     ai_proposal_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    # The training plan it is part of (`training_plans`), if any.
+    training_plan_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("training_plans.id"), nullable=True, index=True
+    )
 
 
 class IntervalsPlanEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
