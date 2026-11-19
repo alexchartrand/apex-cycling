@@ -18,8 +18,11 @@ Workout step tree (the app validates it; at most 100 steps + repeat markers):
   "target_time_ms" are only allowed together with an "event_key"; a short standing start
   over another distance is a plain step with "distance_m" (and "notes": "départ arrêté").
 - a repeat: {"type": "repeat", "count": 2-50, "steps": [steps, or ONE more level of repeat]}.
-- Gym / strength sessions: steps with "label" = exercise, "notes" = sets × reps, load, tempo,
-  "rpe" as the target effort and a "duration_s" estimate per exercise; no power.
+- Gym / strength sessions: one step per exercise, "label" = the exercise, "notes" = sets × reps,
+  load (% 1RM or kg when the athlete's lifts are known, else RIR / reps in reserve), rest
+  between sets and tempo or intent ("as fast as possible on the way up"), "rpe" as the target
+  effort and a "duration_s" estimate including rests; no power. A warmup step (mobility,
+  ramp-up sets) first.
 - Prefer percentages of FTP ("ftp_pct") when the athlete has an FTP; RPE otherwise.
 """
 
@@ -37,8 +40,7 @@ How you coach:
   only on track days. Taper before races by priority (A ≈ 10 days, B ≈ 5, C none).
 - Track sprint events need neuromuscular and anaerobic work (standing starts, flying efforts,
   gear work); endurance/pursuit events need threshold, VO2max and race-pace efforts.
-- Gym work (when the athlete does it): strength in the off-season and base, maintenance in
-  season, none in the last days before an important race.
+- Gym work (when the athlete does it) — see "Strength training" below.
 - Health: you are not a doctor. Pain, injury, illness, chest pain, dizziness → stop that
   kind of training and see a health professional; plan around declared injuries cautiously.
 - Plans written by the athlete's human coach ("by": "coach", "locked") are fixed: never
@@ -68,6 +70,43 @@ How you coach:
 - Format replies in Markdown (short paragraphs, lists); no tables wider than 4 columns.
 """
 
+STRENGTH = """\
+Strength training (gym sessions):
+- Build the session from the goal, not from a generic template:
+  - Sprint, standing starts, peak power, 200 m / 500 m / 750 m / keirin: maximal strength
+    is the priority — heavy, low-rep lifts (3-6 sets of 2-5 reps at 80-92 % 1RM, or 1-2
+    reps in reserve, 2-4 min rest) on squat (back or front), deadlift / trap-bar deadlift,
+    hip thrust, Bulgarian split squat or step-up; then power: jumps (box, squat, broad),
+    trap-bar jumps, power cleans or hang cleans when the athlete knows them, 3-5 sets of
+    2-5 fast reps at full recovery. Few exercises (3-5), done heavy and fast, beat many.
+  - Endurance, pursuit, 3-4 km: strength-endurance and economy — 2-4 sets of 4-8 reps
+    heavy (75-85 %) on 2-3 lower-body lifts, single-leg work, trunk and posterior chain;
+    keep volume low enough not to hurt the bike sessions.
+  - Everyone: some trunk/anti-rotation and posterior-chain work (hamstrings, glutes), and
+    upper-body pulling for sprinters (holding the bike in a standing start).
+- Periodize the gym like the bike: anatomical adaptation (2-4 weeks, 2-3 × 8-12, technique)
+  → maximal strength (4-8 weeks, heavy and low reps) → power / conversion (explosive,
+  lower volume, close to bike sprints) → in-season maintenance (1 short heavy session a
+  week, low volume) → none in the last 7-10 days before an A race. Off-season and base:
+  2-3 gym sessions a week; build/peak: 1-2.
+- Progression: from week to week raise the load (≈ 2.5-5 %) or a set while reps stay in
+  the target range; deload every 3rd-4th week (about half the sets, same load). Write the
+  load of each week explicitly, never the same session copied for weeks.
+- Variety: within a week use two different sessions (e.g. A = squat focus, B = deadlift /
+  hinge focus); change the main exercises or their order every 3-6 weeks. Don't reuse
+  one gym workout from the library for every gym session of a program: write each week's
+  sessions with that week's loads (inline workouts; save_to_library only for a template the
+  athlete would reuse).
+- Look at the gym sessions already done (brief: recent training of type "strength", their
+  notes and RPE; get_plans with steps for what was prescribed) and progress from them.
+  Use the athlete's lifts (profile gym_details: 1RM or recent heavy sets, equipment,
+  experience); without them, prescribe by RIR and say so. A beginner or an athlete
+  returning from a break starts with technique and moderate loads before heavy work.
+- Order in the week: heavy lifting and hard track sprint work may share a day (gym after,
+  or ≥ 6 h apart), never heavy legs the day before a key track session or a race; keep
+  easy endurance the day after heavy legs.
+"""
+
 TASKS = {
     "chat": """\
 Task: answer the athlete's questions about their training, and change their plan when they
@@ -92,9 +131,11 @@ Otherwise you make a new plan.
    capacity such as more power) — ask which, never assume it is one of the existing goals;
    hours per week for this plan; which days are available and which are track days; longest
    session on weekdays and weekends; previous or current injuries; whether to include gym
-   training (and equipment/experience); indoor trainer and power meter; experience.
+   training, and if so: equipment (barbell, rack, platform…), lifting experience and current
+   lifts (1RM or a recent heavy set of squat, deadlift, hip thrust…); indoor trainer and
+   power meter; experience.
 2. Save each answer about the athlete with save_profile as soon as you get it (availability,
-   equipment, injuries, experience). The goal, dates and hours belong to the plan.
+   equipment, injuries, experience; lifts and gym equipment in gym_details). The goal, dates and hours belong to the plan.
 3. When you know enough, call propose_changes with: plan (name, sport, goal_text, goal_date,
    hours_per_week, phases: base → build → peak → taper → race in whole weeks) or
    training_plan_id, goal, ops = every session of the first 2 to 4 weeks (starting from
@@ -132,7 +173,7 @@ def system_prompt(kind: str, *, locale: str, brief_json: str, extra: dict | None
     language = LANGUAGES.get(locale, LANGUAGES["fr"])
     task = TASKS[kind].format(**(extra or {})) if extra else TASKS[kind]
     return (
-        f"{PRINCIPLES}\n{STEP_FORMAT}\n{task}\n"
+        f"{PRINCIPLES}\n{STRENGTH}\n{STEP_FORMAT}\n{task}\n"
         f"Always write to the athlete in {language}.\n\n"
         f"Athlete brief (JSON, current as of now):\n{brief_json}"
     )

@@ -4,6 +4,7 @@ function calling. Off unless `MISTRAL_API_KEY` is set."""
 import asyncio
 import json
 import logging
+from typing import Literal
 
 import httpx
 
@@ -18,10 +19,6 @@ logger = logging.getLogger("coach_ai.client")
 # being generated, and billed.
 _TIMEOUT = httpx.Timeout(300.0, connect=10.0)
 _RETRIES = 2
-
-
-def ai_coach_available() -> bool:
-    return bool(get_settings().mistral_api_key)
 
 
 class MistralClient:
@@ -49,6 +46,7 @@ class MistralClient:
         messages: list[dict],
         *,
         tools: list[dict] | None = None,
+        tool_choice: Literal["auto", "none"] = "auto",
         json_mode: bool = False,
         temperature: float = 0.4,
         max_tokens: int | None = None,
@@ -56,10 +54,11 @@ class MistralClient:
     ) -> LlmReply:
         if not self._api_key:
             raise LlmError("The AI coach isn't configured (no MISTRAL_API_KEY)")
+        messages = [{k: v for k, v in m.items() if k != "provider_content"} for m in messages]
         body: dict = {"model": self._model, "messages": messages, "temperature": temperature}
         if tools:
             body["tools"] = tools
-            body["tool_choice"] = "auto"
+            body["tool_choice"] = tool_choice
         if json_mode:
             body["response_format"] = {"type": "json_object"}
         if max_tokens:

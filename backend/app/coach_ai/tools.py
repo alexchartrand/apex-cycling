@@ -93,7 +93,7 @@ PROFILE_TOOL = _fn(
     "Store what the athlete told you about themself (only the fields you learnt). A plan's goal, dates and "
     "weekly hours are not stored here: they go in propose_changes' plan. Fields: available_days and track_days "
     "(ISO weekdays 1=Mon…7=Sun), max_weekday_minutes, max_weekend_minutes, experience (text), "
-    "injuries (text, 'none' if none), gym (bool), gym_details (equipment, experience), indoor_trainer (bool), "
+    "injuries (text, 'none' if none), gym (bool), gym_details (equipment, lifting experience, current lifts: 1RM or recent heavy sets), indoor_trainer (bool), "
     "power_meter (bool), other (text).",
     {"fields": {"type": "object"}},
     ["fields"],

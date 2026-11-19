@@ -5,7 +5,7 @@ import logging
 from collections.abc import Callable
 
 from app.coach_ai.access import CapReached
-from app.coach_ai.client import MistralClient, ai_coach_available
+from app.coach_ai.providers import ai_coach_available, build_llm_client
 from app.coach_ai.ports import LlmClientPort, LlmError
 from app.coach_ai.reports import run_due_work, scheduled_athletes
 from app.db.session import AsyncSessionLocal
@@ -20,7 +20,7 @@ async def run_ai_coach_round(
     if client is None:
         if not ai_coach_available():
             return done
-        client = MistralClient()
+        client = build_llm_client()
     async with session_factory() as db:
         athlete_ids = await scheduled_athletes(db)
     for athlete_id in athlete_ids:

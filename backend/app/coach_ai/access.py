@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.athletes.models import Athlete
 from app.auth.deps import get_current_user
 from app.auth.models import User
-from app.coach_ai.client import ai_coach_available
+from app.coach_ai.providers import ai_coach_available, current_provider, prices_for_model
 from app.coach_ai.models import AiCoachAccess, AiUsage
 from app.core.config import get_settings
 from app.db.session import get_db
@@ -58,8 +58,13 @@ async def check_cap(db: AsyncSession, athlete_id: uuid.UUID) -> None:
         raise CapReached
 
 
+def has_consent(access: AiCoachAccess | None) -> bool:
+    """Consent counts for the provider it was given to only."""
+    return access is not None and access.consent_at is not None and access.consent_provider == current_provider()
+
+
 def is_usable(access: AiCoachAccess | None) -> bool:
-    return ai_coach_available() and access is not None and access.enabled and access.consent_at is not None
+    return ai_coach_available() and access is not None and access.enabled and has_consent(access)
 
 
 async def _self_athlete(athlete_id: uuid.UUID, user: User, db: AsyncSession) -> tuple[Athlete, AiCoachAccess | None]:
@@ -96,15 +101,39 @@ async def require_ai_coach(
     before each model call (`CapReached`), not here, so history stays
     readable once it is reached."""
     athlete, access = await _self_athlete(athlete_id, current_user, db)
-    if access is None or access.consent_at is None:
+    if not has_consent(access):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "ai_coach_no_consent")
     return athlete
 
 
-def cost_usd(prompt_tokens: int, completion_tokens: int) -> float:
-    settings = get_settings()
-    return round(
-        prompt_tokens / 1e6 * settings.mistral_price_input_per_mtok
-        + completion_tokens / 1e6 * settings.mistral_price_output_per_mtok,
-        4,
+def cost_usd(model: str, prompt_tokens: int, completion_tokens: int, cache_read: int = 0, cache_write: int = 0) -> float:
+    """`prompt_tokens` is every input token, the cached ones included."""
+    input_price, output_price, read_price, write_price = prices_for_model(model)
+    uncached = max(0, prompt_tokens - cache_read - cache_write)
+    return (
+        uncached * input_price + cache_read * read_price + cache_write * write_price + completion_tokens * output_price
+    ) / 1e6
+
+
+async def month_usage(db: AsyncSession, athlete_ids: list[uuid.UUID] | None = None) -> dict[uuid.UUID, tuple[int, float]]:
+    """This month's (tokens, cost in USD) per athlete, each model at its own prices."""
+    query = (
+        select(
+            AiUsage.athlete_id,
+            AiUsage.model,
+            func.sum(AiUsage.prompt_tokens),
+            func.sum(AiUsage.completion_tokens),
+            func.sum(AiUsage.cache_read_tokens),
+            func.sum(AiUsage.cache_write_tokens),
+        )
+        .where(AiUsage.created_at >= month_start())
+        .group_by(AiUsage.athlete_id, AiUsage.model)
     )
+    if athlete_ids is not None:
+        query = query.where(AiUsage.athlete_id.in_(athlete_ids))
+    out: dict[uuid.UUID, tuple[int, float]] = {}
+    for athlete_id, model, prompt, completion, read, write in (await db.execute(query)).all():
+        prompt, completion, read, write = (int(v or 0) for v in (prompt, completion, read, write))
+        tokens, cost = out.get(athlete_id, (0, 0.0))
+        out[athlete_id] = (tokens + prompt + completion, cost + cost_usd(model, prompt, completion, read, write))
+    return out

@@ -15,6 +15,7 @@ dependencies = [
     "argon2-cffi>=23.1",
     "pyjwt>=2.9",
     "httpx>=0.27",
+    "anthropic>=1.17,<2",
     "apscheduler>=3.10",
     "python-multipart>=0.0.9",
     "slowapi>=0.1.9",

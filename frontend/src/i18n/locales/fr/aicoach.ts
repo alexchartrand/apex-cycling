@@ -129,7 +129,7 @@ export default {
     injuries: "Blessures et limitations",
     experience: "Expérience",
     gym: "Inclure de la musculation",
-    gymDetails: "Équipement et expérience en musculation",
+    gymDetails: "Équipement, expérience et charges actuelles en musculation",
     indoor: "J'ai un home trainer",
     powerMeter: "J'ai un capteur de puissance",
     other: "Autre chose que votre coach devrait savoir",
@@ -163,7 +163,7 @@ export default {
   admin: {
     title: "Coach IA",
     loadFailed: "Impossible de charger les accès au coach IA",
-    noKey: "Aucune MISTRAL_API_KEY n'est définie : le coach IA est désactivé pour tout le monde.",
+    noKey: "Aucune clé d'API n'est définie pour le fournisseur de modèle configuré (MISTRAL_API_KEY ou ANTHROPIC_API_KEY) : le coach IA est désactivé pour tout le monde.",
     model: "Modèle",
     monthTokens: "Jetons ce mois-ci",
     monthCost: "Coût estimé ce mois-ci",

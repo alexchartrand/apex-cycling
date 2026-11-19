@@ -48,8 +48,8 @@ class FakeLlm:
         self.script = list(script)
         self.calls: list[dict] = []
 
-    async def chat(self, messages, *, tools=None, json_mode=False, temperature=0.4, max_tokens=None, on_delta=None):
-        self.calls.append({"messages": messages, "tools": tools, "streamed": on_delta is not None})
+    async def chat(self, messages, *, tools=None, tool_choice="auto", json_mode=False, temperature=0.4, max_tokens=None, on_delta=None):
+        self.calls.append({"messages": messages, "tools": None if tool_choice == "none" else tools, "streamed": on_delta is not None})
         if not self.script:
             raise AssertionError("the model was called more often than scripted")
         step = self.script.pop(0)
@@ -111,6 +111,7 @@ async def _enable(db_session, athlete_id: str, *, consent: bool = True, cap: int
                 enabled=True,
                 approved_at=datetime.now(timezone.utc) - timedelta(days=30),
                 consent_at=datetime.now(timezone.utc) if consent else None,
+                consent_provider="mistral" if consent else None,
                 monthly_token_cap=cap,
             )
         )
@@ -129,6 +130,25 @@ def _future(days: int) -> str:
 
 
 # --- access ----------------------------------------------------------------------------
+
+
+async def test_switching_provider_asks_for_consent_again(client, db_session, mistral_on, monkeypatch):
+    athlete_id = await _ready(client, db_session)
+    base = f"/athletes/{athlete_id}/ai-coach"
+    assert (await client.get(base)).json()["can_use"] is True
+
+    monkeypatch.setattr(get_settings(), "ai_coach_provider", "anthropic")
+    monkeypatch.setattr(get_settings(), "anthropic_api_key", "test-key")
+    status = (await client.get(base)).json()
+    assert status["provider"] == "Anthropic" and status["consented"] is False and status["can_use"] is False
+    refused = await client.get(f"{base}/conversations")
+    assert refused.status_code == 403 and refused.json()["detail"] == "ai_coach_no_consent"
+
+    status = (await client.post(f"{base}/consent")).json()
+    assert status["consented"] is True and status["can_use"] is True
+
+    monkeypatch.setattr(get_settings(), "ai_coach_provider", "mistral")
+    assert (await client.get(base)).json()["consented"] is False
 
 
 async def test_off_without_a_key_and_until_an_admin_enables_it(client, db_session, monkeypatch):

@@ -126,7 +126,7 @@ export default {
     injuries: "Injuries and limitations",
     experience: "Experience",
     gym: "Include gym training",
-    gymDetails: "Gym equipment and experience",
+    gymDetails: "Gym equipment, experience and current lifts",
     indoor: "I have an indoor trainer",
     powerMeter: "I have a power meter",
     other: "Anything else your coach should know",
@@ -160,7 +160,7 @@ export default {
   admin: {
     title: "AI coach",
     loadFailed: "Couldn't load the AI coach access",
-    noKey: "No MISTRAL_API_KEY is set: the AI coach is off for everyone.",
+    noKey: "No API key is set for the configured model provider (MISTRAL_API_KEY or ANTHROPIC_API_KEY): the AI coach is off for everyone.",
     model: "Model",
     monthTokens: "Tokens this month",
     monthCost: "Estimated cost this month",

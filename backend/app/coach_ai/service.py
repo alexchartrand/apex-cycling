@@ -67,14 +67,24 @@ async def _history(db: AsyncSession, conversation: AiConversation) -> list[AiMes
     )
 
 
-def _trim(history: list[AiMessage], turn_start: int) -> list[dict]:
+def _trim(history: list[AiMessage], turn_start: int, provider_content: dict[int, list[dict]] | None = None) -> list[dict]:
     """The last messages, starting at a user message (never in the middle of
-    a tool exchange); results of earlier turns' tools shortened."""
+    a tool exchange); results of earlier turns' tools shortened. This turn's
+    assistant messages carry the provider's own form of the reply when it
+    gave one (`LlmReply.provider_content`, kept in memory only)."""
     start = max(0, len(history) - HISTORY_MESSAGES)
     while start < len(history) and history[start].role != "user":
         start += 1
     start = min(start, turn_start)  # the current turn always goes whole
-    return [_api_message(m, old=i < turn_start) for i, m in enumerate(history) if i >= start]
+    out = []
+    for i, m in enumerate(history):
+        if i < start:
+            continue
+        message = _api_message(m, old=i < turn_start)
+        if provider_content and id(m) in provider_content:
+            message["provider_content"] = provider_content[id(m)]
+        out.append(message)
+    return out
 
 
 def _usage(athlete_id: uuid.UUID, reply: LlmReply, purpose: str) -> AiUsage:
@@ -84,6 +94,8 @@ def _usage(athlete_id: uuid.UUID, reply: LlmReply, purpose: str) -> AiUsage:
         purpose=purpose,
         prompt_tokens=reply.prompt_tokens,
         completion_tokens=reply.completion_tokens,
+        cache_read_tokens=reply.cache_read_tokens,
+        cache_write_tokens=reply.cache_write_tokens,
     )
 
 
@@ -152,6 +164,7 @@ async def run_turn(
     )
     tools = tools_for(ctx)
     spent: list[LlmReply] = []
+    provider_content: dict[int, list[dict]] = {}
     athlete_id = athlete.id  # still readable after a rollback expired the instance
 
     on_delta = None
@@ -171,17 +184,23 @@ async def run_turn(
     try:
         final: str | None = None
         for round_no in range(MAX_TOOL_ROUNDS + 1):
-            messages = [{"role": "system", "content": system}, *_trim(history, turn_start)]
+            messages = [{"role": "system", "content": system}, *_trim(history, turn_start, provider_content)]
             last_round = round_no == MAX_TOOL_ROUNDS
             if on_delta is not None:
                 thinking = False
+            # The last round keeps the tools declared (the history has tool
+            # calls) but asks for an answer.
             reply = await client.chat(
-                messages, tools=None if last_round else tools, max_tokens=MAX_REPLY_TOKENS, on_delta=on_delta
+                messages,
+                tools=tools,
+                tool_choice="none" if last_round else "auto",
+                max_tokens=MAX_REPLY_TOKENS,
+                on_delta=on_delta,
             )
             spent.append(reply)
             db.add(_usage(athlete_id, reply, kind.value))
             if reply.tool_calls and not last_round:
-                add(
+                assistant = add(
                     role="assistant",
                     content=reply.content or "",
                     hidden=True,
@@ -190,6 +209,8 @@ async def run_turn(
                         for call in reply.tool_calls
                     ],
                 )
+                if reply.provider_content:
+                    provider_content[id(assistant)] = reply.provider_content
                 for call in reply.tool_calls:
                     if on_event is not None:
                         await on_event({"type": "tool", "name": call.name})

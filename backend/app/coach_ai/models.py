@@ -56,6 +56,8 @@ class AiCoachAccess(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # The athlete agreed to their data being sent to the model provider.
     consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Which provider (`providers.current_provider`) it was given for.
+    consent_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # Null = the server default (`ai_coach_default_monthly_tokens`).
     monthly_token_cap: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Weekly report: ISO weekday 1 = Monday … 7 = Sunday, local hour.
@@ -154,3 +156,7 @@ class AiUsage(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     purpose: Mapped[str] = mapped_column(String(16))
     prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
     completion_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    # Parts of `prompt_tokens` read from / written to the provider's prompt
+    # cache, priced differently (Anthropic); 0 when the provider says nothing.
+    cache_read_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    cache_write_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))

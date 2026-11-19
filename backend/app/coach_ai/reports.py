@@ -14,7 +14,8 @@ from app.activities.metrics_service import _ftp_on, _metric_rows, athlete_timezo
 from app.athletes.models import Athlete
 from app.auth.models import User
 from app.coach_ai import context, prompts
-from app.coach_ai.access import access_row
+from app.coach_ai.access import access_row, has_consent
+from app.coach_ai.providers import current_provider
 from app.coach_ai.models import (
     AiCoachAccess,
     AiProposal,
@@ -270,7 +271,7 @@ async def run_due_work(db: AsyncSession, client: LlmClientPort, athlete_id: uuid
     now = now or utcnow()
     athlete = await db.get(Athlete, athlete_id)
     access = await access_row(db, athlete_id)
-    if athlete is None or access is None or not access.enabled or access.consent_at is None:
+    if athlete is None or access is None or not access.enabled or not has_consent(access):
         return None
     zone = await athlete_timezone(db, athlete)
     period = due_report_period(access, now, zone)
@@ -293,6 +294,8 @@ async def scheduled_athletes(db: AsyncSession) -> list[uuid.UUID]:
         select(AiCoachAccess.athlete_id)
         .join(Athlete, Athlete.id == AiCoachAccess.athlete_id)
         .join(User, User.id == Athlete.user_id)
-        .where(AiCoachAccess.enabled.is_(True), AiCoachAccess.consent_at.is_not(None), User.is_active.is_(True))
+        .where(AiCoachAccess.enabled.is_(True), AiCoachAccess.consent_at.is_not(None),
+            AiCoachAccess.consent_provider == current_provider(),
+            User.is_active.is_(True))
     )
     return list(rows)

@@ -24,14 +24,14 @@ from app.coach_ai.access import (
     access_row,
     check_cap,
     cap_of,
-    cost_usd,
+    month_usage,
+    has_consent,
     is_usable,
-    month_start,
     month_tokens,
     require_ai_coach,
     require_ai_enabled,
 )
-from app.coach_ai.client import MistralClient, ai_coach_available
+from app.coach_ai.providers import ai_coach_available, build_llm_client, current_model, current_provider, provider_label
 from app.coach_ai.context import today_of
 from app.coach_ai.models import (
     AiCoachAccess,
@@ -40,7 +40,6 @@ from app.coach_ai.models import (
     AiMessage,
     AiProposal,
     AiReport,
-    AiUsage,
     ConversationKind,
     ProposalStatus,
     ReportKind,
@@ -85,7 +84,7 @@ _INTAKE_TITLE = {"fr": "Programme d'entraînement", "en": "Training program"}
 
 
 def get_llm_client() -> LlmClientPort:
-    return MistralClient()
+    return build_llm_client()
 
 
 def _model_error(exc: Exception) -> HTTPException:
@@ -107,12 +106,12 @@ async def _access_read(db: AsyncSession, athlete: Athlete, viewer: User) -> Acce
     return AccessRead(
         available=ai_coach_available(),
         enabled=enabled,
-        consented=bool(access and access.consent_at),
+        consented=has_consent(access),
         is_self=is_self,
         can_use=is_self and is_usable(access),
         usage=usage,
-        provider="Mistral AI",
-        model=get_settings().mistral_model,
+        provider=provider_label(),
+        model=current_model(),
     )
 
 
@@ -132,8 +131,9 @@ async def give_consent(
     db: AsyncSession = Depends(get_db),
 ) -> AccessRead:
     access = await access_row(db, athlete.id)
-    if access.consent_at is None:
+    if not has_consent(access):
         access.consent_at = utcnow()
+        access.consent_provider = current_provider()
         await db.commit()
     return await _access_read(db, athlete, current_user)
 
@@ -158,6 +158,7 @@ async def withdraw_consent(
 ) -> AccessRead:
     access = await access_row(db, athlete.id)
     access.consent_at = None
+    access.consent_provider = None
     if payload.delete_history:
         await forget_history(db, athlete.id)
     else:  # nothing waits for an answer the athlete can no longer give
@@ -539,31 +540,22 @@ async def create_report(
 async def _admin_rows(db: AsyncSession, athletes: list[tuple[Athlete, str]]) -> list[AdminAiRow]:
     ids = [a.id for a, _ in athletes]
     access = {r.athlete_id: r for r in await db.scalars(select(AiCoachAccess).where(AiCoachAccess.athlete_id.in_(ids)))}
-    usage = {
-        athlete_id: (int(prompt or 0), int(completion or 0))
-        for athlete_id, prompt, completion in (
-            await db.execute(
-                select(AiUsage.athlete_id, func.sum(AiUsage.prompt_tokens), func.sum(AiUsage.completion_tokens))
-                .where(AiUsage.athlete_id.in_(ids), AiUsage.created_at >= month_start())
-                .group_by(AiUsage.athlete_id)
-            )
-        ).all()
-    }
+    usage = await month_usage(db, ids)
     rows = []
     for athlete, email in athletes:
         row = access.get(athlete.id)
-        prompt, completion = usage.get(athlete.id, (0, 0))
+        tokens, cost = usage.get(athlete.id, (0, 0.0))
         rows.append(
             AdminAiRow(
                 athlete_id=athlete.id,
                 display_name=athlete.display_name,
                 email=email,
                 enabled=bool(row and row.enabled),
-                consented=bool(row and row.consent_at),
+                consented=has_consent(row),
                 approved_at=row.approved_at if row else None,
                 monthly_token_cap=row.monthly_token_cap if row else None,
-                month_tokens=int(prompt + completion),
-                month_cost_usd=cost_usd(int(prompt), int(completion)),
+                month_tokens=tokens,
+                month_cost_usd=round(cost, 4),
             )
         )
     return rows
@@ -581,21 +573,14 @@ async def admin_overview(q: str | None = Query(default=None, max_length=100), db
         query = query.where(Athlete.id.in_(select(AiCoachAccess.athlete_id)))
     athletes = [(a, e) for a, e in (await db.execute(query.order_by(Athlete.display_name).limit(50))).all()]
     rows = await _admin_rows(db, athletes)
-    totals = (
-        await db.execute(
-            select(func.sum(AiUsage.prompt_tokens), func.sum(AiUsage.completion_tokens)).where(
-                AiUsage.created_at >= month_start()
-            )
-        )
-    ).one()
-    prompt, completion = int(totals[0] or 0), int(totals[1] or 0)
+    everyone = (await month_usage(db)).values()
     return AdminAiOverview(
         available=ai_coach_available(),
-        model=get_settings().mistral_model,
+        model=current_model(),
         default_monthly_tokens=get_settings().ai_coach_default_monthly_tokens,
         rows=rows,
-        month_tokens=prompt + completion,
-        month_cost_usd=cost_usd(prompt, completion),
+        month_tokens=sum(tokens for tokens, _ in everyone),
+        month_cost_usd=round(sum(cost for _, cost in everyone), 4),
     )
 
 

@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -102,6 +103,20 @@ class Settings(BaseSettings):
     mistral_price_input_per_mtok: float = 0.7
     mistral_price_output_per_mtok: float = 2.1
     ai_coach_default_monthly_tokens: int = 2_000_000
+    # Which provider runs the AI coach (`coach_ai/providers.py`). Switching it
+    # asks every athlete to consent again: their data goes to another company.
+    ai_coach_provider: Literal["mistral", "anthropic"] = "mistral"
+    # Anthropic (Claude): off unless ANTHROPIC_API_KEY is set and the provider
+    # is "anthropic". Effort low / medium / high / xhigh / max (thinking depth
+    # and spend; Sonnet 5.5's default is high).
+    anthropic_api_key: str | None = None
+    anthropic_model: str = "claude-sonnet-5-5"
+    anthropic_effort: str | None = "medium"
+    anthropic_price_input_per_mtok: float = 2.0
+    anthropic_price_output_per_mtok: float = 10.0
+    # Cache reads and 5-minute cache writes (Sonnet 5.5's rates).
+    anthropic_price_cache_read_per_mtok: float = 0.10
+    anthropic_price_cache_write_per_mtok: float = 2.50
 
     sqorz_base_url: str = "https://my.sqorz.com/json/training/transponder"
     sqorz_poll_interval_minutes: int = 20
