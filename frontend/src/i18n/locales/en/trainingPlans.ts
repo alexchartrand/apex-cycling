@@ -104,6 +104,9 @@ export default {
     phaseHours: "Hours / week",
     save: "Save plan",
     saved: "Plan saved",
+    aiTitle: "Build a plan with the AI coach",
+    aiDescription: "Tell it the sport and the goal. It then asks about your availability and proposes the sessions.",
+    aiSave: "Continue with the AI coach",
   },
   errors: {
     name: "Give the plan a name",

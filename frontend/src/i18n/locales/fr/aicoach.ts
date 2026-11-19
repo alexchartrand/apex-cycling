@@ -48,6 +48,8 @@ export default {
     placeholder: "Écrivez à votre coach…",
     send: "Envoyer",
     thinking: "Votre coach réfléchit…",
+    elapsed: "Depuis {{time}} — préparer un plan peut prendre quelques minutes.",
+    replying: "Réponse en cours…",
     status: {
       calendar: "Consultation de votre calendrier…",
       training: "Analyse de vos entraînements…",

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Plus, Trash2, Wand2 } from "lucide-react";
+import { Plus, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { errorMessage } from "../api/errors";
 import { Button, Card, IconButton, Input, PageHeader, Select, SkeletonGroup, Textarea, useToast } from "../components/ui";
 import { localIsoDate } from "../i18n/format";
@@ -27,12 +27,21 @@ import { PHASE_KINDS, SPORTS, type PhaseKind, type Sport } from "../features/tra
 import { useSaveTrainingPlan, useSuggestPhases, useTrainingPlan } from "../features/trainingPlans/useTrainingPlans";
 import "../features/trainingPlans/TrainingPlans.css";
 
-/** `/plans/new` and `/plans/:planId/edit`: the plan's goal, dates, race and phases. */
+/**
+ * `/plans/new` and `/plans/:planId/edit`: the plan's goal, dates, race and phases.
+ * `/plans/new?ai=plans|chat` is the first step of "build it with the AI coach": the same
+ * questions without the phases (suggested on save), then the AI coach's intake on the
+ * saved plan, which keeps its sport, goal and dates. `ai` says where "back" goes.
+ */
 export function TrainingPlanEditPage() {
   const { t } = useTranslation(["trainingPlans", "common"]);
   const { t: ta } = useTranslation("activities");
   const { t: tr } = useTranslation("records");
+  const { t: ti } = useTranslation("aicoach");
   const { planId } = useParams();
+  const [params] = useSearchParams();
+  const aiFrom = planId ? null : params.get("ai");
+  const ai = aiFrom !== null;
   const fmt = useFormat();
   const path = useAthletePath();
   const navigate = useNavigate();
@@ -57,16 +66,20 @@ export function TrainingPlanEditPage() {
     set("phases", draft.phases.map((phase, i) => (i === index ? { ...phase, ...changes } : phase)));
   const raceList = (races.data ?? []).filter((race) => race.days_until >= 0 || race.id === draft.raceId);
   const goalList = (goals.data ?? []).filter((goal) => goal.target_date >= draft.start || goal.id === draft.goalId);
-  const back = planId ? path(`/plans/${planId}`) : path("/plans");
+  const back = planId ? path(`/plans/${planId}`) : aiFrom === "chat" ? "/ai-coach?tab=chat" : path("/plans");
+
+  function suggestedPhases(of: PlanDraft) {
+    const race = raceList.find((r) => r.id === of.raceId);
+    return suggest.mutateAsync({
+      start_date: of.start,
+      end_date: of.end,
+      race_priority: race && race.competition_date === of.end ? race.priority : null,
+    });
+  }
 
   async function suggestPhases() {
-    const race = raceList.find((r) => r.id === draft!.raceId);
     try {
-      const phases = await suggest.mutateAsync({
-        start_date: draft!.start,
-        end_date: draft!.end,
-        race_priority: race && race.competition_date === draft!.end ? race.priority : null,
-      });
+      const phases = await suggestedPhases(draft!);
       setDraft((current) => (current ? { ...current, phases: phases.map(phaseDraft) } : current));
     } catch (error) {
       toast({ title: errorMessage(error), tone: "error" });
@@ -75,13 +88,25 @@ export function TrainingPlanEditPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    const payload = draftPayload(draft!);
+    let payload = draftPayload(draft!);
     if (!payload) {
       setShowErrors(true);
       return;
     }
+    if (ai && payload.phases.length === 0) {
+      // The AI coach details the sessions and the outline, never an existing plan's phases.
+      try {
+        payload = draftPayload({ ...draft!, phases: (await suggestedPhases(draft!)).map(phaseDraft) }) ?? payload;
+      } catch {
+        // a plan without phases is still a plan
+      }
+    }
     try {
       const saved = await save.mutateAsync({ planId, payload });
+      if (ai) {
+        navigate(`/ai-coach?tab=chat&build=${saved.id}`);
+        return;
+      }
       toast({ title: t("builder.saved"), tone: "success" });
       navigate(path(`/plans/${saved.id}`));
     } catch {
@@ -92,9 +117,9 @@ export function TrainingPlanEditPage() {
   return (
     <>
       <PageHeader
-        title={planId ? t("builder.editTitle") : t("builder.newTitle")}
-        description={t("builder.description")}
-        back={{ to: back, label: planId ? (existing.data?.name ?? t("back")) : t("back") }}
+        title={planId ? t("builder.editTitle") : ai ? t("builder.aiTitle") : t("builder.newTitle")}
+        description={ai ? t("builder.aiDescription") : t("builder.description")}
+        back={{ to: back, label: planId ? (existing.data?.name ?? t("back")) : aiFrom === "chat" ? ti("title") : t("back") }}
       />
       <form className="tplan-form" onSubmit={onSubmit} noValidate>
         <Card as="section">
@@ -171,6 +196,7 @@ export function TrainingPlanEditPage() {
           </div>
         </Card>
 
+        {!ai && (
         <Card
           as="section"
           title={t("builder.phases")}
@@ -224,10 +250,11 @@ export function TrainingPlanEditPage() {
             {t("builder.addPhase")}
           </Button>
         </Card>
+        )}
 
         <div className="tplan-row">
-          <Button type="submit" loading={save.isPending}>
-            {t("builder.save")}
+          <Button type="submit" loading={save.isPending || suggest.isPending} icon={ai ? <Sparkles aria-hidden /> : undefined}>
+            {ai ? t("builder.aiSave") : t("builder.save")}
           </Button>
           <Button type="button" variant="ghost" onClick={() => navigate(back)}>
             {t("common:cancel")}

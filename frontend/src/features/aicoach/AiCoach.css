@@ -47,7 +47,8 @@
 .ai-message__bubble { border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); background: var(--color-surface); border: 1px solid var(--color-border); }
 .ai-message__bubble p { margin: 0; white-space: pre-wrap; }
 .ai-message--user .ai-message__bubble { background: var(--color-accent-soft); border-color: var(--color-accent-border); }
-.ai-message__bubble--thinking { display: flex; flex-direction: row; align-items: center; gap: var(--space-2); color: var(--color-text-2); }
+.ai-message__bubble--thinking { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-2); color: var(--color-text-2); }
+.ai-message__elapsed { flex-basis: 100%; font-size: var(--text-xs); }
 .ai-message__bubble--live .ai-markdown > :last-child::after {
   content: "▍"; margin-left: 2px; color: var(--color-text-2); animation: ai-dot 1.2s infinite ease-in-out;
 }

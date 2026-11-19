@@ -107,6 +107,9 @@ export default {
     phaseHours: "Heures / semaine",
     save: "Enregistrer le plan",
     saved: "Plan enregistré",
+    aiTitle: "Bâtir un plan avec le coach IA",
+    aiDescription: "Indiquez le sport et l'objectif. Il vous posera ensuite quelques questions sur vos disponibilités, puis proposera les séances.",
+    aiSave: "Continuer avec le coach IA",
   },
   errors: {
     name: "Donnez un nom au plan",

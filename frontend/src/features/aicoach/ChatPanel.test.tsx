@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode, useState } from "react";
 import { MemoryRouter, Route, Routes, useSearchParams } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -14,6 +14,7 @@ vi.mock("./api", async (original) => ({
   fetchConversation: vi.fn(),
   // A reply that never ends, like an intake still being written.
   startConversation: vi.fn(() => new Promise(() => {})),
+  sendMessage: vi.fn(() => new Promise(() => {})),
 }));
 
 afterEach(() => vi.clearAllMocks());
@@ -113,5 +114,31 @@ describe("ChatPanel ?build=", () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(api.startConversation).toHaveBeenCalledTimes(1);
     expect(vi.mocked(api.startConversation).mock.calls[0][1]).toEqual({ kind: "intake" });
+  });
+});
+
+describe("ChatPanel reply in flight", () => {
+  it("stays in its own conversation when another one is opened", async () => {
+    const summary = (id: string, title: string) => ({ id, kind: "chat", title, created_at: "2026-11-19T10:00:00Z", updated_at: null });
+    vi.mocked(api.listConversations).mockResolvedValue([summary("c1", "Plan talk"), summary("c2", "Other talk")] as never);
+    vi.mocked(api.fetchConversation).mockImplementation(
+      async (_athlete, id) => ({ ...summary(id, id), messages: id === "c1" ? [reply] : [] }) as unknown as Conversation,
+    );
+    renderAt("/ai-coach?tab=chat&c=c1");
+    await screen.findByText("A few things I still need");
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "6h, yes, yes" } });
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+    await screen.findByRole("status");
+    expect(screen.getByRole("textbox")).toHaveValue("");
+
+    fireEvent.click(screen.getByText("Other talk"));
+    await waitFor(() => expect(api.fetchConversation).toHaveBeenCalledWith("a1", "c2"));
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+    expect(screen.queryByText("6h, yes, yes")).toBeNull();
+    expect(screen.getByText("Replying…")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Plan talk"));
+    await screen.findByRole("status");
+    expect(screen.getByText("6h, yes, yes")).toBeInTheDocument();
   });
 });

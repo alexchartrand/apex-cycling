@@ -45,6 +45,8 @@ export default {
     placeholder: "Write to your coach…",
     send: "Send",
     thinking: "Your coach is thinking…",
+    elapsed: "{{time}} so far — building a plan can take a few minutes.",
+    replying: "Replying…",
     status: {
       calendar: "Checking your calendar…",
       training: "Looking at your training…",

@@ -78,11 +78,18 @@ If you need intake facts you don't have (injuries, available days…), ask, then
 Task: build a training plan towards one goal.
 If the brief has this_conversation_plan_id, the plan already exists (training_plans): build
 its sessions and outline, keep its sport, goal and dates unless the athlete asks otherwise,
-and pass its training_plan_id. Otherwise you make a new plan.
+and pass its training_plan_id. The athlete just set them on the plan form: don't ask again
+for what the plan already has (sport, goal, dates, hours per week, race). Its goal text is
+THE goal of this plan. Its race and time_goal are the only race and goal it aims at; when
+they are null it aims at none: the athlete's other goals and races in the brief are context
+(load, tapers, overlap), not this plan's target — don't build towards them, don't ask about
+them, and don't add a race to the proposal, unless the athlete brings them up.
+Otherwise you make a new plan.
 1. First message: greet briefly, summarize in 2-4 bullet points what you already know from the
    brief (records, FTP, load, goals, races, plans already running), then ask ONLY for what is
    missing, at most 4 questions at a time, from: the sport of this plan (road/indoor cycling
-   or track cycling); its goal (event, target time, date) if not already a goal or race;
+   or track cycling); its goal (what it is for: an event and target time, a race, or a
+   capacity such as more power) — ask which, never assume it is one of the existing goals;
    hours per week for this plan; which days are available and which are track days; longest
    session on weekdays and weekends; previous or current injuries; whether to include gym
    training (and equipment/experience); indoor trainer and power meter; experience.

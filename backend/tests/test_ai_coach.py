@@ -624,6 +624,36 @@ async def test_an_intake_without_a_plan_is_refused_and_an_intake_from_a_plan_bui
     assert missing.status_code == 404
 
 
+async def test_the_athletes_own_plan_keeps_its_goal_and_no_race_is_tied_to_it(client, db_session, mistral_on, llm):
+    """A plan made on the form without a race aims at none: the brief says so and an
+    accepted proposal's race goes on the season without becoming the plan's target."""
+    athlete_id = await _ready(client, db_session)
+    base = f"/athletes/{athlete_id}/ai-coach"
+    plan_id = (
+        await client.post(
+            f"/athletes/{athlete_id}/training-plans",
+            json={"name": "Power", "sport": "track_cycling", "goal_text": "More power on the track",
+                  "start_date": _future(1), "end_date": _future(60)},
+        )
+    ).json()["id"]
+    race_day = _future(30)
+    await client.post(f"/athletes/{athlete_id}/competitions", json={"name": "Classique", "competition_date": race_day})
+    llm.script = [
+        call("propose_changes", {"summary": "Power", "goal": "Flying 200", "race": {"name": "Classique", "date": race_day, "priority": "A"},
+                                 "ops": [{"op": "create", "date": _future(2), "title": "E", "workout": _workout(30)}]}),
+        say("Voici."),
+    ]
+    turn = await client.post(f"{base}/conversations", json={"kind": "intake", "training_plan_id": plan_id})
+    assert turn.status_code == 201, turn.text
+    brief = llm.calls[0]["messages"][0]["content"]
+    assert '"race":null' in brief and '"time_goal":null' in brief
+    proposal = turn.json()["messages"][-1]["proposal"]
+    assert (await client.post(f"{base}/proposals/{proposal['id']}/accept")).status_code == 200
+    plan = (await client.get(f"/athletes/{athlete_id}/training-plans/{plan_id}")).json()
+    assert plan["goal_text"] == "More power on the track"
+    assert plan["race"] is None and plan["goal"] is None
+
+
 async def test_a_race_in_the_past_is_an_error(client, db_session, mistral_on, llm):
     athlete_id = await _ready(client, db_session)
     llm.script = [

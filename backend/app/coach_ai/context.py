@@ -30,9 +30,11 @@ from app.athletes.service import metrics_at
 from app.auth.models import User
 from app.coach_ai.models import AiCoachProfile
 from app.coach_ai.proposals import is_locked, week_start
+from app.goals.models import Goal
 from app.goals.service import list_goals
 from app.planning.models import PlannedSession
 from app.planning.service import _gears
+from app.seasons.models import Competition
 from app.seasons.service import list_competitions
 from app.training.models import TrainingEvent
 from app.training.records_service import get_records_board
@@ -282,6 +284,15 @@ async def training_plans_summary(db: AsyncSession, athlete: Athlete, today: date
             line["goal_date"] = plan.goal_date.isoformat()
         if plan.hours_per_week:
             line["hours_per_week"] = plan.hours_per_week
+        # Spelled out either way, so the athlete's other goals and races aren't read as this plan's.
+        race = await db.get(Competition, plan.competition_id) if plan.competition_id else None
+        line["race"] = {"name": race.name, "date": race.competition_date.isoformat()} if race else None
+        goal = await db.get(Goal, plan.goal_id) if plan.goal_id else None
+        line["time_goal"] = (
+            {"event": goal.event_key, "start": goal.start_type, "target": ms_text(goal.target_time_ms), "date": goal.target_date.isoformat()}
+            if goal
+            else None
+        )
         if phases:
             line["phases"] = [p.model_dump(mode="json", exclude_none=True) for p in phases]
         if current is not None:

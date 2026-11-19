@@ -643,8 +643,8 @@ def _refine_plan(
     plan: TrainingPlan, payload: ProposalPayload, proposal: AiProposal, race: tuple[Competition, Goal | None] | None
 ) -> None:
     """The outline weeks the proposal gives replace those of the same weeks,
-    and the plan's race is the proposal's. A plan the AI wrote also takes its
-    goal; the athlete's own plan keeps theirs (they change it on the plan)."""
+    A plan the AI wrote also takes the proposal's goal, race and time goal; the
+    athlete's own plan keeps theirs (they change them on the plan)."""
     if payload.outline and plan.weeks is not None:
         weeks = {w["week_start"]: w for w in plan.weeks or []}
         for week in payload.outline:
@@ -654,11 +654,11 @@ def _refine_plan(
         plan.ai_proposal_id = proposal.id
         if payload.goal and payload.plan is None:
             plan.goal_text = payload.goal
-    if race is not None:
+    if race is not None and plan.created_by_ai:
+        # The athlete's own plan keeps the race and time goal they chose on it (or none).
         competition, goal = race
-        if plan.competition_id is None or plan.created_by_ai:
-            plan.competition_id = competition.id
-        if goal is not None and plan.sport == "track_cycling" and (plan.goal_id is None or plan.created_by_ai):
+        plan.competition_id = competition.id
+        if goal is not None and plan.sport == "track_cycling":
             plan.goal_id = goal.id
     if plan.created_by_ai and plan.competition_id is None:
         # A plan the AI extends past its end grows with it (one aiming at a race ends there).

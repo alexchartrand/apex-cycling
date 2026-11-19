@@ -22,7 +22,7 @@ export function TrainingPlansPage() {
   const actions = (
     <>
       {ai && (
-        <ButtonLink to="/ai-coach?tab=chat&build=new" variant="secondary" icon={<Sparkles aria-hidden />}>
+        <ButtonLink to="/plans/new?ai=plans" variant="secondary" icon={<Sparkles aria-hidden />}>
           {t("askAiNew")}
         </ButtonLink>
       )}

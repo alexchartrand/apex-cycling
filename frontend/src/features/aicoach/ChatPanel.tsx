@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { FileText, MessageSquare, Plus, RefreshCcw, Send, Sparkles, Target, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { aiErrorText } from "./aiErrors";
-import { Button, ConfirmDialog, EmptyState, IconButton, SkeletonGroup, Textarea } from "../../components/ui";
+import { Button, ButtonLink, ConfirmDialog, EmptyState, IconButton, SkeletonGroup, Textarea } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
 import { Markdown } from "./Markdown";
 import { ProposalCard } from "./ProposalCard";
@@ -45,8 +45,9 @@ const TOOL_STATUS: Record<string, Status> = {
 };
 
 /** The reply being written: its text so far, else what the coach is doing. */
-function LiveMessage({ live }: { live: LiveReply }) {
+function LiveMessage({ live, since }: { live: LiveReply; since: number }) {
   const { t } = useTranslation("aicoach");
+  const elapsed = useElapsedSeconds(since);
   if (live.text) {
     return (
       <li className="ai-message ai-message--assistant">
@@ -67,9 +68,28 @@ function LiveMessage({ live }: { live: LiveReply }) {
           <span />
         </span>
         {label}
+        {/* A plan proposal can reason silently for minutes: show it hasn't frozen. */}
+        {elapsed >= SHOW_ELAPSED_AFTER_S && (
+          <span className="ai-muted ai-message__elapsed">{t("chat.elapsed", { time: clockText(elapsed) })}</span>
+        )}
       </div>
     </li>
   );
+}
+
+const SHOW_ELAPSED_AFTER_S = 15;
+
+function clockText(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function useElapsedSeconds(since: number): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return Math.max(0, Math.floor((now - since) / 1000));
 }
 
 /** The conversation list, then the open conversation with its composer. */
@@ -97,28 +117,39 @@ export function ChatPanel({
   const remove = useDeleteConversation(athleteId);
   const [draft, setDraft] = useState("");
   const [pendingText, setPendingText] = useState<string | null>(null);
+  // The conversation the turn in flight belongs to (null: one being started), so its
+  // live reply shows there and not in whichever conversation is open meanwhile.
+  const [turn, setTurn] = useState<{ conversationId: string | null; since: number } | null>(null);
   const [toDelete, setToDelete] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const busy = start.isPending || send.isPending;
   const error = start.error ?? send.error;
   const live = start.live ?? send.live;
+  const turnHere = busy && (turn === null || turn.conversationId === conversationId);
   // Follows the reply as it grows, a few lines at a time rather than on every piece.
   const liveStep = live ? Math.floor(live.text.length / 160) : -1;
 
   const messages = conversation.data?.messages ?? [];
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
-  }, [messages.length, busy, liveStep]);
+  }, [messages.length, turnHere, liveStep]);
 
   function submit(text: string) {
     const content = text.trim();
     if (!content || busy) return;
     setPendingText(content);
-    const done = { onSettled: () => setPendingText(null) };
+    setTurn({ conversationId, since: Date.now() });
+    // The box empties as soon as the message is sent; a failed turn gives the text back
+    // unless something new was typed meanwhile.
+    setDraft("");
+    const done = {
+      onSettled: () => (setPendingText(null), setTurn(null)),
+      onError: () => setDraft((current) => current || text),
+    };
     if (conversationId) {
-      send.mutate({ conversationId, content }, { ...done, onSuccess: () => setDraft("") });
+      send.mutate({ conversationId, content }, done);
     } else {
-      start.mutate({ kind: "chat", content }, { ...done, onSuccess: (turn) => (setDraft(""), onOpen(turn.conversation_id)) });
+      start.mutate({ kind: "chat", content }, { ...done, onSuccess: (turn) => onOpen(turn.conversation_id) });
     }
   }
 
@@ -135,9 +166,10 @@ export function ChatPanel({
   }
 
   function buildPlan(trainingPlanId?: string) {
+    setTurn({ conversationId: null, since: Date.now() });
     start.mutate(
       { kind: "intake", ...(trainingPlanId ? { training_plan_id: trainingPlanId } : {}) },
-      { onSuccess: (turn) => onOpen(turn.conversation_id) },
+      { onSuccess: (done) => onOpen(done.conversation_id), onSettled: () => setTurn(null) },
     );
   }
 
@@ -175,7 +207,11 @@ export function ChatPanel({
                   <button type="button" onClick={() => onOpen(item.id)}>
                     <Icon aria-hidden className="ai-inline-icon" />
                     <span className="ai-chat__entry-title">{item.title ?? t(`chat.kinds.${item.kind}`)}</span>
-                    <span className="ai-muted">{fmt.relative(item.updated_at ?? item.created_at)}</span>
+                    <span className="ai-muted">
+                      {busy && turn?.conversationId === item.id
+                        ? t("chat.replying")
+                        : fmt.relative(item.updated_at ?? item.created_at)}
+                    </span>
                   </button>
                   <IconButton aria-label={t("chat.delete")} size="sm" variant="ghost" onClick={() => setToDelete(item.id)}>
                     <Trash2 aria-hidden />
@@ -188,16 +224,17 @@ export function ChatPanel({
       </aside>
 
       <section className="ai-chat__main" aria-label={t("chat.conversation")}>
-        {conversationId === null && !busy && (
+        {conversationId === null && !turnHere && (
           <EmptyState
             icon={<Sparkles aria-hidden />}
             title={t("chat.welcome")}
             description={t("chat.welcomeHint")}
             action={
               <div className="ai-chat__starts">
-                <Button icon={<Target aria-hidden />} onClick={() => buildPlan()}>
+                {/* The plan's sport, goal and dates are asked first, on the plan form; the intake then builds on it. */}
+                <ButtonLink to="/plans/new?ai=chat" icon={<Target aria-hidden />}>
                   {t("chat.buildPlan")}
-                </Button>
+                </ButtonLink>
                 <div className="ai-chat__suggestions">
                   {SUGGESTIONS.map((key) => (
                     <button key={key} type="button" className="ai-chip" onClick={() => submit(t(`chat.suggestions.${key}`))}>
@@ -214,14 +251,14 @@ export function ChatPanel({
           {messages.map((message) => (
             <Message key={message.id} athleteId={athleteId} message={message} />
           ))}
-          {busy && pendingText && (
+          {turnHere && pendingText && (
             <li className="ai-message ai-message--user">
               <div className="ai-message__bubble">
                 <p>{pendingText}</p>
               </div>
             </li>
           )}
-          {busy && <LiveMessage live={live ?? LIVE_START} />}
+          {turnHere && <LiveMessage live={live ?? LIVE_START} since={turn?.since ?? Date.now()} />}
         </ol>
         <div ref={endRef} />
         {error && <p className="ai-error" role="alert">{aiErrorText(error, t)}</p>}
