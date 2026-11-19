@@ -573,8 +573,14 @@ async def test_a_new_program_replaces_the_previous_ai_programs_upcoming_sessions
     proposal = turn.json()["messages"][-1]["proposal"]
     removed = [(i["before"]["title"], i["replaced"]) for i in proposal["items"] if i["op"] == "delete"]
     assert removed == [("Old A", True), ("Old B", True)]
-    # The week counts the new session, not the replaced ones.
-    assert sum(w["duration_s"] for w in proposal["weeks"]) < 4 * 3600
+    # The weeks count the new session and the kept ones that fall in them, not the replaced
+    # ones. Which kept sessions share a week with days 3-4 depends on today's weekday.
+    def monday(days: int) -> date:
+        day = date.today() + timedelta(days=days)
+        return day - timedelta(days=day.weekday())
+    touched = {monday(3), monday(4)}
+    kept = sum(3600 for days in (1, 4, 5, 6) if monday(days) in touched)  # Old before, Road, Old done, My own
+    assert sum(w["duration_s"] for w in proposal["weeks"]) == pytest.approx(kept + 45 * 60)
 
     accepted = await client.post(f"{base}/proposals/{proposal['id']}/accept")
     assert accepted.status_code == 200, accepted.text
