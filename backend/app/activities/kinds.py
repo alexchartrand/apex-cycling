@@ -27,6 +27,10 @@ CYCLING_TYPES: frozenset[ActivityType] = frozenset(
 )
 CYCLING_TYPE_VALUES: tuple[str, ...] = tuple(sorted(t.value for t in CYCLING_TYPES))
 
+# The sports an athlete says they do (`Athlete.sports`): what the app shows them.
+# Coarser than activity types — indoor rides are "cycling". Running joins here.
+ATHLETE_SPORTS: tuple[str, ...] = (ActivityType.TRACK_CYCLING.value, ActivityType.CYCLING.value, ActivityType.STRENGTH.value)
+
 # The sports a training plan can be for (`training_plans`).
 PLAN_SPORTS: tuple[str, ...] = (ActivityType.CYCLING.value, ActivityType.TRACK_CYCLING.value)
 

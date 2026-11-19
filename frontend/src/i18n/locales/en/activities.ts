@@ -288,6 +288,7 @@ export default {
     updated: "FTP set to {{watts}} W",
   },
   fitness: {
+    details: "Details",
     title: "Fitness & form",
     description: "Fitness is your training load over about six weeks, fatigue over about a week. Form is the difference: negative when you're carrying fatigue, positive when you're fresh.",
     fitness: "Fitness",

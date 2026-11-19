@@ -291,6 +291,7 @@ export default {
     updated: "FTP fixée à {{watts}} W",
   },
   fitness: {
+    details: "Détails",
     title: "Forme et fatigue",
     description: "La forme physique (fitness) est votre charge d'entraînement sur environ six semaines, la fatigue sur environ une semaine. La fraîcheur est la différence : négative quand vous portez de la fatigue, positive quand vous êtes frais.",
     fitness: "Forme physique",

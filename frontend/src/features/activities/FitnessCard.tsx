@@ -15,8 +15,17 @@ type Range = (typeof RANGES)[number];
 /**
  * Fitness (CTL), fatigue (ATL) and form (TSB) over time. On the home page it hides
  * itself until there is load to show; on the progress page it explains why not.
+ * `compact` is the three numbers only, linking to the Fitness page for the charts.
  */
-export function FitnessCard({ athleteId, hideWhenEmpty = false }: { athleteId: string; hideWhenEmpty?: boolean }) {
+export function FitnessCard({
+  athleteId,
+  hideWhenEmpty = false,
+  compact = false,
+}: {
+  athleteId: string;
+  hideWhenEmpty?: boolean;
+  compact?: boolean;
+}) {
   const canEdit = useCanEdit();
   const path = useAthletePath();
   const { t } = useTranslation(["activities", "common"]);
@@ -36,16 +45,22 @@ export function FitnessCard({ athleteId, hideWhenEmpty = false }: { athleteId: s
     <Card
       title={t("fitness.title")}
       actions={
-        <SegmentedControl<`${Range}`>
-          size="sm"
-          aria-label={t("fitness.title")}
-          value={`${days}`}
-          onChange={(next) => setDays(Number(next) as Range)}
-          options={RANGES.map((range) => ({ value: `${range}` as `${Range}`, label: t(`fitness.range.d${range}`) }))}
-        />
+        compact ? (
+          <Link to={path("/progress")} className="fitness__more">
+            {t("fitness.details")}
+          </Link>
+        ) : (
+          <SegmentedControl<`${Range}`>
+            size="sm"
+            aria-label={t("fitness.title")}
+            value={`${days}`}
+            onChange={(next) => setDays(Number(next) as Range)}
+            options={RANGES.map((range) => ({ value: `${range}` as `${Range}`, label: t(`fitness.range.d${range}`) }))}
+          />
+        )
       }
     >
-      <p className="ui-card__hint">{t("fitness.description")}</p>
+      {!compact && <p className="ui-card__hint">{t("fitness.description")}</p>}
       {load.isLoading && <SkeletonGroup lines={4} />}
       {load.isError && <p role="alert">{t("common:loadError")}</p>}
 
@@ -67,47 +82,53 @@ export function FitnessCard({ athleteId, hideWhenEmpty = false }: { athleteId: s
             />
           </div>
 
-          <ChartFrame
-            height={200}
-            legend={[
-              { label: t("fitness.fitness"), color: "var(--chart-1)" },
-              { label: t("fitness.fatigue"), color: "var(--chart-4)" },
-            ]}
-          >
-            <LineChart data={rows} syncId="fitness" margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-              <CartesianGrid {...gridProps} />
-              <XAxis {...axisProps} dataKey="t" type="number" domain={["dataMin", "dataMax"]} tickFormatter={formatDay} hide />
-              <YAxis {...axisProps} width={36} tickFormatter={(v: number) => fmt.number(v, 0)} />
-              <Tooltip
-                cursor={cursorProps}
-                content={<ChartTooltip formatLabel={(label) => formatDay(Number(label))} formatValue={(value) => fmt.number(value, 0)} />}
-              />
-              <Line type="monotone" dataKey="ctl" name={t("fitness.fitness")} stroke="var(--chart-1)" strokeWidth={2.5} dot={false} isAnimationActive={false} />
-              <Line type="monotone" dataKey="atl" name={t("fitness.fatigue")} stroke="var(--chart-4)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-            </LineChart>
-          </ChartFrame>
-          <ChartFrame height={96}>
-            <AreaChart data={rows} syncId="fitness" margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
-              <CartesianGrid {...gridProps} />
-              <XAxis {...axisProps} dataKey="t" type="number" domain={["dataMin", "dataMax"]} tickFormatter={formatDay} />
-              <YAxis {...axisProps} width={36} tickFormatter={(v: number) => fmt.number(v, 0)} />
-              <ReferenceLine y={0} stroke="var(--color-border-strong)" />
-              <Tooltip
-                cursor={cursorProps}
-                content={<ChartTooltip formatLabel={(label) => formatDay(Number(label))} formatValue={(value) => fmt.number(value, 0)} />}
-              />
-              <Area type="monotone" dataKey="tsb" name={t("fitness.form")} stroke="var(--chart-3)" fill="var(--chart-3)" fillOpacity={0.2} strokeWidth={1.5} dot={false} isAnimationActive={false} />
-            </AreaChart>
-          </ChartFrame>
+          {!compact && (
+            <>
+              <ChartFrame
+                height={200}
+                legend={[
+                  { label: t("fitness.fitness"), color: "var(--chart-1)" },
+                  { label: t("fitness.fatigue"), color: "var(--chart-4)" },
+                ]}
+              >
+                <LineChart data={rows} syncId="fitness" margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                  <CartesianGrid {...gridProps} />
+                  <XAxis {...axisProps} dataKey="t" type="number" domain={["dataMin", "dataMax"]} tickFormatter={formatDay} hide />
+                  <YAxis {...axisProps} width={36} tickFormatter={(v: number) => fmt.number(v, 0)} />
+                  <Tooltip
+                    cursor={cursorProps}
+                    content={<ChartTooltip formatLabel={(label) => formatDay(Number(label))} formatValue={(value) => fmt.number(value, 0)} />}
+                  />
+                  <Line type="monotone" dataKey="ctl" name={t("fitness.fitness")} stroke="var(--chart-1)" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="atl" name={t("fitness.fatigue")} stroke="var(--chart-4)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                </LineChart>
+              </ChartFrame>
+              <ChartFrame height={96}>
+                <AreaChart data={rows} syncId="fitness" margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
+                  <CartesianGrid {...gridProps} />
+                  <XAxis {...axisProps} dataKey="t" type="number" domain={["dataMin", "dataMax"]} tickFormatter={formatDay} />
+                  <YAxis {...axisProps} width={36} tickFormatter={(v: number) => fmt.number(v, 0)} />
+                  <ReferenceLine y={0} stroke="var(--color-border-strong)" />
+                  <Tooltip
+                    cursor={cursorProps}
+                    content={<ChartTooltip formatLabel={(label) => formatDay(Number(label))} formatValue={(value) => fmt.number(value, 0)} />}
+                  />
+                  <Area type="monotone" dataKey="tsb" name={t("fitness.form")} stroke="var(--chart-3)" fill="var(--chart-3)" fillOpacity={0.2} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                </AreaChart>
+              </ChartFrame>
+            </>
+          )}
         </>
       )}
 
-      {unrated > 0 && <p className="source-card__note">{t("fitness.unrated", { count: unrated })}</p>}
-      <p className="source-card__note">
-        <Link to={path("/power")}>{t("fitness.powerCurveLink")}</Link>
-        {" · "}
-        {canEdit && <Link to="/settings/physiology">{t("fitness.managePhysiology")}</Link>}
-      </p>
+      {!compact && unrated > 0 && <p className="source-card__note">{t("fitness.unrated", { count: unrated })}</p>}
+      {!compact && (
+        <p className="source-card__note">
+          <Link to={path("/power")}>{t("fitness.powerCurveLink")}</Link>
+          {" · "}
+          {canEdit && <Link to="/settings/physiology">{t("fitness.managePhysiology")}</Link>}
+        </p>
+      )}
     </Card>
   );
 }

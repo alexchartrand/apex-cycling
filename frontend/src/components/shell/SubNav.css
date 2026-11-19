@@ -1,0 +1,24 @@
+.subnav {
+  margin-bottom: var(--space-5);
+}
+
+.subnav__link:hover {
+  text-decoration: none;
+}
+
+/* A hub's pages: the expanded sidebar already lists them, so the strip shows
+   only where the sidebar doesn't (phones and the collapsed sidebar). */
+.subnav--hub {
+  display: none;
+}
+
+.shell--collapsed .subnav--hub {
+  display: block;
+}
+
+@media (max-width: 899px) {
+  .subnav--hub {
+    display: block;
+    margin-top: calc(-1 * var(--space-2));
+  }
+}

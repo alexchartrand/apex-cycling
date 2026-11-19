@@ -311,7 +311,7 @@
   margin: var(--space-4) 0;
 }
 
-@media (max-width: 599px) {
+@media (max-width: 640px) {
   .fitness__tiles {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -380,4 +380,19 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: var(--space-3);
+}
+
+.fitness__more {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.latest-activity__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-3);
+}
+
+.latest-activity__stats .stat-tile {
+  background: var(--color-surface-2);
 }

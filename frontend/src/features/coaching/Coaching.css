@@ -165,7 +165,7 @@
   margin-top: var(--space-3);
 }
 
-@media (max-width: 40rem) {
+@media (max-width: 640px) {
   .squad__filters {
     grid-template-columns: minmax(0, 1fr);
   }

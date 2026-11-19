@@ -1,8 +1,10 @@
 import { CalendarPlus, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { Badge, Button, Card, SkeletonGroup } from "../../components/ui";
 import { localIsoDate } from "../../i18n/format";
+import { useAthletePath } from "../athletes/athleteScope";
 import { useFormat } from "../../i18n/useFormat";
 import { PlanDetailDialog } from "./PlanDetailDialog";
 import { lengthText } from "../workouts/profile";
@@ -21,8 +23,21 @@ function daysAgo(days: number): string {
   return localIsoDate(date);
 }
 
-/** Planned sessions still waiting for an answer, with the button to plan another. Hides when empty unless `alwaysShow`. */
-export function PlannedSessionsCard({ athleteId, alwaysShow = false }: { athleteId: string; alwaysShow?: boolean }) {
+/**
+ * Planned sessions still waiting for an answer, with the button to plan another.
+ * Hides when empty unless `alwaysShow`; `limit` lists only the first ones and
+ * points to the log for the rest.
+ */
+export function PlannedSessionsCard({
+  athleteId,
+  alwaysShow = false,
+  limit,
+}: {
+  athleteId: string;
+  alwaysShow?: boolean;
+  limit?: number;
+}) {
+  const path = useAthletePath();
   const { t } = useTranslation("plan");
   const fmt = useFormat();
   const plans = usePlannedSessions(athleteId);
@@ -45,7 +60,7 @@ export function PlannedSessionsCard({ athleteId, alwaysShow = false }: { athlete
       {plans.isLoading && <SkeletonGroup lines={2} />}
       {!plans.isLoading && waiting.length === 0 && <p className="plan-empty">{t("empty")}</p>}
       <ul className="plan-list">
-        {waiting.map((plan) => (
+        {(limit ? waiting.slice(0, limit) : waiting).map((plan) => (
           <li key={plan.id}>
             <button type="button" className="plan-list__row" onClick={() => setOpen(plan)}>
               <span className="plan-list__date">{fmt.date(plan.planned_date, "weekday")}</span>
@@ -63,6 +78,11 @@ export function PlannedSessionsCard({ athleteId, alwaysShow = false }: { athlete
           </li>
         ))}
       </ul>
+      {limit != null && waiting.length > limit && (
+        <Link to={path("/log")} className="plan-list__more">
+          {t("more", { count: waiting.length - limit })}
+        </Link>
+      )}
 
       {adding && <PlanDialog key="new" athleteId={athleteId} date={today} plan={null} onClose={() => setAdding(false)} />}
       {open && <PlanDetailDialog key={open.id} athleteId={athleteId} plan={plans.data?.find((p) => p.id === open.id) ?? open} onClose={() => setOpen(null)} />}

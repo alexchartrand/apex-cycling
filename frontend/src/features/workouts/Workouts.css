@@ -468,7 +468,7 @@
   color: var(--color-negative);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .workout-editor__header {
     flex-wrap: wrap;
   }

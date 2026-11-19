@@ -245,3 +245,10 @@ li:first-child.plan-results__row {
   flex-wrap: wrap;
   gap: var(--space-1);
 }
+
+.plan-list__more {
+  display: inline-block;
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}

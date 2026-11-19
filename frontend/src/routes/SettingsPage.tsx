@@ -9,6 +9,7 @@ import { AccountSettings } from "../features/settings/AccountSettings";
 import { PrivacySettings } from "../features/settings/PrivacySettings";
 import { PhysiologySettings } from "../features/settings/PhysiologySettings";
 import { ProfileSettings } from "../features/settings/ProfileSettings";
+import { SportsSettings } from "../features/settings/SportsSettings";
 import "./SettingsPage.css";
 
 const SECTIONS = ["profile", "physiology", "privacy", "notifications", "preferences", "account"] as const;
@@ -42,7 +43,12 @@ export function SettingsPage() {
           ) : (
             <>
               <TabPanel value="profile">
-                {athlete.data && user && <ProfileSettings athlete={athlete.data} user={user} />}
+                {athlete.data && user && (
+                  <div className="settings__stack">
+                    <ProfileSettings athlete={athlete.data} user={user} />
+                    <SportsSettings athlete={athlete.data} />
+                  </div>
+                )}
               </TabPanel>
               <TabPanel value="physiology">
                 {athlete.data && <PhysiologySettings athleteId={athlete.data.id} />}

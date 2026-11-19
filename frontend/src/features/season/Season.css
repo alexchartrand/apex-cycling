@@ -96,7 +96,7 @@
   gap: var(--space-4);
 }
 
-@media (max-width: 40rem) {
+@media (max-width: 640px) {
   .season__form-row {
     grid-template-columns: minmax(0, 1fr);
   }

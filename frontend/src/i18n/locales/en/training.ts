@@ -162,8 +162,12 @@ export default {
     saved: "Track settings saved",
     forbidden: "You can't edit this track's settings.",
   },
+  fitness: {
+    title: "Fitness",
+    description: "Training load, form and weekly time across all your sports.",
+  },
   progress: {
-    title: "Progress",
+    title: "Lap progression",
     description: "Your best time per session for one track and metric, over time.",
     track: "Track",
     selectTrack: "Choose a track…",

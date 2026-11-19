@@ -147,6 +147,7 @@ export default {
     deleteHistory: "Supprimer aussi mes conversations, mes bilans et ce que le coach a appris sur moi",
   },
   home: {
+    goTo: "Aller au coach IA",
     title: "Coach IA",
     pending_one: "{{count}} proposition en attente",
     pending_other: "{{count}} propositions en attente",
@@ -154,7 +155,6 @@ export default {
     report: "Bilan du {{date}}",
     read: "Lire",
     empty: "Posez une question ou laissez-le bâtir votre programme.",
-    open: "Ouvrir",
   },
   coachView: {
     off: "Cet athlète n'utilise pas le coach IA",

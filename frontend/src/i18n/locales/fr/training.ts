@@ -165,8 +165,12 @@ export default {
     saved: "Réglages de la piste enregistrés",
     forbidden: "Vous ne pouvez pas modifier les réglages de cette piste.",
   },
+  fitness: {
+    title: "Forme",
+    description: "Charge d'entraînement, forme et temps par semaine, tous sports confondus.",
+  },
   progress: {
-    title: "Progression",
+    title: "Progression des tours",
     description: "Votre meilleur temps par séance pour une piste et une mesure, au fil du temps.",
     track: "Piste",
     selectTrack: "Choisir une piste…",

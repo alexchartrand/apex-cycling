@@ -2,6 +2,8 @@ import type { LocaleNamespace } from "../types";
 import type en from "../en/plan";
 
 export default {
+  more_one: "{{count}} autre dans le journal",
+  more_other: "{{count}} autres dans le journal",
   title: "Séances planifiées",
   add: "Planifier une séance",
   empty: "Rien de prévu. Un entraîneur (ou vous) peut mettre une séance au calendrier avec les efforts à rouler.",

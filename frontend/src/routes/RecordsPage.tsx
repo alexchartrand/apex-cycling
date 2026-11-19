@@ -9,6 +9,7 @@ import { entryId, selectionOf } from "../features/records/recordsBoard";
 import { RecordTimeline } from "../features/records/RecordTimeline";
 import type { RecordEntry } from "../features/records/types";
 import { useRecords } from "../features/records/useRecords";
+import { LapProgression } from "../features/training/LapProgression";
 import { useTracks } from "../features/training/useTraining";
 import { useCanEdit } from "../features/athletes/athleteScope";
 import "./RecordsPage.css";
@@ -59,6 +60,8 @@ export function RecordsPage() {
         )}
         <ManualResultsList athleteId={athleteId} tracks={tracks.data ?? []} adding={adding} onAddingChange={setAdding} />
       </div>
+
+      {athleteId !== "" && <LapProgression athleteId={athleteId} />}
     </>
   );
 }

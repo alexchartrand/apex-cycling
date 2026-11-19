@@ -14,6 +14,8 @@ export default {
     trackTime: "Temps sur piste",
     vsLastWeek: "vs semaine dernière",
   },
+  track: { title: "Sur la piste" },
+  latestActivity: { eyebrow: "Dernière activité", time: "Durée", distance: "Distance", power: "Puissance moy.", load: "Charge" },
   latest: {
     eyebrow: "Dernière séance",
     open: "Ouvrir",

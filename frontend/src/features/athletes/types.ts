@@ -7,6 +7,8 @@ export interface Athlete {
   birthdate: string | null;
   sex: Sex | null;
   height_cm: number | null;
+  /** The sports they do (`features/sports/registry.ts`); null = not chosen, guessed from the data. */
+  sports?: string[] | null;
   /** UCI age category code (U11…U23, ELITE, M30, M35…), from the birthdate. */
   category: string | null;
   /** The clubs, among club_ids, whose leaderboard the athlete's best times show on (their own choice). */
@@ -20,6 +22,7 @@ export interface AthleteUpdate {
   birthdate?: string | null;
   sex?: Sex | null;
   height_cm?: number | null;
+  sports?: string[] | null;
 }
 
 export const METRIC_FIELDS = ["weight_kg", "ftp_w", "max_hr", "resting_hr"] as const;

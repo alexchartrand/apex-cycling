@@ -144,6 +144,7 @@ export default {
     deleteHistory: "Also delete my conversations, reports and what the coach learnt about me",
   },
   home: {
+    goTo: "Go to the AI coach",
     title: "AI coach",
     pending_one: "{{count}} proposal waiting",
     pending_other: "{{count}} proposals waiting",
@@ -151,7 +152,6 @@ export default {
     report: "Report of {{date}}",
     read: "Read",
     empty: "Ask a question or let it build your program.",
-    open: "Open",
   },
   coachView: {
     off: "This athlete doesn't use the AI coach",

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Card, PageHeader, SkeletonGroup } from "../components/ui";
 import { FitnessCard } from "../features/activities/FitnessCard";
+import { LatestActivityCard } from "../features/activities/LatestActivityCard";
 import "../features/activities/Activities.css";
 import { useAthletePath, useAthleteScope } from "../features/athletes/athleteScope";
 import { AthleteBadges, AthleteFacts } from "../features/coaching/AthleteSummary";
@@ -80,6 +81,7 @@ export function CoachAthletePage() {
               </ul>
             </Card>
 
+            <LatestActivityCard athleteId={athleteId} />
             <NextRaceCard athleteId={athleteId} />
             <WhatsNewCard athleteId={athleteId} />
           </div>

@@ -34,7 +34,7 @@
   font-size: var(--text-sm);
 }
 
-@media (max-width: 599px) {
+@media (max-width: 640px) {
   .manual-form__row {
     grid-template-columns: minmax(0, 1fr);
   }

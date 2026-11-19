@@ -1,6 +1,9 @@
 /** Backend `training_plans/schemas.py`. */
 
-export type Sport = "cycling" | "track_cycling";
+import type { Sport as AthleteSport } from "../sports/registry";
+
+/** The sports a plan can be for (backend `kinds.PLAN_SPORTS`), a subset of the athlete sports. */
+export type Sport = Extract<AthleteSport, "cycling" | "track_cycling">;
 export const SPORTS: Sport[] = ["cycling", "track_cycling"];
 
 export type PhaseKind = "base" | "build" | "peak" | "taper" | "race" | "recovery" | "transition";

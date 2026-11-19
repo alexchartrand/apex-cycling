@@ -1,9 +1,8 @@
-import { useMemo } from "react";
-import { ArrowRight, CalendarDays, Clock, CloudDownload, Flag, ListOrdered, Radio, Timer } from "lucide-react";
+import { CloudDownload, Radio } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
-import { Badge, ButtonLink, Card, EmptyState, SkeletonGroup, StatTile, type DeltaDirection } from "../components/ui";
+import { ButtonLink, EmptyState, SkeletonGroup } from "../components/ui";
 import { FitnessCard } from "../features/activities/FitnessCard";
+import { LatestActivityCard } from "../features/activities/LatestActivityCard";
 import { useActivitiesRange } from "../features/activities/useActivities";
 import "../features/activities/Activities.css";
 import { useActiveAthlete } from "../features/athletes/useActiveAthlete";
@@ -14,10 +13,11 @@ import { AiCoachCard } from "../features/aicoach/AiCoachCard";
 import { PlannedSessionsCard } from "../features/plan/PlannedSessionsCard";
 import { GoalsCard } from "../features/goals/GoalsCard";
 import { NextRaceCard } from "../features/season/NextRaceCard";
-import { useIngestionRuns, useTransponderAssignments } from "../features/connections/useConnections";
-import { bestLap, DEFAULT_LAP_DISTANCE_M, flying200Ms, startOfWeek, summarizeWeek } from "../features/training/sessionStats";
-import { useSessionDetail, useSessionsRange } from "../features/training/useTraining";
-import { localIsoDate } from "../i18n/format";
+import { useTransponderAssignments } from "../features/connections/useConnections";
+import { cardShown } from "../features/sports/registry";
+import { useMySports } from "../features/sports/useMySports";
+import { TrackHome } from "../features/training/TrackHome";
+import { useSessionsRange } from "../features/training/useTraining";
 import { useFormat } from "../i18n/useFormat";
 import "./HomePage.css";
 
@@ -27,53 +27,25 @@ function greetingKey(hour: number): "morning" | "afternoon" | "evening" {
   return "evening";
 }
 
-function delta(current: number, previous: number): { label: string; direction: DeltaDirection } | undefined {
-  if (current === 0 && previous === 0) return undefined;
-  const diff = current - previous;
-  return { label: `${diff > 0 ? "+" : diff < 0 ? "−" : "±"}${Math.abs(diff)}`, direction: diff > 0 ? "better" : diff < 0 ? "worse" : "neutral" };
-}
-
-// How many of the newest sessions the "recent" list shows.
-const RECENT_SESSIONS = 5;
-
+/**
+ * Today first (what's planned, form, the latest activity), then what's ahead
+ * (race, goals, the AI coach, new headlines) beside it, then the cards of the
+ * athlete's sports (the track).
+ */
 export function HomePage() {
-  const { t } = useTranslation(["home", "training", "shell"]);
+  const { t } = useTranslation(["home", "shell"]);
   const fmt = useFormat();
   const athlete = useActiveAthlete();
   const athleteId = athlete.data?.id ?? "";
-  // Home only needs the last two weeks (the week tiles) and the newest few; not the whole history.
-  const previousWeekStart = useMemo(() => {
-    const start = startOfWeek(new Date());
-    start.setDate(start.getDate() - 7);
-    return start;
-  }, []);
-  const weeks = useSessionsRange(athleteId, { from: localIsoDate(previousWeekStart) });
-  const sessions = useSessionsRange(athleteId, { limit: RECENT_SESSIONS });
+  const { sports } = useMySports();
+  // Same keys as the cards' own queries, so they're asked once.
+  const sessions = useSessionsRange(athleteId, { limit: 5 });
   const activities = useActivitiesRange(athleteId, { limit: 1 });
-  const runs = useIngestionRuns(athleteId);
   const assignments = useTransponderAssignments(athleteId);
-  const latest = sessions.data?.[0];
   const firstRun = useFirstRunChecklist();
-  const latestDetail = useSessionDetail(athleteId, latest?.external_event_id ?? "");
 
   const now = new Date();
   const firstName = athlete.data?.display_name.split(/\s+/)[0] ?? "";
-
-  const { thisWeek, lastWeek } = useMemo(() => {
-    const weekStart = startOfWeek(new Date());
-    return {
-      thisWeek: summarizeWeek(weeks.data ?? [], weekStart),
-      lastWeek: summarizeWeek(weeks.data ?? [], previousWeekStart),
-    };
-  }, [weeks.data, previousWeekStart]);
-
-  const latestBests = useMemo(() => {
-    const laps = latestDetail.data?.tracks.flatMap((track) => track.laps) ?? [];
-    return { lap: bestLap(laps, (lap) => lap.whole_lap_time_ms), f200: bestLap(laps, flying200Ms) };
-  }, [latestDetail.data]);
-
-  const lastRun = runs.data?.[0];
-  const activeCount = assignments.data?.filter((a) => a.end_date === null).length ?? 0;
   const noData = sessions.data?.length === 0 && assignments.data?.length === 0 && activities.data?.length === 0;
 
   return (
@@ -88,7 +60,7 @@ export function HomePage() {
         </ButtonLink>
       </header>
 
-      {(athlete.isLoading || sessions.isLoading || weeks.isLoading) && <SkeletonGroup lines={6} />}
+      {(athlete.isLoading || sessions.isLoading) && <SkeletonGroup lines={6} />}
 
       {firstRun.visible && firstRun.checklist && <FirstRunChecklist checklist={firstRun.checklist} onHide={firstRun.hide} />}
 
@@ -101,121 +73,23 @@ export function HomePage() {
         />
       )}
 
-      {athleteId !== "" && <AiCoachCard athleteId={athleteId} />}
-
-      {athleteId !== "" && <WhatsNewCard athleteId={athleteId} />}
-
-      {athleteId !== "" && <FitnessCard athleteId={athleteId} hideWhenEmpty />}
-
-      {athleteId !== "" && <NextRaceCard athleteId={athleteId} />}
-
-      {athleteId !== "" && <PlannedSessionsCard athleteId={athleteId} />}
-
-      {athleteId !== "" && !noData && <GoalsCard athleteId={athleteId} />}
-
-      {sessions.data && sessions.data.length > 0 && (
-        <>
-          <div className="home__week">
-            <StatTile
-              label={t("week.sessions")}
-              icon={<CalendarDays aria-hidden />}
-              value={thisWeek.sessions}
-              delta={delta(thisWeek.sessions, lastWeek.sessions)}
-              hint={t("week.vsLastWeek")}
-            />
-            <StatTile
-              label={t("week.laps")}
-              icon={<ListOrdered aria-hidden />}
-              value={thisWeek.laps}
-              hint={t("week.distance", { distance: fmt.distance(thisWeek.laps * DEFAULT_LAP_DISTANCE_M) })}
-            />
-            <StatTile
-              label={t("week.trackTime")}
-              icon={<Clock aria-hidden />}
-              value={thisWeek.trackSeconds >= 3600 ? fmt.duration(thisWeek.trackSeconds) : Math.round(thisWeek.trackSeconds / 60)}
-              unit={thisWeek.trackSeconds >= 3600 ? "h" : "min"}
-            />
+      {athleteId !== "" && (
+        <div className="home__layout">
+          <div className="home__today">
+            <PlannedSessionsCard athleteId={athleteId} limit={5} />
+            <FitnessCard athleteId={athleteId} hideWhenEmpty compact />
+            <LatestActivityCard athleteId={athleteId} />
           </div>
-
-          <div className="home__grid">
-            {latest && (
-              <Card
-                className="home__latest"
-                eyebrow={`${t("latest.eyebrow")} · ${fmt.date(latest.event_date, "weekday")}`}
-                title={latest.event_name}
-                actions={
-                  <ButtonLink to={`/sessions/${latest.external_event_id}`} size="sm" variant="secondary" iconRight={<ArrowRight aria-hidden />}>
-                    {t("latest.open")}
-                  </ButtonLink>
-                }
-              >
-                <div className="home__latest-tracks">
-                  {latest.track_names.map((name) => (
-                    <Badge key={name}>{name}</Badge>
-                  ))}
-                </div>
-                <div className="home__latest-stats">
-                  <StatTile label={t("training:session.laps")} icon={<ListOrdered aria-hidden />} value={latest.lap_count} />
-                  <StatTile
-                    label={t("training:session.bestLap")}
-                    icon={<Timer aria-hidden />}
-                    tone="accent"
-                    value={latestDetail.isLoading ? "…" : fmt.lapTime(latestBests.lap?.value)}
-                  />
-                  <StatTile
-                    label={t("training:session.bestF200")}
-                    icon={<Flag aria-hidden />}
-                    tone="highlight"
-                    value={latestDetail.isLoading ? "…" : latestBests.f200 ? fmt.seconds(latestBests.f200.value) : "—"}
-                    unit={latestBests.f200 ? "s" : undefined}
-                  />
-                </div>
-              </Card>
-            )}
-
-            <div className="home__side">
-              <Card title={t("sync.title")} actions={<Radio className="home__card-icon" aria-hidden />}>
-                <div className="home__sync">
-                  {lastRun ? (
-                    <Badge tone={lastRun.status === "failed" ? "negative" : "positive"}>
-                      {lastRun.status === "failed" ? t("sync.failed") : t("sync.lastSync", { when: fmt.relative(lastRun.requested_at) })}
-                    </Badge>
-                  ) : (
-                    <Badge>{t("sync.never")}</Badge>
-                  )}
-                  <p className="ui-card__hint">
-                    {activeCount > 0 ? t("sync.activeTransponders", { count: activeCount }) : t("sync.noActive")}
-                  </p>
-                  <Link to="/import" className="home__link">
-                    {t("sync.manage")} <ArrowRight aria-hidden />
-                  </Link>
-                </div>
-              </Card>
-
-              <Card
-                title={t("recent.title")}
-                actions={
-                  <Link to="/log" className="home__link">
-                    {t("recent.viewAll")}
-                  </Link>
-                }
-              >
-                <ul className="home__recent">
-                  {sessions.data.map((session) => (
-                    <li key={session.external_event_id}>
-                      <Link to={`/sessions/${session.external_event_id}`} className="home__recent-row">
-                        <span className="home__recent-date">{fmt.date(session.event_date, "dayMonth")}</span>
-                        <span className="home__recent-name">{session.event_name}</span>
-                        <span className="home__recent-laps">{t("training:log.laps", { count: session.lap_count })}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            </div>
-          </div>
-        </>
+          <aside className="home__ahead">
+            <AiCoachCard athleteId={athleteId} />
+            <NextRaceCard athleteId={athleteId} />
+            {!noData && <GoalsCard athleteId={athleteId} />}
+            <WhatsNewCard athleteId={athleteId} />
+          </aside>
+        </div>
       )}
+
+      {athleteId !== "" && cardShown("track", sports) && <TrackHome athleteId={athleteId} />}
     </div>
   );
 }

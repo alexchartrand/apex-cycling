@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ButtonLink, Card } from "../../components/ui";
 import { useFormat } from "../../i18n/useFormat";
@@ -19,7 +19,14 @@ export function AiCoachCard({ athleteId }: { athleteId: string }) {
   const waiting = pending.data ?? [];
   const latest = reports.data?.[0];
   return (
-    <Card title={t("home.title")} actions={<Sparkles className="home__card-icon" aria-hidden />}>
+    <Card
+      title={t("home.title")}
+      actions={
+        <ButtonLink to="/ai-coach" size="sm" variant="secondary" icon={<Sparkles aria-hidden />} iconRight={<ArrowRight aria-hidden />}>
+          {t("home.goTo")}
+        </ButtonLink>
+      }
+    >
       <div className="ai-stack ai-stack--tight">
         {waiting.length > 0 && (
           <div className="ai-row ai-row--between">
@@ -44,12 +51,7 @@ export function AiCoachCard({ athleteId }: { athleteId: string }) {
           </div>
         )}
         {waiting.length === 0 && !latest && (
-          <div className="ai-row ai-row--between">
-            <span className="ai-muted">{t("home.empty")}</span>
-            <ButtonLink to="/ai-coach" size="sm">
-              {t("home.open")}
-            </ButtonLink>
-          </div>
+          <span className="ai-muted">{t("home.empty")}</span>
         )}
       </div>
     </Card>

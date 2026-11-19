@@ -8,6 +8,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Enum,
+    JSON,
     Float,
     ForeignKey,
     Integer,
@@ -46,6 +47,10 @@ class Athlete(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     sex: Mapped[str | None] = mapped_column(String(32), nullable=True)
     height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The sports the athlete does (`kinds.ATHLETE_SPORTS`), which decide the
+    # pages and cards the app shows; null = not chosen, the client guesses from
+    # the data. Display only: no query filters on it.
+    sports: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
 
     user: Mapped["User | None"] = relationship(back_populates="athlete", foreign_keys=[user_id])
     # Always loaded: access checks and the API read it on every request. Change

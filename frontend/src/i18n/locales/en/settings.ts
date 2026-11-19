@@ -14,6 +14,13 @@ export default {
       off: "You're off the club leaderboard",
     },
   },
+  sports: {
+    title: "My sports",
+    description: "The app shows the pages and cards of the sports you tick, and leaves out the others. Your log, plans and fitness always include everything.",
+    guessed: "Not chosen yet: these are guessed from your training.",
+    saved: "Sports saved",
+    names: { track_cycling: "Track cycling", cycling: "Road & indoor cycling", strength: "Strength / gym" },
+  },
   profile: {
     title: "Profile",
     name: "Display name",

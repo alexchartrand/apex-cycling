@@ -11,6 +11,8 @@ export default {
     trackTime: "Time on track",
     vsLastWeek: "vs last week",
   },
+  track: { title: "On the track" },
+  latestActivity: { eyebrow: "Latest activity", time: "Time", distance: "Distance", power: "Avg power", load: "Load" },
   latest: {
     eyebrow: "Latest session",
     open: "Open",

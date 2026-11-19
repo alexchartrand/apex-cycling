@@ -1,4 +1,6 @@
 export default {
+  more_one: "{{count}} more in the log",
+  more_other: "{{count}} more in the log",
   title: "Planned sessions",
   add: "Plan a session",
   empty: "Nothing planned. A coach (or you) can put a session on the calendar with the efforts to ride.",

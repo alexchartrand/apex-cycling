@@ -6,6 +6,7 @@ import { BrandMark } from "../brand/BrandMark";
 import { Wordmark } from "../brand/Wordmark";
 import { useMyAthlete } from "../features/athletes/useAthlete";
 import { useAiAccess } from "../features/aicoach/useAiCoach";
+import { useMySports } from "../features/sports/useMySports";
 import { NotificationBell } from "../features/notifications/NotificationBell";
 import { useCoachingBadgeCount } from "../features/coaching/useCoaching";
 import { useCurrentUser, useLogout } from "../features/auth/useAuth";
@@ -17,20 +18,25 @@ import { useInstallPrompt } from "../pwa/installPrompt";
 import { PwaStatus } from "../pwa/PwaStatus";
 import type { ThemeMode } from "../theme/theme";
 import { useTheme } from "../theme/useTheme";
-import { LanguageSwitcher, ThemeSwitcher } from "./preferences/PreferenceSwitchers";
 import { AthleteSwitcher } from "./shell/AthleteSwitcher";
 import { RouteFallback } from "./RouteFallback";
 import { ViewingBanner } from "./shell/ViewingBanner";
 import {
+  activeHub,
   activeNavItem,
+  hubTarget,
+  itemShown,
   MOBILE_TABS,
   MORE_SHEET_ITEMS,
-  OPTIONAL_NAV,
+  shownItems,
   SIDEBAR_FOOTER,
   SIDEBAR_GROUPS,
+  type NavContext,
+  type NavHub,
   type NavItem,
   type NavKey,
 } from "./shell/navigation";
+import { SubNav } from "./shell/SubNav";
 import { Avatar, Button, Dialog, IconButton, Menu, MenuItem, MenuLabel, MenuRadioGroup, MenuSeparator, Tooltip } from "./ui";
 import "./shell/AppShell.css";
 
@@ -51,14 +57,17 @@ export function AppShell() {
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [moreOpen, setMoreOpen] = useState(false);
   const active = activeNavItem(location.pathname);
+  const hub = activeHub(location.pathname);
   // Requests and comments waiting for the user, shown on their nav item.
   const badges: Partial<Record<NavKey, number>> = { coach: useCoachingBadgeCount() };
-  const shown = useShownNav();
-  const sectionTitle = active ? t(`nav.${active.key}`) : t("nav.home");
+  const ctx = useNavContext();
+  const pageTitle = active ? t(`nav.${active.key}`) : t("nav.home");
+  const sectionTitle = hub ? t(`hubs.${hub.key}`) : t("nav.home");
+  const hubPages = hub ? shownItems(hub, ctx) : [];
 
   useEffect(() => {
-    document.title = `${sectionTitle} · ApexCycling`;
-  }, [sectionTitle]);
+    document.title = `${pageTitle} · ApexCycling`;
+  }, [pageTitle]);
 
   // Close the More sheet on navigation.
   useEffect(() => setMoreOpen(false), [location.pathname]);
@@ -93,13 +102,15 @@ export function AppShell() {
           {SIDEBAR_GROUPS.map((group, index) => (
             <div key={group.key ?? index} className="shell__nav-group">
               {group.key && !sidebarCollapsed && <div className="shell__nav-heading eyebrow">{t(`groups.${group.key}`)}</div>}
-              {group.items.filter(shown).map((item) => (
-                <SidebarLink
+              {group.hubs.map((item) => (
+                <SidebarHub
                   key={item.key}
-                  item={item}
-                  active={active?.key === item.key}
+                  hub={item}
+                  ctx={ctx}
+                  activeHubKey={hub?.key}
+                  activeKey={active?.key}
                   collapsed={sidebarCollapsed}
-                  badge={badges[item.key]}
+                  badges={badges}
                 />
               ))}
             </div>
@@ -108,7 +119,15 @@ export function AppShell() {
 
         <div className="shell__sidebar-footer">
           {SIDEBAR_FOOTER.map((item) => (
-            <SidebarLink key={item.key} item={item} active={active?.key === item.key} collapsed={sidebarCollapsed} />
+            <SidebarHub
+              key={item.key}
+              hub={item}
+              ctx={ctx}
+              activeHubKey={hub?.key}
+              activeKey={active?.key}
+              collapsed={sidebarCollapsed}
+              badges={badges}
+            />
           ))}
           <NotificationBell variant={sidebarCollapsed ? "compact" : "row"} />
           <AccountMenu variant={sidebarCollapsed ? "compact" : "full"} />
@@ -140,6 +159,18 @@ export function AppShell() {
 
         <main id="main-content" className="shell__main" tabIndex={-1}>
           <div className="shell__content">
+            {hub && hubPages.length > 1 && (
+              <SubNav
+                className="subnav--hub"
+                aria-label={sectionTitle}
+                items={hubPages.map((item) => ({
+                  key: item.key,
+                  to: item.to,
+                  label: t(`nav.${item.key}`),
+                  active: active?.key === item.key,
+                }))}
+              />
+            )}
             <Suspense fallback={<RouteFallback />}>
               <Outlet />
             </Suspense>
@@ -149,16 +180,16 @@ export function AppShell() {
         <nav className="shell__tabbar" aria-label={t("mainNavigation")}>
           {MOBILE_TABS.map((item) => {
             const Icon = item.icon;
-            const isActive = active?.key === item.key;
+            const isActive = hub?.key === item.key && !MORE_SHEET_ITEMS.some((i) => i.key === active?.key);
             return (
               <NavLink
                 key={item.key}
-                to={item.to}
+                to={hubTarget(item, ctx)}
                 className={isActive ? "shell__tab shell__tab--active" : "shell__tab"}
                 aria-current={isActive ? "page" : undefined}
               >
                 <Icon aria-hidden />
-                <span>{t(`nav.${item.key}`)}</span>
+                <span>{t(`hubs.${item.key}`)}</span>
               </NavLink>
             );
           })}
@@ -176,16 +207,20 @@ export function AppShell() {
         </nav>
       </div>
 
-      <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} activeKey={active?.key} badges={badges} shown={shown} />
+      <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} activeKey={active?.key} badges={badges} ctx={ctx} />
     </div>
   );
 }
 
-/** Which optional sections this user has: the AI coach once an admin enabled it for their own athlete. */
-function useShownNav(): (item: NavItem) => boolean {
+/**
+ * What decides which pages this user gets: the AI coach once an admin enabled
+ * it for their own athlete, and the sports of the athlete being shown.
+ */
+function useNavContext(): NavContext {
   const me = useMyAthlete();
   const aiCoach = useAiAccess(me.data?.id).data?.enabled ?? false;
-  return (item) => !OPTIONAL_NAV.includes(item.key) || (item.key === "aiCoach" && aiCoach);
+  const { sports } = useMySports();
+  return { aiCoach, sports };
 }
 
 function NavBadge({ count }: { count: number | undefined }) {
@@ -198,23 +233,76 @@ function NavBadge({ count }: { count: number | undefined }) {
   );
 }
 
+/**
+ * A hub in the sidebar: one link, plus its pages listed under it while it is
+ * the current hub and the sidebar is expanded.
+ */
+function SidebarHub({
+  hub,
+  ctx,
+  activeHubKey,
+  activeKey,
+  collapsed,
+  badges,
+}: {
+  hub: NavHub;
+  ctx: NavContext;
+  activeHubKey: string | undefined;
+  activeKey: string | undefined;
+  collapsed: boolean;
+  badges: Partial<Record<NavKey, number>>;
+}) {
+  const { t } = useTranslation("shell");
+  const pages = shownItems(hub, ctx);
+  if (pages.length === 0) return null;
+  const isActive = activeHubKey === hub.key;
+  const badge = pages.reduce((sum, item) => sum + (badges[item.key] ?? 0), 0) || undefined;
+  return (
+    <>
+      <SidebarLink
+        to={pages[0].to}
+        icon={hub.icon}
+        label={t(`hubs.${hub.key}`)}
+        active={isActive}
+        collapsed={collapsed}
+        badge={badge}
+      />
+      {isActive && !collapsed && pages.length > 1 && (
+        <div className="shell__subnav">
+          {pages.map((item) => (
+            <NavLink
+              key={item.key}
+              to={item.to}
+              className={activeKey === item.key ? "shell__sublink shell__sublink--active" : "shell__sublink"}
+              aria-current={activeKey === item.key ? "page" : undefined}
+            >
+              {t(`nav.${item.key}`)}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 function SidebarLink({
-  item,
+  to,
+  icon: Icon,
+  label,
   active,
   collapsed,
   badge,
 }: {
-  item: NavItem;
+  to: string;
+  icon: NavItem["icon"];
+  label: string;
   active: boolean;
   collapsed: boolean;
   badge?: number;
 }) {
-  const { t } = useTranslation("shell");
-  const Icon = item.icon;
-  const label = t(`nav.${item.key}`);
   const link = (
     <NavLink
-      to={item.to}
+      to={to}
       className={active ? "shell__link shell__link--active" : "shell__link"}
       aria-current={active ? "page" : undefined}
       aria-label={collapsed ? label : undefined}
@@ -238,20 +326,20 @@ function MoreSheet({
   onOpenChange,
   activeKey,
   badges,
-  shown,
+  ctx,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   activeKey: string | undefined;
   badges: Partial<Record<NavKey, number>>;
-  shown: (item: NavItem) => boolean;
+  ctx: NavContext;
 }) {
   const { t } = useTranslation("shell");
   const { install } = useInstallPrompt();
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title={t("moreTitle")}>
       <div className="shell__more-grid">
-        {MORE_SHEET_ITEMS.filter(shown).map((item) => {
+        {MORE_SHEET_ITEMS.filter((item) => itemShown(item, ctx)).map((item) => {
           const Icon = item.icon;
           return (
             <Link
@@ -266,18 +354,14 @@ function MoreSheet({
           );
         })}
       </div>
-      <div className="shell__more-prefs">
-        <span className="eyebrow">{t("preferences")}</span>
-        <div className="shell__more-prefs-row">
-          <LanguageSwitcher size="md" />
-          <ThemeSwitcher size="md" showLabels />
-        </div>
-        {install && (
+      {/* Language and theme live in the account menu and Settings › Preferences. */}
+      {install && (
+        <div className="shell__more-prefs">
           <Button variant="secondary" icon={<Download aria-hidden />} onClick={install}>
             {t("pwa.install")}
           </Button>
-        )}
-      </div>
+        </div>
+      )}
     </Dialog>
   );
 }

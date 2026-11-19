@@ -2,8 +2,9 @@ import uuid
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field, computed_field, model_validator
+from pydantic import BaseModel, EmailStr, Field, computed_field, field_validator, model_validator
 
+from app.activities.kinds import ATHLETE_SPORTS
 from app.athletes.categories import age_category
 from app.athletes.models import CoachAthleteStatus
 
@@ -21,6 +22,7 @@ class AthleteRead(BaseModel):
     birthdate: date | None
     sex: Sex | None
     height_cm: float | None
+    sports: list[str] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -39,6 +41,19 @@ class AthleteUpdate(BaseModel):
     birthdate: date | None = None
     sex: Sex | None = None
     height_cm: float | None = Field(default=None, gt=50, lt=260)
+    # Null = not chosen (the client guesses); an empty list is refused.
+    sports: list[str] | None = Field(default=None, min_length=1, max_length=len(ATHLETE_SPORTS))
+
+    @field_validator("sports")
+    @classmethod
+    def _known_sports(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        unknown = [sport for sport in value if sport not in ATHLETE_SPORTS]
+        if unknown:
+            raise ValueError(f"unknown sport: {', '.join(unknown)}")
+        # Stored in the canonical order, without repeats.
+        return [sport for sport in ATHLETE_SPORTS if sport in value]
 
     @model_validator(mode="after")
     def _display_name_not_null(self) -> "AthleteUpdate":

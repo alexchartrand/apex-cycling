@@ -1,0 +1,34 @@
+.lap-progression {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}
+
+.lap-progression__heading h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+}
+
+.lap-progression__heading p {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-2);
+}
+
+.lap-progression__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.lap-progression__filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: start;
+}
+
+.lap-progression .recharts-brush-texts {
+  font-size: var(--text-xs);
+  fill: var(--chart-axis);
+}

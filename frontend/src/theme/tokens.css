@@ -5,6 +5,12 @@
   script public/theme-init.js before first paint, to avoid a flash). Every
   component styles itself from these tokens only — never raw --apex-* —
   so both themes stay correct by construction.
+
+  Breakpoints (custom properties can't be used in @media, so write these
+  numbers out; hooks/useMediaQuery.ts has the same ones for JS):
+    phone          @media (max-width: 640px)
+    compact shell  @media (max-width: 899px)   bottom tabs, no sidebar
+    wide           @media (min-width: 1100px)  / (max-width: 1099px)
 */
 
 :root {

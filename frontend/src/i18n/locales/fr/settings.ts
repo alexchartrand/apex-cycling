@@ -17,6 +17,13 @@ export default {
       off: "Vous ne figurez plus au classement du club",
     },
   },
+  sports: {
+    title: "Mes sports",
+    description: "L'application affiche les pages et les cartes des sports cochés et masque les autres. Votre journal, vos plans et votre forme incluent toujours tout.",
+    guessed: "Pas encore choisis : ils sont devinés à partir de vos entraînements.",
+    saved: "Sports enregistrés",
+    names: { track_cycling: "Cyclisme sur piste", cycling: "Vélo route et intérieur", strength: "Musculation" },
+  },
   profile: {
     title: "Profil",
     name: "Nom affiché",

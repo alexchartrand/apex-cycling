@@ -98,7 +98,7 @@
   border-color: var(--color-negative);
 }
 
-@media (max-width: 599px) {
+@media (max-width: 640px) {
   .settings-form__grid {
     grid-template-columns: 1fr;
   }
@@ -111,4 +111,28 @@
   .settings-form__actions button {
     width: 100%;
   }
+}
+
+.settings__stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.settings-sports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+}
+
+.settings-sports__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings-sports__label svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-text-2);
 }

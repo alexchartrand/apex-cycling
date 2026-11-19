@@ -52,6 +52,25 @@ async def test_update_profile_validates(client, db_session):
         assert resp.status_code == 422, payload
 
 
+async def test_sports_round_trip(client, db_session):
+    await _signup(client, "rider@example.com")
+    athlete_id = await _my_athlete_id(client)
+    assert (await client.get("/athletes/me")).json()["sports"] is None
+
+    # Stored in the canonical order, repeats dropped.
+    resp = await client.patch(f"/athletes/{athlete_id}", json={"sports": ["strength", "track_cycling", "strength"]})
+    assert resp.status_code == 200
+    assert resp.json()["sports"] == ["track_cycling", "strength"]
+
+    # Null goes back to "not chosen".
+    resp = await client.patch(f"/athletes/{athlete_id}", json={"sports": None})
+    assert resp.json()["sports"] is None
+
+    for payload in ({"sports": []}, {"sports": ["curling"]}):
+        resp = await client.patch(f"/athletes/{athlete_id}", json=payload)
+        assert resp.status_code == 422, payload
+
+
 async def test_cannot_update_someone_elses_profile(client, db_session):
     await _signup(client, "owner@example.com")
     owner_athlete_id = await _my_athlete_id(client)
